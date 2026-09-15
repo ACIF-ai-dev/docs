@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "tobuilder",
+  "name": "Tobuiler API reference",
   "colors": {
     "primary": "#0d9488"
   },
@@ -85,5 +85,12 @@
         "pages": ["webhooks"]
       }
     ]
+  },
+  "logo": {
+    "light": "/docs/api/images/tb-mark-accent-on-light-profile.png",
+    "dark": "/docs/api/images/tb-mark-accent-on-dark-profile.png"
+  },
+  "icons": {
+    "library": "fontawesome"
   }
 }
