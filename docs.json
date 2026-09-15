@@ -1,72 +1,89 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "tobuilder",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#0d9488"
   },
-  "favicon": "/favicon.svg",
   "navigation": {
-    "pages": [
+    "tabs": [
       {
-        "group": "Getting Started",
+        "tab": "API reference",
+        "openapi": "openapi.json",
         "pages": [
           "index",
-          "quickstart"
+          {
+            "group": "Onboarding",
+            "pages": [
+              "POST /v1/onboarding",
+              "GET /v1/onboarding",
+              "GET /v1/onboarding/{id}"
+            ]
+          },
+          {
+            "group": "Users",
+            "pages": [
+              "GET /v1/me",
+              "POST /v1/users/link",
+              "GET /v1/users/wallet",
+              "GET /v1/users/collateral-balance",
+              "GET /v1/users/portfolio-value",
+              "GET /v1/users/positions"
+            ]
+          },
+          {
+            "group": "Markets",
+            "pages": ["GET /v1/markets", "GET /v1/markets/{marketId}"]
+          },
+          {
+            "group": "Orders",
+            "pages": [
+              "POST /v1/orders",
+              "POST /v1/orders/market",
+              "GET /v1/orders",
+              "GET /v1/orders/fills",
+              "GET /v1/orders/{orderId}",
+              "DELETE /v1/orders/{orderId}",
+              "POST /v1/orders/cancel"
+            ]
+          },
+          {
+            "group": "Deposits",
+            "pages": [
+              "GET /v1/deposit/assets",
+              "POST /v1/deposit/addresses",
+              "GET /v1/deposit/addresses",
+              "GET /v1/deposit/transfers"
+            ]
+          },
+          {
+            "group": "Withdrawals",
+            "pages": [
+              "POST /v1/withdrawals/quotes",
+              "POST /v1/withdrawals",
+              "GET /v1/withdrawals",
+              "GET /v1/withdrawals/{withdrawalId}"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "POST /v1/webhooks/deliveries/{deliveryId}/resend",
+              "POST /v1/webhooks/endpoints",
+              "POST /v1/webhooks/endpoints/{endpointId}/rotate",
+              "POST /v1/webhooks/endpoints/{endpointId}/disable"
+            ]
+          }
         ]
-      }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
+      },
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "tab": "SDK guide",
+        "pages": ["sdk-guide"]
+      },
+      {
+        "tab": "Webhooks",
+        "pages": ["webhooks"]
       }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
     ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
   }
 }

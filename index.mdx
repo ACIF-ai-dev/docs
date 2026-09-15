@@ -1,20 +1,215 @@
 ---
-title: "Introduction"
-description: "Welcome to your project"
+title: "tobuilder API"
+description: "B2B infrastructure for prediction-market builders"
 ---
 
-Write a short description of your product here. What it does, who it's for, and what they can accomplish with it.
+## Build on prediction markets
 
-<Tip>
-  Ready to make this your own? Start by editing this page. Update your `docs.json` file to customize your site. Then fill out the [Quickstart](/quickstart) page.
-</Tip>
+tobuilder is B2B backend infrastructure for prediction-market builders. Its API provides wallet onboarding, deposits, orders, and withdrawals so a customer application can offer those capabilities without implementing the underlying infrastructure itself.
 
-<Card title="Quickstart" icon="rocket" href="/quickstart">
-  This card links to the quickstart page in your project.
-</Card>
-<Card title="Components" icon="puzzle-piece" href="https://mintlify.com/docs/components">
-  Add cards, callouts, steps, tabs, and more to design and structure your pages.
-</Card>
-<Card title="Settings" icon="gear" href="https://mintlify.com/docs/organize/settings">
-  Set your site name, branding, and navigation in the `docs.json` file.
-</Card>
+The API base URL is `https://api.tobuilder.app`, and it is available for requests now.
+
+This page takes you from an invite code to a first authenticated call using nothing but HTTP. Everything here works with `curl`; no client library is required.
+
+## Get an API key
+
+Access is **invite-only**. There is no self-serve signup, and the API has no key-issuance operation: every key is created by a signed-in operator in the tobuilder console. If you do not have an invite code yet, ask the tobuilder team for one — nothing below works without it.
+
+1. **Get an invite code.** The console verifies the code before anyone authenticates, and a code it does not recognise is refused. Verification is limited to 20 attempts per minute per client address, so a typo loop will start failing on the limit rather than on the code.
+2. **Sign in to the tobuilder console** with that code. Sign-in identifies you as an operator of a builder account; an operator who is not registered against an account cannot go further.
+3. **Issue an API key** in the console. A key carries a label of 1 to 64 characters after trimming, and a scope (below). Issuing and rotating keys is itself rate limited — 10 per hour by default — and each account has a maximum number of simultaneously active keys, above which issuance is refused until you revoke one or a rotation grace period ends.
+4. **Store the key at once.** The plaintext key is returned exactly once, in the response to issuance. The service keeps only its hash, so a key you lose cannot be read back: revoke or rotate it and issue a new one. Keys start with the prefix `tb_live_`.
+
+An API key is a server-side credential. Do not ship one to a browser, a mobile app, or any other client you do not control.
+
+### Scopes
+
+A key's scope decides which route prefixes it may call. Scopes are cumulative — each one includes everything below it.
+
+| Scope | Adds | Use it for |
+|---|---|---|
+| `bot-read` | `/v1/markets`, `/v1/me` | reading market data and checking the key itself |
+| `bot-link` | `/v1/users`, `/v1/onboarding` | linking your users and onboarding their wallets |
+| `trade` | `/v1/deposit`, `/v1/orders`, `/v1/withdrawals`, `/v1/webhooks`, `/v1/stream` | deposits, order flow, withdrawals, webhook administration, and the streaming surface |
+
+Calling a route outside the key's scope returns **403**, with `error.details.reason` set to `api_key_scope_insufficient`. The check runs on the route prefix before the handler, so the same request with the same key always gets the same answer — use a key issued with the scope you need. Issue the narrowest scope that covers the job: a read-only bot does not need a key that can move money.
+
+The streaming surface behind `/v1/stream` is not part of this reference yet; the operations documented here are the HTTP ones.
+
+### Rotation and revocation
+
+Rotating a key issues a successor and keeps the previous key working for a fixed grace period of 24 hours, so you can roll the new value through your deployment before the old one stops. While a key in that lineage is still inside its grace period, the lineage cannot be rotated again — finish the roll-out first. Revoking is immediate and has no grace period: the revoked key fails on its next request.
+
+Like issuance, rotation returns the new plaintext key exactly once. If it is lost, revoke the new key and issue another.
+
+## Authenticate
+
+Send the key as a Bearer credential on every request:
+
+```http
+Authorization: Bearer <your API key>
+```
+
+Operations that act on behalf of one of your end users need a second credential, the `x-end-user-token` header, carrying that user's Privy access token. Both headers are required on those operations: a missing or blank `x-end-user-token` is **401** with `error.details.reason` set to `end_user_token_missing`, and a missing or unrecognised builder key is **401** as well. The **API reference** lists the credentials each operation requires.
+
+## Rate limits
+
+Two budgets apply independently, and both are fixed windows rather than sliding ones.
+
+**Per key, per minute.** Every request is counted against the key's own per-minute limit. `GET /v1/me` reports that limit as `rateLimitPerMinute`. Responses that reach the limiter carry `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset`.
+
+**Per account, per hour, for `trade` keys.** A `trade`-scope key is additionally limited to 600 requests per hour by default, counted per builder account in a window that resets at the top of the hour. Every request counts against that budget — including GET requests, and including the requests that are themselves rejected with 429. A tight retry loop therefore spends the budget it is waiting for. Exceeding it returns **429** with `error.details.reason` set to `trade_hourly_limit_exceeded`.
+
+`Retry-After` is a number of seconds, and it is not on every 429. A limit-exceeded response (per-minute or hourly) carries it. A 429 raised because the limiter itself is unavailable does not, and neither does `order_idempotency_in_flight`, which means another submission holding the same lock is in flight rather than "you are over a limit". Read the header when it is there; do not assume a value when it is not.
+
+## Your first call
+
+`GET /v1/me` confirms the key works and reports its per-minute limit.
+
+```bash
+curl https://api.tobuilder.app/v1/me \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
+
+```json
+{
+  "subbuilderId": "sb_example",
+  "apiKeyId": "key_example",
+  "name": "production-bot",
+  "rateLimitPerMinute": 120
+}
+```
+
+The key is read from the environment on purpose. A key typed into a command line survives in shell history, and a key put in a URL survives in access logs; it belongs in the `Authorization` header and nowhere else.
+
+## Browse markets
+
+```bash
+curl "https://api.tobuilder.app/v1/markets?limit=5&category=politics" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
+
+```json
+{
+  "markets": [],
+  "total": 0,
+  "syncedAt": "2026-09-13T00:00:00.000Z"
+}
+```
+
+`markets` carries the market records, each with the `marketId` and token identifiers the order operations need. Note that `/v1/markets` declares `limit` and `offset` as strings, while `/v1/users/positions` declares `limit` as an integer and pages with a `cursor`; the reference is authoritative per operation.
+
+## Onboard one of your users
+
+Orders are placed for an end user, so that user needs a wallet first. Onboarding is asynchronous: this call enqueues the work and returns a job.
+
+```bash
+curl -X POST https://api.tobuilder.app/v1/onboarding \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"your-internal-user-id"}'
+```
+
+```json
+{
+  "id": "job_example",
+  "userId": "your-internal-user-id",
+  "status": "queued",
+  "stage": "privy_wallet",
+  "position": 3,
+  "estimatedWaitSeconds": 45
+}
+```
+
+The response above is abridged; the reference lists every field. Poll `GET /v1/onboarding` with the same `userId` — it is a required query parameter — until the job reports completion.
+
+## Place an order
+
+Order submission requires an `idempotency-key` header. **You generate each key**; the service never makes one for you, and neither does the SDK. Create it before you send, store it with the intent to order, and reuse that stored value if your process restarts mid-flight — that is what makes a reconnect a replay instead of a second order.
+
+The constraints are enforced on the trimmed value: it must be 1 to 200 characters after trimming and must not contain a comma. An absent or blank value is rejected as `order_idempotency_key_missing`; a value that is too long or contains a comma is rejected as `order_idempotency_key_invalid`. Because the trimmed value is what gets stored and compared, two keys differing only in surrounding whitespace are the same key.
+
+A limit order:
+
+```bash
+curl -X POST https://api.tobuilder.app/v1/orders \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "idempotency-key: 3f1b0c7a-9f3d-4f3a-9d1e-2a7c6b4e51d8" \
+  -d '{"userId":"your-internal-user-id","marketId":"0x9a1c-example","tokenId":"71453-example","side":"BUY","price":"0.42","size":"10"}'
+```
+
+```json
+{
+  "orderId": "0x4d2f-example",
+  "userId": "your-internal-user-id",
+  "marketId": "0x9a1c-example",
+  "tokenId": "71453-example",
+  "side": "BUY",
+  "price": "0.42",
+  "size": "10",
+  "createdAt": "2026-09-13T00:00:01.000Z"
+}
+```
+
+A market order is a different route with a different body — a BUY needs `amount` and `maxPrice`, a SELL needs `shares` and `minPrice` — and it needs **a different idempotency key**:
+
+```bash
+curl -X POST https://api.tobuilder.app/v1/orders/market \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "idempotency-key: b2e4d6c8-1a5f-4c9b-8e07-5d3f2a1c9b40" \
+  -d '{"userId":"your-internal-user-id","marketId":"0x9a1c-example","tokenId":"71453-example","side":"BUY","orderType":"FOK","amount":"25.00","maxPrice":"0.55"}'
+```
+
+```json
+{
+  "orderId": "0x77b1-example",
+  "userId": "your-internal-user-id",
+  "marketId": "0x9a1c-example",
+  "tokenId": "71453-example",
+  "side": "BUY",
+  "amount": "25.00",
+  "maxPrice": "0.55",
+  "createdAt": "2026-09-13T00:00:02.000Z"
+}
+```
+
+`POST /v1/orders` and `POST /v1/orders/market` **share one idempotency namespace**, keyed on your account and the key alone — the route is not part of the key. Sending a key on one route that you already used on the other replays that stored order when the compared fields match, and fails with `order_idempotency_key_conflict` when they do not. In neither case does the order you just wrote reach the market. Never reuse a key across the two routes; the two examples above deliberately use different values.
+
+Prices, sizes, and amounts are strings in both directions, and they stay strings. Parsing them into a floating-point number rounds real money.
+
+## When a call fails
+
+Every error response uses one envelope:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_FAILED",
+    "message": "Order size failed validation.",
+    "requestId": "req_example",
+    "details": { "reason": "order_size_invalid" }
+  }
+}
+```
+
+Branch on `error.code`, which is one of `VALIDATION_FAILED`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `RATE_LIMITED`, `INTERNAL`, and `UPSTREAM_UNAVAILABLE`. `error.details.reason` narrows the cause within a code, and each operation's reference page lists the reasons that operation can produce. Treat `details` as optional: schema validation failures and uncaught internal failures omit it. Log `error.requestId` — it is what identifies the request when you ask for support.
+
+### Retrying is your decision
+
+**Nothing in this API retries for you**, and the SDK does not retry either. Three reasons:
+
+1. **Rate budget.** The hourly budget counts GET requests and counts rejected requests, so an automatic retry spends the budget on the failure instead of on your next real call.
+2. **Money.** `POST /v1/orders` and `POST /v1/orders/market` submit real funds. After a 5xx you do not know whether the submission was stored, so a blind retry can duplicate an order; read `GET /v1/orders` and `GET /v1/orders/fills` back before sending anything again.
+3. **429 is not uniform.** Some 429 responses carry `Retry-After` and some do not, so any single backoff policy baked into a client would be wrong for half of them.
+
+## Collateral is pUSD
+
+`GET /v1/users/collateral-balance` returns `collateralBalanceBaseUnits`: an integer string in the collateral token's base units, exactly as the venue reports it. The collateral token is **pUSD**. Keep it a string and divide with a decimal library when you display it.
+
+`GET /v1/users/portfolio-value` is a different quantity — a mark-to-market valuation, not a balance. Its field is named `portfolioValueUsdc`; that spelling is the published contract and is reproduced here verbatim, but what it carries is a valuation figure. A `null` there means the upstream returned no value for that wallet. It is **not zero**, and rendering it as 0 misstates the account.
+
+## Explore the docs
+
+Use **API reference** for operation parameters, authentication requirements, and responses. **SDK guide** covers the TypeScript client for the same operations, and **Webhooks** explains what you need in place to receive event deliveries.

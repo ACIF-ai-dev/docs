@@ -1,0 +1,94 @@
+---
+title: "Webhooks"
+description: "What you need in place to receive tobuilder event deliveries"
+---
+
+## Why webhooks exist here
+
+Several things in this API finish after the call that started them returns: a wallet is onboarded, a deposit is credited, a withdrawal settles. Webhooks let tobuilder tell your server when that happens, so you do not poll for a state change that may be minutes away.
+
+A delivery is an HTTP `POST` to an endpoint you run, carrying a JSON body and two headers that matter: `tobuilder-signature` and `tobuilder-event-id`. Everything on this page is about receiving that request correctly.
+
+## What your endpoint must do
+
+**Be publicly reachable over HTTPS.** Deliveries go out from tobuilder's infrastructure to the URL configured for your account. A target that is not `https:`, or that carries credentials in the URL, is refused outright; so is one that resolves to a private, loopback, link-local, or multicast address, which means a tunnel to `localhost` will never receive anything. Redirects are not followed — a 3xx is a failed attempt, not a hop.
+
+**Answer 2xx, and answer quickly.** Any status from 200 to 299 marks the delivery delivered; anything else counts as a failed attempt. A delivery attempt is abandoned if no response arrives within 10 seconds, so acknowledge first and do the work afterwards — enqueue the event, return 2xx, process it on your own time.
+
+**Read the raw request body before parsing it.** The signature is computed over the exact bytes that were sent. Frameworks that hand you a parsed object have already thrown those bytes away, and re-serializing the object does not reproduce them: a different key order or a different spacing produces a different signature. Capture the raw body in your route and verify before `JSON.parse`.
+
+**Hold the signing secret.** Each account's deliveries are signed with a secret issued for it — the values begin with a `whsec_` prefix. Keep it in your secret store, not in source.
+
+**Deduplicate on `tobuilder-event-id`.** Delivery is at-least-once: the same event can arrive more than once, and the same `tobuilder-event-id` value means the same event. Treat that identifier as the unique key of whatever you write, so a repeat delivery is a no-op rather than a second credit.
+
+## Configure and maintain your endpoint
+
+**Register before you depend on a delivery.** Registering an HTTPS URL creates the active endpoint for your account. The signing secret appears only in that registration's 201 response, and it cannot be read again, so store it before continuing. If you lose it, rotation is the only recovery path: the replacement secret likewise appears only in the rotation's 200 response.
+
+**Verify both signatures as soon as you rotate.** For 24 hours after rotation, `tobuilder-signature` carries two `v1=` values. Accept a delivery when either one matches a secret you hold. Checking only one breaks half of your delivery verification from the moment you rotate, not when the grace period ends.
+
+**Treat one active URL as a deliberate limit.** Each account has one active endpoint. Registering a different URL automatically disables the former endpoint, which prevents the same event from being sent permanently to two destinations.
+
+## Verify the signature
+
+`tobuilder-signature` looks like this:
+
+```http
+tobuilder-signature: t=1789660800,v1=3f1b…64hex
+```
+
+- `t` is the signing time in **unix seconds**.
+- `v1` is an **HMAC-SHA256** of the string `<timestamp>.<body>` — the `t` value, a literal dot, then the raw request body — keyed with your signing secret, hex encoded.
+- There can be **more than one** `v1` value in the header. During a secret rotation the same delivery is signed with every active secret, so accept the delivery if *any* `v1` matches your secret. Parsing only the first one breaks you at rotation.
+
+Reject the delivery when the timestamp is more than **300** seconds away from your clock. That bound is what makes a captured delivery unusable later; without it, an old body and its old signature stay valid forever.
+
+Compare in **constant time**. A byte-by-byte comparison that returns on the first mismatch leaks how much of a forged signature was right.
+
+Reject a header that is not exactly what the format allows: **one** `t=` value, and `v1=` values that are exactly 64 hexadecimal characters. Both matter. Taking the first of two `t=` values lets a sender choose which timestamp you check, and hex-decoding an unvalidated `v1=` silently discards the invalid tail instead of failing, which turns a malformed signature into a short one that might compare equal to nothing at all — or, on a shorter digest, to something.
+
+```js
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+const HEX64 = /^[0-9a-f]{64}$/i;
+
+export function verify(header, rawBody, secret, nowSeconds) {
+  const parts = header.split(",");
+
+  const timestamps = parts.filter((p) => p.startsWith("t="));
+  if (timestamps.length !== 1) return false;
+
+  const raw = timestamps[0].slice(2);
+  const timestamp = Number(raw);
+  if (!/^\d+$/.test(raw) || !Number.isSafeInteger(timestamp)) return false;
+  if (Math.abs(nowSeconds - timestamp) > 300) return false;
+
+  const expected = Buffer.from(
+    createHmac("sha256", secret).update(`${timestamp}.${rawBody}`).digest("hex"),
+    "hex",
+  );
+
+  return parts
+    .filter((p) => p.startsWith("v1="))
+    .map((p) => p.slice(3))
+    .filter((signature) => HEX64.test(signature))
+    .map((signature) => Buffer.from(signature, "hex"))
+    .some((received) =>
+      received.length === expected.length && timingSafeEqual(received, expected),
+    );
+}
+```
+
+Verify first, then parse. An unverified body is attacker-controlled input.
+
+## What happens when your endpoint is down
+
+A failed attempt is retried up to **5** times in total, with a widening gap between attempts: the delays are 1 minute, 5 minutes, 30 minutes, 2 hours, and 6 hours by default, so a delivery that keeps failing spans a little under nine hours before it stops. A delivery whose attempts are exhausted becomes **dead** and is not retried again on its own.
+
+Because retries are spread out, your handler must be safe to run more than once against the same event, and it must not depend on deliveries arriving in order — a retried event can land after a newer one.
+
+## Appendix: reviving a dead delivery
+
+When an outage outlasts the retry window, dead deliveries do not disappear: `POST /v1/webhooks/deliveries/{deliveryId}/resend` requeues one for another round of attempts. The requeued delivery comes back with its attempt count reset and is picked up by the next dispatch.
+
+This is a repair tool, not part of the normal path. Two limits are worth knowing before you build on it: a delivery that is currently in flight cannot be requeued and is rejected with a validation error until that attempt finishes, and a delivery that belongs to another account is not found. The route needs a `trade`-scope key.

@@ -1,0 +1,163 @@
+---
+title: "SDK guide"
+description: "Using the tobuilder TypeScript SDK from your server"
+---
+
+## What this page is
+
+`@tobuilder/sdk` is the official **server-side** TypeScript client for the operations in the **API reference**. Its request and response types are generated from the same OpenAPI document this site publishes, so the shapes your editor completes are the shapes the API serves.
+
+This page is a summary. The README shipped inside the package is the **canonical** reference for the client: it is versioned with the code, and where the two ever disagree, the README in the version you installed wins.
+
+## Availability
+
+The package is published to the public registry and can be installed with:
+
+```sh
+npm install @tobuilder/sdk
+```
+
+This page describes the published client; for HTTP-only usage, call the API as the **API reference** shows.
+
+Requirements: **Node.js 22 or newer**, ESM only. The client has no runtime dependencies and sends requests with the built-in `fetch`.
+
+## Two credentials, two handles
+
+A client constructed with your builder API key can reach the operations that need only that key:
+
+```ts
+import { Tobuilder } from "@tobuilder/sdk";
+
+const tb = new Tobuilder({
+  apiKey: process.env.TOBUILDER_API_KEY ?? "",
+  // baseUrl?: string    — defaults to https://api.tobuilder.app
+  // timeoutMs?: number  — defaults to 60_000
+});
+
+const me = await tb.me.get();
+```
+
+Operations that act for one of your end users need that user's Privy access token as well. They live on a separate handle, so forgetting the token is a compile error rather than a runtime 401:
+
+```ts
+const user = tb.asUser(endUserToken);
+
+const wallet = await user.wallet();
+const balance = await user.collateralBalance();
+```
+
+`asUser()` opens no new connection — it is a view over the same client that adds the second credential.
+
+The default `baseUrl` is `https://api.tobuilder.app`, and that host accepts requests now. A `baseUrl` must be an absolute `http:` or `https:` URL with no embedded credentials, no query string, and no fragment — all of those are rejected when the client is constructed, because a query string would swallow the operation path and a fragment would be dropped before the request left.
+
+Keep the client on your server. It carries your builder API key, and that key must never reach a browser or a mobile app.
+
+## Four argument shapes worth knowing
+
+The facade follows the contract rather than smoothing it over, which means four places where the argument is not what you might guess.
+
+**1. Three listings require their argument.** `onboarding.list`, `orders.list`, and `orders.fills` take their query object non-optionally, because the contract declares `userId` as a required query parameter on each:
+
+```ts
+const jobs = await tb.onboarding.list({ userId: "your-internal-user-id" });
+const orders = await tb.orders.list({ userId: "your-internal-user-id" });
+const fills = await tb.orders.fills({ userId: "your-internal-user-id" });
+```
+
+**2. Paging types differ between operations.** `/v1/markets` declares its `limit` and `offset` as strings, while `/v1/users/positions` declares `limit` as an integer and pages with a `cursor`. The generated types reproduce that difference exactly, so write what each operation declares:
+
+```ts
+const markets = await tb.markets.list({ limit: "20", category: "politics" });
+const positions = await user.positions({ limit: 50 });
+```
+
+**3. Creating a deposit address takes no arguments.** `deposit.createAddress()` is called bare, because the contract declares no request body for it:
+
+```ts
+await user.deposit.createAddress();
+const addresses = await user.deposit.addresses();
+```
+
+**4. A withdrawal is two calls.** Quote first, then create against that quote, and the create carries an idempotency key you made:
+
+```ts
+import { randomUUID } from "node:crypto";
+
+const quote = await user.withdrawals.quote({
+  toChainId: "137",
+  toTokenAddress: "0x-example",
+  recipientAddress: "0x-example",
+  amount: "25.00",
+});
+
+// Store this before you send, so a restart reuses it instead of
+// starting a second withdrawal.
+const withdrawalKey = randomUUID();
+
+const withdrawal = await user.withdrawals.create(
+  { quoteId: quote.quoteId },
+  { "idempotency-key": withdrawalKey },
+);
+```
+
+## Orders take a key you generate
+
+Both order calls take the idempotency key as a **required second argument**, mirroring the required header in the contract. Omitting it or misspelling it fails type-checking instead of returning a 400 with real money on the line.
+
+**You generate each idempotency key.** The SDK never makes one for you: a key the client invented would imply a retry safety this client does not provide.
+
+```ts
+import { randomUUID } from "node:crypto";
+
+const limitKey = randomUUID();
+
+const order = await tb.orders.place(
+  {
+    userId: "your-internal-user-id",
+    marketId: "0x9a1c-example",
+    tokenId: "71453-example",
+    side: "BUY",
+    price: "0.42",
+    size: "10",
+  },
+  { "idempotency-key": limitKey },
+);
+
+// A different route needs a different key — the two share one namespace.
+const marketKey = randomUUID();
+
+const marketOrder = await tb.orders.placeMarket(
+  {
+    userId: "your-internal-user-id",
+    marketId: "0x9a1c-example",
+    tokenId: "71453-example",
+    side: "BUY",
+    orderType: "FOK",
+    amount: "25.00",
+    maxPrice: "0.55",
+  },
+  { "idempotency-key": marketKey },
+);
+```
+
+The header name comes from the generated contract types rather than a string you typed: if the contract renames it, the call stops compiling instead of quietly losing idempotency.
+
+Prices, sizes, and amounts are strings and stay strings — the client never parses monetary values into a `number`.
+
+## Errors
+
+Every non-2xx response rejects with `TobuilderApiError`, carrying `status`, `code`, `message`, `requestId`, `details`, `reason`, `retryAfterSeconds`, and the raw body. Anything that means no response arrived at all — DNS failure, connection reset, timeout, a body that stopped mid-read — rejects with `TobuilderTransportError`. Every method is `async` and reports argument problems by rejecting, so one `.catch()` sees every failure.
+
+`instanceof` is reliable while your dependency tree resolves a single copy of the package. If a duplicate copy can be installed, branch on `error.name` instead; both classes set it to their own name.
+
+Requests abort after `timeoutMs`, 60 seconds by default, and surface as a transport error. The default is deliberately generous: order and withdrawal submission wait on upstream on-chain work, and aborting there leaves you unsure whether the submission happened.
+
+## The client never retries
+
+No status code triggers an automatic retry, and nothing is polled in the background: one call, one request. The reasons are the ones on the **API reference** home page — the hourly budget counts reads and rejections, a blind retry of an order can duplicate real money, and `Retry-After` is present on some 429 responses and absent on others. `TobuilderApiError.retryAfterSeconds` gives you the header value when there is one, and `undefined` when there is not; the scheduling decision stays yours.
+
+## Collateral is pUSD
+
+`user.collateralBalance()` returns `collateralBalanceBaseUnits`, an integer string in the collateral token's base units, preserved exactly as the upstream venue reports it. The collateral token is **pUSD**. The client does not divide, round, or convert it — use a decimal library for display rather than `Number(...)`, which loses precision on large balances.
+
+`user.portfolioValue()` is a mark-to-market valuation instead, published under the contract field name `portfolioValueUsdc`; a `null` there means the upstream gave no value for that wallet, which is not the same as zero.
