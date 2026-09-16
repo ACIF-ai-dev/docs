@@ -88,9 +88,13 @@
   },
   "logo": {
     "light": "/docs/api/images/tb-mark-accent-on-light-profile.png",
-    "dark": "/docs/api/images/tb-mark-accent-on-dark-profile.png"
+    "dark": "/docs/api/images/tobuilder-lockup-dark.png"
   },
   "icons": {
     "library": "fontawesome"
+  },
+  "favicon": {
+    "light": "/docs/api/images/favicon-light.svg",
+    "dark": "/docs/api/images/favicon-dark.svg"
   }
 }
