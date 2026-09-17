@@ -86,7 +86,8 @@
   },
   "logo": {
     "light": "/docs/api/images/tb-mark-accent-on-light-profile.png",
-    "dark": "/docs/api/images/tobuilder-lockup-dark.png"
+    "dark": "/docs/api/images/tobuilder-lockup-dark.png",
+    "href": "https://docs.tobuilder.io"
   },
   "icons": {
     "library": "fontawesome"
