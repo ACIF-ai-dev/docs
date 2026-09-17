@@ -15,9 +15,7 @@
           {
             "group": "Onboarding",
             "pages": [
-              "POST /v1/onboarding",
-              "GET /v1/onboarding",
-              "GET /v1/onboarding/{id}"
+              "POST /v1/onboarding"
             ]
           },
           {
