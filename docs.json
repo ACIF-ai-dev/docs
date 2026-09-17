@@ -31,7 +31,8 @@
           },
           {
             "group": "Markets",
-            "pages": ["GET /v1/markets", "GET /v1/markets/{marketId}"]
+            "pages": [
+              "GET /v1/markets""]
           },
           {
             "group": "Orders",
@@ -76,11 +77,19 @@
       },
       {
         "tab": "SDK guide",
-        "pages": ["sdk-guide"]
+        "pages": []
       },
       {
         "tab": "Webhooks",
         "pages": ["webhooks"]
+      },
+      {
+        "group": "Withdrawals",
+        "pages": [
+          "POST /v1/withdrawals/quotes",
+          "POST /v1/withdrawals",
+          "GET /v1/withdrawals/{withdrawalId}"
+        ]
       }
     ]
   },
