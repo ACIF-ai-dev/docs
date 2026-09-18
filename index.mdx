@@ -9,16 +9,17 @@ tobuilder is B2B backend infrastructure for prediction-market builders. Its API 
 
 The API base URL is `https://api.tobuilder.app`, and it is available for requests now.
 
-This page takes you from an invite code to a first authenticated call using nothing but HTTP. Everything here works with `curl`; no client library is required.
+This page takes you from console sign-in to a first authenticated call using nothing but HTTP. Everything here works with `curl`; no client library is required.
 
 ## Get an API key
 
-Access is **invite-only**. There is no self-serve signup, and the API has no key-issuance operation: every key is created by a signed-in operator in the tobuilder console. If you do not have an invite code yet, ask the tobuilder team for one — nothing below works without it.
+The public API has no key-issuance operation, and every key is created by a signed-in operator in the tobuilder console. The backend does not require or validate an invite code when provisioning an operator: a valid Privy console token is sufficient, subject to platform signup availability and rate limits.
 
-1. **Get an invite code.** The console verifies the code before anyone authenticates, and a code it does not recognise is refused. Verification is limited to 20 attempts per minute per client address, so a typo loop will start failing on the limit rather than on the code.
-2. **Sign in to the tobuilder console** with that code. Sign-in identifies you as an operator of a builder account; an operator who is not registered against an account cannot go further.
-3. **Issue an API key** in the console. A key carries a label of 1 to 64 characters after trimming, and a scope (below). Issuing and rotating keys is itself rate limited — 10 per hour by default — and each account has a maximum number of simultaneously active keys, above which issuance is refused until you revoke one or a rotation grace period ends.
-4. **Store the key at once.** The plaintext key is returned exactly once, in the response to issuance. The service keeps only its hash, so a key you lose cannot be read back: revoke or rotate it and issue a new one. Keys start with the prefix `tb_live_`.
+1. **Sign in to the tobuilder console.** Sign-in identifies you as an operator of a builder account, and it is also where registration happens: an operator the console has not seen before is registered as part of signing in, so there is nothing to apply for and no approval to wait for. If the console keeps returning you to its access screen instead, that is a signal something is wrong rather than a queue you are waiting in — send the operator ID that screen shows to your tobuilder administrator.
+2. **Issue an API key** in the console. A key carries a label of 1 to 64 characters after trimming, and a scope (below). Issuing and rotating keys is itself rate limited — 10 per hour by default — and each account has a maximum number of simultaneously active keys, above which issuance is refused until you revoke one or a rotation grace period ends.
+3. **Store the key at once.** The plaintext key is returned exactly once, in the response to issuance. The service keeps only its hash, so a key you lose cannot be read back: revoke or rotate it and issue a new one. Keys start with the prefix `tb_live_`.
+
+The console may present an invite-code check as an optional console UX step. Its `invite/verify` route compares the code and refuses one it does not recognise; verification is limited to 20 attempts per minute per client address. This check issues no session or token.
 
 An API key is a server-side credential. Do not ship one to a browser, a mobile app, or any other client you do not control.
 
@@ -29,18 +30,28 @@ A key's scope decides which route prefixes it may call. Scopes are cumulative �
 | Scope | Adds | Use it for |
 |---|---|---|
 | `bot-read` | `/v1/markets`, `/v1/me` | reading market data and checking the key itself |
-| `bot-link` | `/v1/users`, `/v1/onboarding` | linking your users and onboarding their wallets |
-| `trade` | `/v1/deposit`, `/v1/orders`, `/v1/withdrawals`, `/v1/webhooks`, `/v1/stream` | deposits, order flow, withdrawals, webhook administration, and the streaming surface |
+| `bot-link` | `/v1/users`, `/v1/onboarding`, `/v1/webhooks/endpoints` | linking your users, onboarding their wallets, and registering or rotating webhook endpoints |
+| `trade` | `/v1/deposit`, `/v1/orders`, `/v1/withdrawals`, `/v1/webhooks/deliveries`, `/v1/stream` | deposits, order flow, withdrawals, webhook delivery operations, and the streaming surface |
 
 Calling a route outside the key's scope returns **403**, with `error.details.reason` set to `api_key_scope_insufficient`. The check runs on the route prefix before the handler, so the same request with the same key always gets the same answer — use a key issued with the scope you need. Issue the narrowest scope that covers the job: a read-only bot does not need a key that can move money.
 
-The streaming surface behind `/v1/stream` is not part of this reference yet; the operations documented here are the HTTP ones.
+The streaming surface behind `/v1/stream` is documented in the [Stream guide](stream); the operations documented in this reference are the HTTP ones.
+
+The webhook routes under `/v1/webhooks` are split across two rungs: `bot-link` opens `/v1/webhooks/endpoints`, and `trade` adds the rest, including `/v1/webhooks/deliveries`.
 
 ### Rotation and revocation
 
 Rotating a key issues a successor and keeps the previous key working for a fixed grace period of 24 hours, so you can roll the new value through your deployment before the old one stops. While a key in that lineage is still inside its grace period, the lineage cannot be rotated again — finish the roll-out first. Revoking is immediate and has no grace period: the revoked key fails on its next request.
 
 Like issuance, rotation returns the new plaintext key exactly once. If it is lost, revoke the new key and issue another.
+
+## Get an end-user token
+
+User-facing operations under `/v1/users/*`, `/v1/deposit/*`, and `/v1/withdrawals/*` need the builder key plus an `x-end-user-token` header. The header value is that end user's Privy access token.
+
+Your frontend obtains the token by signing the user in through the single Privy app that tobuilder provides for this integration; your tobuilder administrator gives you the app id. Before login, send every frontend origin — including a development origin such as `http://localhost:<port>` — to your tobuilder administrator so it can be registered in Privy's allowed origins. Login fails for an unregistered origin; that is registration state, not a bug. Send the origin again when the domain changes.
+
+If a token is rejected, see the 401 description in the **API reference** for the listed reason codes.
 
 ## Authenticate
 
@@ -91,29 +102,153 @@ curl "https://api.tobuilder.app/v1/markets?limit=5&category=politics" \
 
 ```json
 {
-  "markets": [],
-  "total": 0,
+  "markets": [
+    {
+      "marketId": "0x9a1c-example",
+      "question": "Will this example market resolve YES?",
+      "category": "politics",
+      "active": true,
+      "endDate": "2026-12-31T00:00:00.000Z",
+      "outcomes": [
+        { "outcome": "Yes", "price": "0.42", "tokenId": "71453-example" },
+        { "outcome": "No", "price": "0.58", "tokenId": "71454-example" }
+      ],
+      "syncedAt": "2026-09-13T00:00:00.000Z"
+    }
+  ],
+  "total": 1,
   "syncedAt": "2026-09-13T00:00:00.000Z"
 }
 ```
 
-`markets` carries the market records, each with the `marketId` and token identifiers the order operations need. Note that `/v1/markets` declares `limit` and `offset` as strings, while `/v1/users/positions` declares `limit` as an integer and pages with a `cursor`; the reference is authoritative per operation.
+Each outcome carries `outcome`, `price`, and `tokenId` — the CTF token id you pass as `tokenId` to the order operations. Choose the outcome by its `outcome` label, never by array position; a `null` `tokenId` means that outcome cannot be traded. Note that `/v1/markets` declares `limit` and `offset` as strings, while `/v1/users/positions` declares `limit` as an integer and pages with a `cursor`; the reference is authoritative per operation.
+
+## Read the order book
+
+```bash
+curl "https://api.tobuilder.app/v1/markets/0x9a1c-example/book?depth=5" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
+
+```json
+{
+  "marketId": "0x9a1c-example",
+  "fetchedAt": "2026-09-13T00:00:00.000Z",
+  "depth": 5,
+  "outcomes": [
+    {
+      "outcome": "Yes",
+      "tokenId": "71453-example",
+      "status": "ok",
+      "bestBid": "0.043",
+      "bestAsk": "0.044",
+      "midpoint": "0.0435",
+      "spread": "0.001",
+      "minOrderSize": "5",
+      "tickSize": "0.001",
+      "negRisk": false,
+      "bids": [
+        { "price": "0.043", "size": "3828.39" },
+        { "price": "0.042", "size": "1200" }
+      ],
+      "asks": [
+        { "price": "0.044", "size": "1384.17" },
+        { "price": "0.045", "size": "900" }
+      ]
+    },
+    {
+      "outcome": "No",
+      "tokenId": "71454-example",
+      "status": "ok",
+      "bestBid": "0.956",
+      "bestAsk": "0.957",
+      "midpoint": "0.9565",
+      "spread": "0.001",
+      "minOrderSize": "5",
+      "tickSize": "0.001",
+      "negRisk": false,
+      "bids": [
+        { "price": "0.956", "size": "2100" },
+        { "price": "0.955", "size": "750" }
+      ],
+      "asks": [
+        { "price": "0.957", "size": "1800" },
+        { "price": "0.958", "size": "640" }
+      ]
+    }
+  ]
+}
+```
+
+Bids and asks are returned best first: bids are sorted descending by price, while asks are sorted ascending by price.
+
+`depth` is the requested upper bound for levels per side, so the response can contain fewer levels.
+
+`status` is `ok` for a readable book, `no_book` when the outcome has no CLOB order book, and `no_token` when the outcome has no token ID.
+
+The `/v1/markets` response returns `outcomes[].price` as a snapshot; this route returns the order book.
+
+
+## Preview the fee
+
+```bash
+curl "https://api.tobuilder.app/v1/markets/559651/fee-preview?price=0.5&size=10" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
+
+```json
+{
+  "marketId": "559651",
+  "price": "0.5",
+  "size": "10",
+  "notional": "5",
+  "fee": { "taker": "0.1", "maker": "0" },
+  "schedule": { "rate": "0.04", "exponent": 1, "takerOnly": true },
+  "fetchedAt": "2026-09-17T13:30:00.000Z"
+}
+```
+
+This is an estimate calculated from Polymarket's public fee schedule; the fee is confirmed (settled at fill) when the order fills.
+To choose between `fee.taker` and `fee.maker`, compare your price with `bestAsk` and `bestBid` from the order book: a price at or above `bestAsk` makes a BUY a taker, a price at or below `bestBid` makes a SELL a taker, and otherwise the order rests on the book as a maker.
+`feeRateBps` is not a basis to reverse the fee; use the fee values returned by this preview and the eventual fill data instead.
 
 ## Onboard one of your users
 
 Orders are placed for an end user, so that user needs a wallet first. Onboarding is asynchronous: this call enqueues the work and returns a job.
 
+1. Sign the end user in with Privy and obtain an access token.
+2. Call `POST /v1/users/link` with the builder key and `x-end-user-token`, using `{}` as the body. The only declared body field is the optional `telegramUserId`:
+
+   ```bash
+   curl -X POST https://api.tobuilder.app/v1/users/link \
+     -H "Authorization: Bearer $TOBUILDER_API_KEY" \
+     -H "x-end-user-token: $END_USER_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{}'
+   ```
+
+   ```json
+   { "userId": "9f1d2c3b-4a5e-4f60-9b7c-8d0e1f2a3b4c", "created": true }
+   ```
+
+   The returned `userId` is the identifier you must save in your user record.
+3. Call `POST /v1/onboarding {"userId":"9f1d2c3b-4a5e-4f60-9b7c-8d0e1f2a3b4c"}`.
+4. Poll `GET /v1/onboarding?userId=9f1d2c3b-4a5e-4f60-9b7c-8d0e1f2a3b4c`.
+5. Use that same `userId` for every later order and query.
+
+The `userId` is an identifier issued by tobuilder at `POST /v1/users/link`, not your internal id. If you send a value that link did not return, `POST /v1/onboarding` is immediately rejected with **400** and `error.code` `VALIDATION_FAILED` (`User was not found.`); it is not silently accepted. A new onboarding job returns **201**, while an existing job for that user returns **200**. The worker-side `onboarding_external_user_id_missing` failure can occur only if the user's record disappears after the job has been queued.
+
 ```bash
 curl -X POST https://api.tobuilder.app/v1/onboarding \
   -H "Authorization: Bearer $TOBUILDER_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"userId":"your-internal-user-id"}'
+  -d '{"userId":"9f1d2c3b-4a5e-4f60-9b7c-8d0e1f2a3b4c"}'
 ```
 
 ```json
 {
   "id": "job_example",
-  "userId": "your-internal-user-id",
+  "userId": "9f1d2c3b-4a5e-4f60-9b7c-8d0e1f2a3b4c",
   "status": "queued",
   "stage": "privy_wallet",
   "position": 3,
@@ -136,13 +271,13 @@ curl -X POST https://api.tobuilder.app/v1/orders \
   -H "Authorization: Bearer $TOBUILDER_API_KEY" \
   -H "Content-Type: application/json" \
   -H "idempotency-key: 3f1b0c7a-9f3d-4f3a-9d1e-2a7c6b4e51d8" \
-  -d '{"userId":"your-internal-user-id","marketId":"0x9a1c-example","tokenId":"71453-example","side":"BUY","price":"0.42","size":"10"}'
+  -d '{"userId":"9f1d2c3b-4a5e-4f60-9b7c-8d0e1f2a3b4c","marketId":"0x9a1c-example","tokenId":"71453-example","side":"BUY","price":"0.42","size":"10"}'
 ```
 
 ```json
 {
   "orderId": "0x4d2f-example",
-  "userId": "your-internal-user-id",
+  "userId": "9f1d2c3b-4a5e-4f60-9b7c-8d0e1f2a3b4c",
   "marketId": "0x9a1c-example",
   "tokenId": "71453-example",
   "side": "BUY",
@@ -159,13 +294,13 @@ curl -X POST https://api.tobuilder.app/v1/orders/market \
   -H "Authorization: Bearer $TOBUILDER_API_KEY" \
   -H "Content-Type: application/json" \
   -H "idempotency-key: b2e4d6c8-1a5f-4c9b-8e07-5d3f2a1c9b40" \
-  -d '{"userId":"your-internal-user-id","marketId":"0x9a1c-example","tokenId":"71453-example","side":"BUY","orderType":"FOK","amount":"25.00","maxPrice":"0.55"}'
+  -d '{"userId":"9f1d2c3b-4a5e-4f60-9b7c-8d0e1f2a3b4c","marketId":"0x9a1c-example","tokenId":"71453-example","side":"BUY","orderType":"FOK","amount":"25.00","maxPrice":"0.55"}'
 ```
 
 ```json
 {
   "orderId": "0x77b1-example",
-  "userId": "your-internal-user-id",
+  "userId": "9f1d2c3b-4a5e-4f60-9b7c-8d0e1f2a3b4c",
   "marketId": "0x9a1c-example",
   "tokenId": "71453-example",
   "side": "BUY",
@@ -177,7 +312,7 @@ curl -X POST https://api.tobuilder.app/v1/orders/market \
 
 `POST /v1/orders` and `POST /v1/orders/market` **share one idempotency namespace**, keyed on your account and the key alone — the route is not part of the key. Sending a key on one route that you already used on the other replays that stored order when the compared fields match, and fails with `order_idempotency_key_conflict` when they do not. In neither case does the order you just wrote reach the market. Never reuse a key across the two routes; the two examples above deliberately use different values.
 
-Prices, sizes, and amounts are strings in both directions, and they stay strings. Parsing them into a floating-point number rounds real money.
+Prices, sizes, amounts, and `tokenId` are strings in both directions, and they stay strings. A token id can be dozens of decimal digits; converting it to a `number` loses precision, just as it does for real-money values.
 
 ## When a call fails
 
@@ -195,6 +330,10 @@ Every error response uses one envelope:
 ```
 
 Branch on `error.code`, which is one of `VALIDATION_FAILED`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `RATE_LIMITED`, `INTERNAL`, and `UPSTREAM_UNAVAILABLE`. `error.details.reason` narrows the cause within a code, and each operation's reference page lists the reasons that operation can produce. Treat `details` as optional: schema validation failures and uncaught internal failures omit it. Log `error.requestId` — it is what identifies the request when you ask for support.
+
+### When the account is suspended
+
+A suspended account answers **403** with `error.details.reason` set to `subbuilder_suspended`, and the suspension is not scoped to one surface: orders, withdrawals, and streams stop along with console access. What it stops is new requests — work that was already accepted before the suspension, such as a withdrawal that is already in flight, is not cancelled by the suspension. Retrying does not lift it, and your tobuilder administrator can tell you why it is suspended.
 
 ### Retrying is your decision
 

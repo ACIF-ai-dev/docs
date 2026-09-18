@@ -42,6 +42,7 @@ Operations that act for one of your end users need that user's Privy access toke
 ```ts
 const user = tb.asUser(endUserToken);
 
+const { userId } = await user.link({});
 const wallet = await user.wallet();
 const balance = await user.collateralBalance();
 ```
@@ -59,15 +60,17 @@ The facade follows the contract rather than smoothing it over, which means four 
 **1. Three listings require their argument.** `onboarding.list`, `orders.list`, and `orders.fills` take their query object non-optionally, because the contract declares `userId` as a required query parameter on each:
 
 ```ts
-const jobs = await tb.onboarding.list({ userId: "your-internal-user-id" });
-const orders = await tb.orders.list({ userId: "your-internal-user-id" });
-const fills = await tb.orders.fills({ userId: "your-internal-user-id" });
+const jobs = await tb.onboarding.list({ userId });
+const orders = await tb.orders.list({ userId });
+const fills = await tb.orders.fills({ userId });
 ```
 
 **2. Paging types differ between operations.** `/v1/markets` declares its `limit` and `offset` as strings, while `/v1/users/positions` declares `limit` as an integer and pages with a `cursor`. The generated types reproduce that difference exactly, so write what each operation declares:
 
 ```ts
 const markets = await tb.markets.list({ limit: "20", category: "politics" });
+const yes = markets.markets[0]?.outcomes.find((o) => o.outcome === "Yes");
+if (yes?.tokenId == null) throw new Error("that outcome cannot be traded");
 const positions = await user.positions({ limit: 50 });
 ```
 
@@ -113,7 +116,7 @@ const limitKey = randomUUID();
 
 const order = await tb.orders.place(
   {
-    userId: "your-internal-user-id",
+    userId,
     marketId: "0x9a1c-example",
     tokenId: "71453-example",
     side: "BUY",
@@ -128,7 +131,7 @@ const marketKey = randomUUID();
 
 const marketOrder = await tb.orders.placeMarket(
   {
-    userId: "your-internal-user-id",
+    userId,
     marketId: "0x9a1c-example",
     tokenId: "71453-example",
     side: "BUY",

@@ -1,7 +1,18 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Tobuiler API reference",
+  "name": "tobuilder API reference",
+  "logo": {
+    "light": "/images/tobuilder-lockup-light.png",
+    "dark": "/images/tobuilder-lockup-dark.png"
+  },
+  "favicon": {
+    "light": "/images/favicon-light.svg",
+    "dark": "/images/favicon-dark.svg"
+  },
+  "icons": {
+    "library": "fontawesome"
+  },
   "colors": {
     "primary": "#0d9488"
   },
@@ -12,10 +23,13 @@
         "openapi": "openapi.json",
         "pages": [
           "index",
+          "stream",
           {
             "group": "Onboarding",
             "pages": [
-              "POST /v1/onboarding"
+              "POST /v1/onboarding",
+              "GET /v1/onboarding",
+              "GET /v1/onboarding/{id}"
             ]
           },
           {
@@ -31,8 +45,7 @@
           },
           {
             "group": "Markets",
-            "pages": [
-              "GET /v1/markets""]
+            "pages": ["GET /v1/markets", "GET /v1/markets/{marketId}", "GET /v1/markets/{marketId}/book", "GET /v1/markets/{marketId}/fee-preview"]
           },
           {
             "group": "Orders",
@@ -77,32 +90,12 @@
       },
       {
         "tab": "SDK guide",
-        "pages": []
+        "pages": ["sdk-guide"]
       },
       {
         "tab": "Webhooks",
         "pages": ["webhooks"]
-      },
-      {
-        "group": "Withdrawals",
-        "pages": [
-          "POST /v1/withdrawals/quotes",
-          "POST /v1/withdrawals",
-          "GET /v1/withdrawals/{withdrawalId}"
-        ]
       }
     ]
-  },
-  "logo": {
-    "light": "/docs/api/images/tb-mark-accent-on-light-profile.png",
-    "dark": "/docs/api/images/tobuilder-lockup-dark.png",
-    "href": "https://docs.tobuilder.io"
-  },
-  "icons": {
-    "library": "fontawesome"
-  },
-  "favicon": {
-    "light": "/docs/api/images/favicon-light.svg",
-    "dark": "/docs/api/images/favicon-dark.svg"
   }
 }

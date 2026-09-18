@@ -1,0 +1,78 @@
+---
+title: "Stream"
+description: "Subscribe to token-level market events over WebSocket"
+---
+
+## Connect
+
+Upgrade `GET /v1/stream` to WebSocket and send your builder API key as a Bearer credential:
+
+```http
+Authorization: Bearer <your API key>
+```
+
+The stream requires a `trade`-scope key. Keep that key on your server: it is a credential that can reach trading and funding surfaces, not a browser or mobile-app credential.
+
+After the upgrade succeeds, the stream sends a `welcome` frame with a `connectionId` and `heartbeatIntervalMs`.
+
+## Send frames
+
+Client frames use `op` as their discriminator, not `type`:
+
+```json
+{"op":"subscribe","tokenIds":["token-id"]}
+```
+
+```json
+{"op":"unsubscribe","tokenIds":["token-id"]}
+```
+
+```json
+{"op":"ping"}
+```
+
+`subscribe` and `unsubscribe` each require from **1** through **200** token IDs. Each token ID is a string from **1** through **128** characters. A WebSocket frame can be at most **65536** bytes (**64 KiB**).
+
+The service accepts at most **120** client frames in each **1000 ms** window. It sends a WebSocket heartbeat every **30000 ms** and closes a connection that has not answered within **90000 ms**.
+
+## Receive frames
+
+Server frames use `type` as their discriminator:
+
+```json
+{"type":"welcome","connectionId":"connection-id","heartbeatIntervalMs":30000}
+```
+
+```json
+{"type":"subscribed","tokenIds":["token-id"]}
+```
+
+```json
+{"type":"unsubscribed","tokenIds":["token-id"]}
+```
+
+```json
+{"type":"pong"}
+```
+
+```json
+{"type":"event","tokenId":"token-id","event":{}}
+```
+
+```json
+{"type":"error","code":"VALIDATION_FAILED","message":"Invalid stream frame.","details":{}}
+```
+
+`details` on an `error` frame is optional. Ignore server frames with an unknown `type` to parse defensively. Within an `event` frame, new `event.type` values may be added without breaking existing consumers.
+
+## Events
+
+An `event` frame carries the event object the stream forwards in `event`, paired with the subscribed `tokenId` it is routed through. Events with a single `tokenId`, including `best_bid_ask`, are forwarded through that token. A `market_resolved` event is forwarded once for each of its subscribed token IDs.
+
+`new_market` does not produce an `event` frame. This is a token-level subscription service: tokens belonging to a newly created market have, by definition, not been subscribed by any client, so there is no token-level recipient to route the event to.
+
+If you subscribe to both YES and NO tokens for one market, that market's `market_resolved` event arrives in two frames, one for each token. Process events idempotently.
+
+## Disconnections
+
+The service closes with **4029** when a connection limit is exceeded or when the client exceeds the frame-rate limit. It closes with **1011** when it rejects a connection, including a duplicate connection ID. It closes with **1001** during server shutdown or after the heartbeat timeout. It closes with **4008** when a client's `bufferedAmount` exceeds **1048576** bytes for **100** consecutive delivery attempts. This indicates a slow consumer; catch up on reads or reduce subscriptions before reconnecting.
