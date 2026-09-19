@@ -3,4 +3,8 @@
 This repository is generated from `ACIF-ai-dev/tobuilder-backend` `docs/api/`.
 Do not edit here — edits made in the Mintlify web editor are overwritten by the next sync.
 
-Source commit: 0bca9a7243944a85e8c1e5b5c4fe7fe253769703
+Manual sync: `bash scripts/docs-publish-sync.sh docs/api <published-repository-dir> <source-sha>`
+Check that the published copy has no `/v1/console` paths: `grep -c '/v1/console' <published-repository-dir>/openapi.json`   # expect 0
+Check for OpenAPI drift: `sha256sum docs/api/openapi.json <published-repository-dir>/openapi.json`
+
+Source commit: e3f4eca59d3adbf6e3c287b37401ee13c63511b4
