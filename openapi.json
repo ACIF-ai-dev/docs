@@ -2449,7 +2449,8 @@
                     "position": {
                       "type": "integer",
                       "minimum": 0,
-                      "maximum": 9007199254740991
+                      "maximum": 9007199254740991,
+                      "description": "How many queued entries of this subbuilder the worker claims before this one. An entry is counted when it is queued, was enqueued earlier, and becomes claimable no later than this entry (its nextAttemptAt is not after this entry's). Entries waiting out a retry backoff that ends after this entry's own are therefore not counted, because the worker only claims entries whose nextAttemptAt has passed. Always 0 when status is not queued."
                     },
                     "estimatedWaitSeconds": {
                       "anyOf": [
@@ -2461,7 +2462,21 @@
                         {
                           "type": "null"
                         }
-                      ]
+                      ],
+                      "description": "Estimated seconds until the worker claims this entry: the larger of the queue throughput estimate (global queue position divided by the onboarding rate limit) and the seconds remaining until nextAttemptAt, rounded up. null means no estimate is available because the effective onboarding rate is zero. Always 0 when status is not queued."
+                    },
+                    "nextAttemptAt": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Earliest time the worker may claim this queued entry. It is in the future while a failed attempt waits out its retry backoff, which is the case a queued entry with attempts greater than zero is in. null when status is not queued, because the field then has no forward meaning."
                     },
                     "enqueuedAt": {
                       "type": "string",
@@ -2511,6 +2526,7 @@
                     "attempts",
                     "position",
                     "estimatedWaitSeconds",
+                    "nextAttemptAt",
                     "enqueuedAt",
                     "startedAt",
                     "finishedAt",
@@ -2561,7 +2577,8 @@
                     "position": {
                       "type": "integer",
                       "minimum": 0,
-                      "maximum": 9007199254740991
+                      "maximum": 9007199254740991,
+                      "description": "How many queued entries of this subbuilder the worker claims before this one. An entry is counted when it is queued, was enqueued earlier, and becomes claimable no later than this entry (its nextAttemptAt is not after this entry's). Entries waiting out a retry backoff that ends after this entry's own are therefore not counted, because the worker only claims entries whose nextAttemptAt has passed. Always 0 when status is not queued."
                     },
                     "estimatedWaitSeconds": {
                       "anyOf": [
@@ -2573,7 +2590,21 @@
                         {
                           "type": "null"
                         }
-                      ]
+                      ],
+                      "description": "Estimated seconds until the worker claims this entry: the larger of the queue throughput estimate (global queue position divided by the onboarding rate limit) and the seconds remaining until nextAttemptAt, rounded up. null means no estimate is available because the effective onboarding rate is zero. Always 0 when status is not queued."
+                    },
+                    "nextAttemptAt": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Earliest time the worker may claim this queued entry. It is in the future while a failed attempt waits out its retry backoff, which is the case a queued entry with attempts greater than zero is in. null when status is not queued, because the field then has no forward meaning."
                     },
                     "enqueuedAt": {
                       "type": "string",
@@ -2623,6 +2654,7 @@
                     "attempts",
                     "position",
                     "estimatedWaitSeconds",
+                    "nextAttemptAt",
                     "enqueuedAt",
                     "startedAt",
                     "finishedAt",
@@ -2866,7 +2898,8 @@
                     "position": {
                       "type": "integer",
                       "minimum": 0,
-                      "maximum": 9007199254740991
+                      "maximum": 9007199254740991,
+                      "description": "How many queued entries of this subbuilder the worker claims before this one. An entry is counted when it is queued, was enqueued earlier, and becomes claimable no later than this entry (its nextAttemptAt is not after this entry's). Entries waiting out a retry backoff that ends after this entry's own are therefore not counted, because the worker only claims entries whose nextAttemptAt has passed. Always 0 when status is not queued."
                     },
                     "estimatedWaitSeconds": {
                       "anyOf": [
@@ -2878,7 +2911,21 @@
                         {
                           "type": "null"
                         }
-                      ]
+                      ],
+                      "description": "Estimated seconds until the worker claims this entry: the larger of the queue throughput estimate (global queue position divided by the onboarding rate limit) and the seconds remaining until nextAttemptAt, rounded up. null means no estimate is available because the effective onboarding rate is zero. Always 0 when status is not queued."
+                    },
+                    "nextAttemptAt": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Earliest time the worker may claim this queued entry. It is in the future while a failed attempt waits out its retry backoff, which is the case a queued entry with attempts greater than zero is in. null when status is not queued, because the field then has no forward meaning."
                     },
                     "enqueuedAt": {
                       "type": "string",
@@ -2928,6 +2975,7 @@
                     "attempts",
                     "position",
                     "estimatedWaitSeconds",
+                    "nextAttemptAt",
                     "enqueuedAt",
                     "startedAt",
                     "finishedAt",
@@ -3227,7 +3275,8 @@
                     "position": {
                       "type": "integer",
                       "minimum": 0,
-                      "maximum": 9007199254740991
+                      "maximum": 9007199254740991,
+                      "description": "How many queued entries of this subbuilder the worker claims before this one. An entry is counted when it is queued, was enqueued earlier, and becomes claimable no later than this entry (its nextAttemptAt is not after this entry's). Entries waiting out a retry backoff that ends after this entry's own are therefore not counted, because the worker only claims entries whose nextAttemptAt has passed. Always 0 when status is not queued."
                     },
                     "estimatedWaitSeconds": {
                       "anyOf": [
@@ -3239,7 +3288,21 @@
                         {
                           "type": "null"
                         }
-                      ]
+                      ],
+                      "description": "Estimated seconds until the worker claims this entry: the larger of the queue throughput estimate (global queue position divided by the onboarding rate limit) and the seconds remaining until nextAttemptAt, rounded up. null means no estimate is available because the effective onboarding rate is zero. Always 0 when status is not queued."
+                    },
+                    "nextAttemptAt": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Earliest time the worker may claim this queued entry. It is in the future while a failed attempt waits out its retry backoff, which is the case a queued entry with attempts greater than zero is in. null when status is not queued, because the field then has no forward meaning."
                     },
                     "enqueuedAt": {
                       "type": "string",
@@ -3289,6 +3352,7 @@
                     "attempts",
                     "position",
                     "estimatedWaitSeconds",
+                    "nextAttemptAt",
                     "enqueuedAt",
                     "startedAt",
                     "finishedAt",
