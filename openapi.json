@@ -2831,7 +2831,7 @@
         }
       },
       "get": {
-        "summary": "Get the active onboarding job for a user",
+        "summary": "Get the onboarding job for a user",
         "parameters": [
           {
             "schema": {
@@ -2842,6 +2842,19 @@
             "in": "query",
             "name": "userId",
             "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "includeCompleted",
+            "required": false,
+            "description": "Set to true to also consider onboarding entries that already finished, whether they succeeded or failed. An active entry still wins whenever the user has one, so this only changes the answer for a user whose onboarding is no longer active. A user with no onboarding entry at all is still 404. Omitting the parameter is the same as false and returns only active entries."
           },
           {
             "schema": {
@@ -2860,7 +2873,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The active onboarding entry for the queried user under the authenticated subbuilder, including status, stage, and queue timing fields.",
+            "description": "The onboarding entry for the queried user under the authenticated subbuilder: the active entry when the user has one, or the most recent finished entry when includeCompleted is true, including status, stage, and queue timing fields.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2982,7 +2995,7 @@
                     "lastError"
                   ],
                   "additionalProperties": false,
-                  "description": "The active onboarding entry for the queried user under the authenticated subbuilder, including status, stage, and queue timing fields."
+                  "description": "The onboarding entry for the queried user under the authenticated subbuilder: the active entry when the user has one, or the most recent finished entry when includeCompleted is true, including status, stage, and queue timing fields."
                 }
               }
             }
