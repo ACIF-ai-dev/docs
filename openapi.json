@@ -2368,6 +2368,397 @@
         }
       }
     },
+    "/v1/me/setup": {
+      "get": {
+        "summary": "Get the authenticated subbuilder's branding setup",
+        "description": "Returns the branding subset of the console setup document for the authenticated builder API key, for a bot or mini app to render with. It is read-only: the console owns every value here.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The authenticated subbuilder's saved branding, with updatedAt for cache invalidation, or updatedAt null and setup null when the console has saved nothing. This is a subset of the console setup document: it carries platform, miniAppEnabled, the bot display fields, and the mini-app fields, and it never carries the web group, bot.installationId, or bot.connectedAt. A field absent here is withheld deliberately and will not appear later without a contract change.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "updatedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "When the console last saved this setup, or null when it has saved nothing. baseVersion is deliberately absent: it is the optimistic lock token for the console write path, and this route cannot write."
+                    },
+                    "setup": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "platform": {
+                              "default": null,
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "telegram",
+                                    "web"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Telegram, web, or null when no platform has been selected."
+                            },
+                            "miniAppEnabled": {
+                              "default": false,
+                              "type": "boolean"
+                            },
+                            "bot": {
+                              "type": "object",
+                              "properties": {
+                                "username": {
+                                  "default": "",
+                                  "type": "string",
+                                  "pattern": "^(?:@?[A-Za-z0-9_]{5,32})?$",
+                                  "description": "Empty, or a Telegram username with an optional @ followed by 5 to 32 alphanumeric or underscore characters."
+                                },
+                                "displayName": {
+                                  "default": "",
+                                  "type": "string",
+                                  "maxLength": 64
+                                },
+                                "welcomeMessage": {
+                                  "default": "",
+                                  "type": "string",
+                                  "maxLength": 1024
+                                },
+                                "commandPrefix": {
+                                  "default": "/",
+                                  "type": "string",
+                                  "enum": [
+                                    "/",
+                                    "!",
+                                    "."
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "username",
+                                "displayName",
+                                "welcomeMessage",
+                                "commandPrefix"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "miniApp": {
+                              "type": "object",
+                              "properties": {
+                                "appName": {
+                                  "default": "",
+                                  "type": "string",
+                                  "maxLength": 64
+                                },
+                                "shortDescription": {
+                                  "default": "",
+                                  "type": "string",
+                                  "maxLength": 256
+                                },
+                                "logoRef": {
+                                  "default": "",
+                                  "type": "string",
+                                  "maxLength": 256,
+                                  "description": "A single asset reference string of at most 256 characters; the server does not verify that the asset exists."
+                                },
+                                "accentColor": {
+                                  "default": "",
+                                  "type": "string",
+                                  "pattern": "^(?:#[0-9A-Fa-f]{6})?$",
+                                  "description": "Empty, or a six-digit hexadecimal color in #RRGGBB form; three-digit shorthand is rejected."
+                                },
+                                "template": {
+                                  "default": "list",
+                                  "type": "string",
+                                  "enum": [
+                                    "list",
+                                    "cards",
+                                    "compact"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "appName",
+                                "shortDescription",
+                                "logoRef",
+                                "accentColor",
+                                "template"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "platform",
+                            "miniAppEnabled",
+                            "bot",
+                            "miniApp"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "updatedAt",
+                    "setup"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The authenticated subbuilder's saved branding, with updatedAt for cache invalidation, or updatedAt null and setup null when the console has saved nothing. This is a subset of the console setup document: it carries platform, miniAppEnabled, the bot display fields, and the mini-app fields, and it never carries the web group, bot.installationId, or bot.connectedAt. A field absent here is withheld deliberately and will not appear later without a contract change."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) allow /v1/me, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) allow /v1/me, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Setup retrieval failed internally. error.code is INTERNAL; error.details.reason is setup_storage_unavailable when setup storage is not configured, or stored_setup_unreadable when the stored setup document cannot be read; otherwise error.details is omitted for uncaught failures, including storage query failures. These are the same two reasons the console read path reports for the same two conditions. Correct the operational failure before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Setup retrieval failed internally. error.code is INTERNAL; error.details.reason is setup_storage_unavailable when setup storage is not configured, or stored_setup_unreadable when the stored setup document cannot be read; otherwise error.details is omitted for uncaught failures, including storage query failures. These are the same two reasons the console read path reports for the same two conditions. Correct the operational failure before retrying."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/onboarding": {
       "post": {
         "summary": "Enqueue an onboarding job",
