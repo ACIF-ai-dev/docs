@@ -2497,11 +2497,11 @@
                                   "description": "Empty, or a six-digit hexadecimal color in #RRGGBB form; three-digit shorthand is rejected."
                                 },
                                 "template": {
-                                  "default": "list",
+                                  "default": "compact",
                                   "type": "string",
                                   "enum": [
-                                    "list",
-                                    "cards",
+                                    "crypto",
+                                    "sports",
                                     "compact"
                                   ]
                                 }
