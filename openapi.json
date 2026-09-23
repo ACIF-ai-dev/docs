@@ -11166,7 +11166,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache, and lang adds translation or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered.",
+            "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. lang also adds translation, or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11307,7 +11307,7 @@
                     "syncedAt"
                   ],
                   "additionalProperties": false,
-                  "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache, and lang adds translation or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."
+                  "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. lang also adds translation, or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."
                 }
               }
             }
@@ -11569,7 +11569,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns one market with its outcomes and syncedAt, possibly from cache; without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered.",
+            "description": "Returns one market with its outcomes and syncedAt, possibly from cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. Without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11679,7 +11679,7 @@
                     "syncedAt"
                   ],
                   "additionalProperties": false,
-                  "description": "Returns one market with its outcomes and syncedAt, possibly from cache; without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."
+                  "description": "Returns one market with its outcomes and syncedAt, possibly from cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. Without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."
                 }
               }
             }
@@ -11971,6 +11971,14 @@
           },
           {
             "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "lang",
+            "required": false
+          },
+          {
+            "schema": {
               "type": "string",
               "minLength": 1
             },
@@ -11995,7 +12003,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns the market order book with bids sorted descending and asks ascending, best first. depth is the requested maximum number of levels returned per side, ranges from 1 to 50, and the actual number returned can be lower. status is ok for a readable book, no_book when the outcome has no CLOB order book, and no_token when the outcome has no token ID. price values are probability strings from 0 to 1. GET /v1/markets outcomes[].price is a snapshot; this route returns the order book. fetchedAt is the upstream read time and remains that time on cache hits.",
+            "description": "Returns the market order book with bids sorted descending and asks ascending, best first. depth is the requested maximum number of levels returned per side, ranges from 1 to 50, and the actual number returned can be lower. status is ok for a readable book, no_book when the outcome has no CLOB order book, and no_token when the outcome has no token ID. price values are probability strings from 0 to 1. GET /v1/markets outcomes[].price is a snapshot; this route returns the order book. fetchedAt is the upstream read time and remains that time on cache hits. lang localizes each outcomes[].outcome label through the same fixed per-language dictionary as GET /v1/markets, changing only the label so tokenId and the book fields stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. This route does not add a translation field.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12174,13 +12182,13 @@
                     "outcomes"
                   ],
                   "additionalProperties": false,
-                  "description": "Returns the market order book with bids sorted descending and asks ascending, best first. depth is the requested maximum number of levels returned per side, ranges from 1 to 50, and the actual number returned can be lower. status is ok for a readable book, no_book when the outcome has no CLOB order book, and no_token when the outcome has no token ID. price values are probability strings from 0 to 1. GET /v1/markets outcomes[].price is a snapshot; this route returns the order book. fetchedAt is the upstream read time and remains that time on cache hits."
+                  "description": "Returns the market order book with bids sorted descending and asks ascending, best first. depth is the requested maximum number of levels returned per side, ranges from 1 to 50, and the actual number returned can be lower. status is ok for a readable book, no_book when the outcome has no CLOB order book, and no_token when the outcome has no token ID. price values are probability strings from 0 to 1. GET /v1/markets outcomes[].price is a snapshot; this route returns the order book. fetchedAt is the upstream read time and remains that time on cache hits. lang localizes each outcomes[].outcome label through the same fixed per-language dictionary as GET /v1/markets, changing only the label so tokenId and the book fields stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. This route does not add a translation field."
                 }
               }
             }
           },
           "400": {
-            "description": "An empty or invalid marketId, or an invalid depth value (not an integer from 1 through 50), produces error.code VALIDATION_FAILED.",
+            "description": "An empty or invalid marketId, an invalid depth value (not an integer from 1 through 50), or an invalid lang produces error.code VALIDATION_FAILED.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12228,7 +12236,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "An empty or invalid marketId, or an invalid depth value (not an integer from 1 through 50), produces error.code VALIDATION_FAILED."
+                  "description": "An empty or invalid marketId, an invalid depth value (not an integer from 1 through 50), or an invalid lang produces error.code VALIDATION_FAILED."
                 }
               }
             }

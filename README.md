@@ -7,4 +7,4 @@ Manual sync: `bash scripts/docs-publish-sync.sh docs/api <published-repository-d
 Check that the published copy has no `/v1/console` paths: `grep -c '/v1/console' <published-repository-dir>/openapi.json`   # expect 0
 Check for OpenAPI drift: `sha256sum docs/api/openapi.json <published-repository-dir>/openapi.json`
 
-Source commit: 552fbe1767820ba217980e6d53fcea8b70cacf5a
+Source commit: 98e4c20588a511641cdc14e2b175fde44f7ea02b
