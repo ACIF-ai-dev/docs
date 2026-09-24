@@ -2504,6 +2504,12 @@
                                     "sports",
                                     "compact"
                                   ]
+                                },
+                                "language": {
+                                  "default": "en",
+                                  "description": "Two lowercase letters, optionally followed by a hyphen and 2 to 8 lowercase letters or digits (for example en, ko, or zh-tw). The mini app uses this language to request market text; it has the same format as the lang query on /v1/markets and can be passed through unchanged. When a translation for that language is unavailable, market text is returned in its English source language. Defaults to en when omitted. An empty string is rejected.",
+                                  "type": "string",
+                                  "pattern": "^[a-z]{2}(-[a-z0-9]{2,8})?$"
                                 }
                               },
                               "required": [
@@ -2511,7 +2517,8 @@
                                 "shortDescription",
                                 "logoRef",
                                 "accentColor",
-                                "template"
+                                "template",
+                                "language"
                               ],
                               "additionalProperties": false
                             }
