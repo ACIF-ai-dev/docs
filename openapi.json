@@ -14,7 +14,8 @@
       "endUserToken": {
         "type": "apiKey",
         "in": "header",
-        "name": "x-end-user-token"
+        "name": "x-end-user-token",
+        "description": "The end user's token. Builders send the end user's Privy access token. The tobuilder-hosted Telegram bot sends a token issued by the tobuilder bot gateway instead. The server picks one verifier by the token's issuer and never retries a failed token with the other verifier. A gateway-issued token is accepted only with a builder API key of the subbuilder named in the token; otherwise the response is 403 with error.details.reason end_user_subbuilder_mismatch."
       }
     },
     "schemas": {
@@ -183,7 +184,7 @@
             }
           },
           "401": {
-            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
             "content": {
               "application/json": {
                 "schema": {
@@ -231,13 +232,13 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
                 }
               }
             }
           },
           "403": {
-            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher. When telegramUserId is supplied, telegram_account_not_linked means no Telegram account is linked to the Privy user, and telegram_user_id_mismatch means it differs from the stored or newly verified Telegram user ID. The user link is created before this check, and a verified Telegram user ID may be saved before the mismatch response; retrying with a value different from the stored verified ID produces the same result.",
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result. When telegramUserId is supplied with a Privy access token, telegram_account_not_linked means no Telegram account is linked to the Privy user, telegram_user_id_mismatch means it differs from the stored or newly verified Telegram user ID, and telegram_user_id_already_linked means the Telegram account linked to the Privy user is already linked to another user of this subbuilder (for example, one created with a gateway-issued token); users are never merged, so retrying produces the same result. When telegramUserId is supplied with a gateway-issued token, Privy is not consulted: telegram_user_id_mismatch means it differs from the Telegram user ID signed into the token, and the other two reasons do not occur. The user link is created before these checks, and a verified Telegram user ID may be saved before the mismatch response; retrying with a value different from the stored verified ID produces the same result.",
             "content": {
               "application/json": {
                 "schema": {
@@ -285,7 +286,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher. When telegramUserId is supplied, telegram_account_not_linked means no Telegram account is linked to the Privy user, and telegram_user_id_mismatch means it differs from the stored or newly verified Telegram user ID. The user link is created before this check, and a verified Telegram user ID may be saved before the mismatch response; retrying with a value different from the stored verified ID produces the same result."
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result. When telegramUserId is supplied with a Privy access token, telegram_account_not_linked means no Telegram account is linked to the Privy user, telegram_user_id_mismatch means it differs from the stored or newly verified Telegram user ID, and telegram_user_id_already_linked means the Telegram account linked to the Privy user is already linked to another user of this subbuilder (for example, one created with a gateway-issued token); users are never merged, so retrying produces the same result. When telegramUserId is supplied with a gateway-issued token, Privy is not consulted: telegram_user_id_mismatch means it differs from the Telegram user ID signed into the token, and the other two reasons do not occur. The user link is created before these checks, and a verified Telegram user ID may be saved before the mismatch response; retrying with a value different from the stored verified ID produces the same result."
                 }
               }
             }
@@ -394,6 +395,60 @@
                   ],
                   "additionalProperties": false,
                   "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "A server-side failure occurred and error.code is INTERNAL. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable; this happens before the handler runs, so no user link was created and retrying may succeed. error.details.reason is privy_lookup_unavailable when telegramUserId is sent with a Privy access token and the Privy user lookup is unavailable or failed; the user link was already created, and retrying the same request does not create a second user. error.details is omitted when user storage is unavailable and for uncaught failures, which can occur before or after the user link is created; retrying the same request does not create a second user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A server-side failure occurred and error.code is INTERNAL. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable; this happens before the handler runs, so no user link was created and retrying may succeed. error.details.reason is privy_lookup_unavailable when telegramUserId is sent with a Privy access token and the Privy user lookup is unavailable or failed; the user link was already created, and retrying the same request does not create a second user. error.details is omitted when user storage is unavailable and for uncaught failures, which can occur before or after the user link is created; retrying the same request does not create a second user."
                 }
               }
             }
@@ -712,7 +767,7 @@
             }
           },
           "401": {
-            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
             "content": {
               "application/json": {
                 "schema": {
@@ -760,13 +815,13 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
                 }
               }
             }
           },
           "403": {
-            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher.",
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result.",
             "content": {
               "application/json": {
                 "schema": {
@@ -814,7 +869,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher."
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result."
                 }
               }
             }
@@ -928,7 +983,7 @@
             }
           },
           "500": {
-            "description": "A server-side positions failure occurred. error.details.reason is one of positions_users_repository_unavailable, positions_reader_unavailable, or positions_unclassified. Retrying may return the same result.",
+            "description": "A server-side positions failure occurred. error.details.reason is one of positions_users_repository_unavailable, positions_reader_unavailable, or positions_unclassified. Retrying may return the same result. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -976,7 +1031,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "A server-side positions failure occurred. error.details.reason is one of positions_users_repository_unavailable, positions_reader_unavailable, or positions_unclassified. Retrying may return the same result."
+                  "description": "A server-side positions failure occurred. error.details.reason is one of positions_users_repository_unavailable, positions_reader_unavailable, or positions_unclassified. Retrying may return the same result. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
                 }
               }
             }
@@ -1093,7 +1148,7 @@
             }
           },
           "401": {
-            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1141,13 +1196,13 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
                 }
               }
             }
           },
           "403": {
-            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher.",
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1195,7 +1250,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher."
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result."
                 }
               }
             }
@@ -1309,7 +1364,7 @@
             }
           },
           "500": {
-            "description": "A server-side portfolio-value failure occurred. error.details.reason is one of positions_reader_unavailable or portfolio_value_unclassified. Retrying may return the same result.",
+            "description": "A server-side portfolio-value failure occurred. error.details.reason is one of positions_reader_unavailable or portfolio_value_unclassified. Retrying may return the same result. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1357,7 +1412,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "A server-side portfolio-value failure occurred. error.details.reason is one of positions_reader_unavailable or portfolio_value_unclassified. Retrying may return the same result."
+                  "description": "A server-side portfolio-value failure occurred. error.details.reason is one of positions_reader_unavailable or portfolio_value_unclassified. Retrying may return the same result. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
                 }
               }
             }
@@ -1508,7 +1563,7 @@
             }
           },
           "401": {
-            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1556,13 +1611,13 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
                 }
               }
             }
           },
           "403": {
-            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher.",
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1610,7 +1665,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher."
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result."
                 }
               }
             }
@@ -1724,7 +1779,7 @@
             }
           },
           "500": {
-            "description": "A server-side collateral-balance failure occurred. error.details.reason is one of collateral_reader_unavailable, collateral_wallet_type_invalid, collateral_unclassified, builder_api_credentials_missing, or collateral_balance_* from signing-client creation. Retrying may return the same result.",
+            "description": "A server-side collateral-balance failure occurred. error.details.reason is one of collateral_reader_unavailable, collateral_wallet_type_invalid, collateral_unclassified, builder_api_credentials_missing, or collateral_balance_* from signing-client creation. Retrying may return the same result. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1772,7 +1827,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "A server-side collateral-balance failure occurred. error.details.reason is one of collateral_reader_unavailable, collateral_wallet_type_invalid, collateral_unclassified, builder_api_credentials_missing, or collateral_balance_* from signing-client creation. Retrying may return the same result."
+                  "description": "A server-side collateral-balance failure occurred. error.details.reason is one of collateral_reader_unavailable, collateral_wallet_type_invalid, collateral_unclassified, builder_api_credentials_missing, or collateral_balance_* from signing-client creation. Retrying may return the same result. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
                 }
               }
             }
@@ -1877,7 +1932,7 @@
             }
           },
           "401": {
-            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1925,13 +1980,13 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
                 }
               }
             }
           },
           "403": {
-            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher.",
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1979,7 +2034,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher."
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result."
                 }
               }
             }
@@ -2093,7 +2148,7 @@
             }
           },
           "500": {
-            "description": "A server-side wallet lookup failure occurred (error.details.reason: positions_users_repository_unavailable). Retrying may return the same result.",
+            "description": "A server-side wallet lookup failure occurred (error.details.reason: positions_users_repository_unavailable). Retrying may return the same result. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2141,7 +2196,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "A server-side wallet lookup failure occurred (error.details.reason: positions_users_repository_unavailable). Retrying may return the same result."
+                  "description": "A server-side wallet lookup failure occurred (error.details.reason: positions_users_repository_unavailable). Retrying may return the same result. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
                 }
               }
             }
@@ -4077,7 +4132,7 @@
             }
           },
           "401": {
-            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4125,7 +4180,61 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The request is forbidden before the handler runs, so nothing is issued or read. error.code is FORBIDDEN and error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/deposit routes require trade scope), subbuilder_suspended when the builder API key's subbuilder is not active, or end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's. Retrying with the same credentials produces the same result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The request is forbidden before the handler runs, so nothing is issued or read. error.code is FORBIDDEN and error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/deposit routes require trade scope), subbuilder_suspended when the builder API key's subbuilder is not active, or end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's. Retrying with the same credentials produces the same result."
                 }
               }
             }
@@ -4239,7 +4348,7 @@
             }
           },
           "500": {
-            "description": "A deposit address issuance failure occurred. error.code is INTERNAL and error.details.reason is deposit_builder_code_missing, deposit_users_repository_unavailable, or deposit_bridge_client_unavailable when a server configuration dependency fails before the Bridge request, so no address is issued by this request and retrying the same request will not change the result. deposit_emitter_unavailable occurs after deposit addresses are stored; query GET /v1/deposit/addresses before retrying. error.details is omitted for uncaught failures, which can occur before or after Bridge issuance or address storage; query GET /v1/deposit/addresses before retrying.",
+            "description": "A deposit address issuance failure occurred. error.code is INTERNAL and error.details.reason is deposit_builder_code_missing, deposit_users_repository_unavailable, or deposit_bridge_client_unavailable when a server configuration dependency fails before the Bridge request, so no address is issued by this request and retrying the same request will not change the result. deposit_emitter_unavailable occurs after deposit addresses are stored; query GET /v1/deposit/addresses before retrying. error.details is omitted for uncaught failures, which can occur before or after Bridge issuance or address storage; query GET /v1/deposit/addresses before retrying. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4287,7 +4396,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "A deposit address issuance failure occurred. error.code is INTERNAL and error.details.reason is deposit_builder_code_missing, deposit_users_repository_unavailable, or deposit_bridge_client_unavailable when a server configuration dependency fails before the Bridge request, so no address is issued by this request and retrying the same request will not change the result. deposit_emitter_unavailable occurs after deposit addresses are stored; query GET /v1/deposit/addresses before retrying. error.details is omitted for uncaught failures, which can occur before or after Bridge issuance or address storage; query GET /v1/deposit/addresses before retrying."
+                  "description": "A deposit address issuance failure occurred. error.code is INTERNAL and error.details.reason is deposit_builder_code_missing, deposit_users_repository_unavailable, or deposit_bridge_client_unavailable when a server configuration dependency fails before the Bridge request, so no address is issued by this request and retrying the same request will not change the result. deposit_emitter_unavailable occurs after deposit addresses are stored; query GET /v1/deposit/addresses before retrying. error.details is omitted for uncaught failures, which can occur before or after Bridge issuance or address storage; query GET /v1/deposit/addresses before retrying. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
                 }
               }
             }
@@ -4431,7 +4540,7 @@
             }
           },
           "401": {
-            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4479,7 +4588,61 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The request is forbidden before the handler runs, so nothing is issued or read. error.code is FORBIDDEN and error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/deposit routes require trade scope), subbuilder_suspended when the builder API key's subbuilder is not active, or end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's. Retrying with the same credentials produces the same result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The request is forbidden before the handler runs, so nothing is issued or read. error.code is FORBIDDEN and error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/deposit routes require trade scope), subbuilder_suspended when the builder API key's subbuilder is not active, or end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's. Retrying with the same credentials produces the same result."
                 }
               }
             }
@@ -4539,7 +4702,7 @@
             }
           },
           "500": {
-            "description": "A deposit lookup failure occurred. error.code is INTERNAL and error.details.reason is deposit_users_repository_unavailable; error.details is omitted for uncaught failures.",
+            "description": "A deposit lookup failure occurred. error.code is INTERNAL and error.details.reason is deposit_users_repository_unavailable; error.details is omitted for uncaught failures. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4587,7 +4750,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "A deposit lookup failure occurred. error.code is INTERNAL and error.details.reason is deposit_users_repository_unavailable; error.details is omitted for uncaught failures."
+                  "description": "A deposit lookup failure occurred. error.code is INTERNAL and error.details.reason is deposit_users_repository_unavailable; error.details is omitted for uncaught failures. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
                 }
               }
             }
@@ -4758,7 +4921,7 @@
             }
           },
           "401": {
-            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4806,7 +4969,61 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The request is forbidden before the handler runs, so nothing is issued or read. error.code is FORBIDDEN and error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/deposit routes require trade scope), subbuilder_suspended when the builder API key's subbuilder is not active, or end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's. Retrying with the same credentials produces the same result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The request is forbidden before the handler runs, so nothing is issued or read. error.code is FORBIDDEN and error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/deposit routes require trade scope), subbuilder_suspended when the builder API key's subbuilder is not active, or end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's. Retrying with the same credentials produces the same result."
                 }
               }
             }
@@ -4866,7 +5083,7 @@
             }
           },
           "500": {
-            "description": "A deposit lookup failure occurred. error.code is INTERNAL and error.details.reason is deposit_users_repository_unavailable; error.details is omitted for uncaught failures.",
+            "description": "A deposit lookup failure occurred. error.code is INTERNAL and error.details.reason is deposit_users_repository_unavailable; error.details is omitted for uncaught failures. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4914,7 +5131,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "A deposit lookup failure occurred. error.code is INTERNAL and error.details.reason is deposit_users_repository_unavailable; error.details is omitted for uncaught failures."
+                  "description": "A deposit lookup failure occurred. error.code is INTERNAL and error.details.reason is deposit_users_repository_unavailable; error.details is omitted for uncaught failures. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
                 }
               }
             }
@@ -5540,7 +5757,7 @@
             }
           },
           "401": {
-            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5588,13 +5805,13 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
                 }
               }
             }
           },
           "403": {
-            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. The /v1/withdrawals routes require trade scope because withdrawals move funds, so bot-read and bot-link keys receive this response and cannot succeed until the key is reissued at trade scope.",
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. The /v1/withdrawals routes require trade scope because withdrawals move funds, so bot-read and bot-link keys receive this response and cannot succeed until the key is reissued at trade scope. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5642,7 +5859,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. The /v1/withdrawals routes require trade scope because withdrawals move funds, so bot-read and bot-link keys receive this response and cannot succeed until the key is reissued at trade scope."
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. The /v1/withdrawals routes require trade scope because withdrawals move funds, so bot-read and bot-link keys receive this response and cannot succeed until the key is reissued at trade scope. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result."
                 }
               }
             }
@@ -5756,7 +5973,7 @@
             }
           },
           "500": {
-            "description": "A server-side dependency needed to price a withdrawal quote was unavailable, so no quote was stored and no funds moved — quoting never transfers. error.code is INTERNAL and error.details.reason is withdrawal_repository_unavailable, withdrawal_users_repository_unavailable, withdrawal_bridge_client_unavailable, withdrawal_supported_assets_unavailable, withdrawal_collateral_reader_unavailable, withdrawal_rate_counters_unavailable, withdrawal_wallet_type_invalid, builder_api_credentials_missing, or a reason beginning with collateral_ raised while reading the Deposit Wallet balance; error.details is omitted for uncaught failures. These are server-side conditions that the request cannot change, so retrying succeeds only once the dependency recovers and is worth reporting with the requestId if it persists.",
+            "description": "A server-side dependency needed to price a withdrawal quote was unavailable, so no quote was stored and no funds moved — quoting never transfers. error.code is INTERNAL and error.details.reason is withdrawal_repository_unavailable, withdrawal_users_repository_unavailable, withdrawal_bridge_client_unavailable, withdrawal_supported_assets_unavailable, withdrawal_collateral_reader_unavailable, withdrawal_rate_counters_unavailable, withdrawal_wallet_type_invalid, builder_api_credentials_missing, or a reason beginning with collateral_ raised while reading the Deposit Wallet balance; error.details is omitted for uncaught failures. These are server-side conditions that the request cannot change, so retrying succeeds only once the dependency recovers and is worth reporting with the requestId if it persists. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5804,7 +6021,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "A server-side dependency needed to price a withdrawal quote was unavailable, so no quote was stored and no funds moved — quoting never transfers. error.code is INTERNAL and error.details.reason is withdrawal_repository_unavailable, withdrawal_users_repository_unavailable, withdrawal_bridge_client_unavailable, withdrawal_supported_assets_unavailable, withdrawal_collateral_reader_unavailable, withdrawal_rate_counters_unavailable, withdrawal_wallet_type_invalid, builder_api_credentials_missing, or a reason beginning with collateral_ raised while reading the Deposit Wallet balance; error.details is omitted for uncaught failures. These are server-side conditions that the request cannot change, so retrying succeeds only once the dependency recovers and is worth reporting with the requestId if it persists."
+                  "description": "A server-side dependency needed to price a withdrawal quote was unavailable, so no quote was stored and no funds moved — quoting never transfers. error.code is INTERNAL and error.details.reason is withdrawal_repository_unavailable, withdrawal_users_repository_unavailable, withdrawal_bridge_client_unavailable, withdrawal_supported_assets_unavailable, withdrawal_collateral_reader_unavailable, withdrawal_rate_counters_unavailable, withdrawal_wallet_type_invalid, builder_api_credentials_missing, or a reason beginning with collateral_ raised while reading the Deposit Wallet balance; error.details is omitted for uncaught failures. These are server-side conditions that the request cannot change, so retrying succeeds only once the dependency recovers and is worth reporting with the requestId if it persists. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
                 }
               }
             }
@@ -6209,7 +6426,7 @@
             }
           },
           "401": {
-            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6257,13 +6474,13 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
                 }
               }
             }
           },
           "403": {
-            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. The /v1/withdrawals routes require trade scope because withdrawals move funds, so bot-read and bot-link keys receive this response and cannot succeed until the key is reissued at trade scope.",
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. The /v1/withdrawals routes require trade scope because withdrawals move funds, so bot-read and bot-link keys receive this response and cannot succeed until the key is reissued at trade scope. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6311,7 +6528,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. The /v1/withdrawals routes require trade scope because withdrawals move funds, so bot-read and bot-link keys receive this response and cannot succeed until the key is reissued at trade scope."
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. The /v1/withdrawals routes require trade scope because withdrawals move funds, so bot-read and bot-link keys receive this response and cannot succeed until the key is reissued at trade scope. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result."
                 }
               }
             }
@@ -6479,7 +6696,7 @@
             }
           },
           "500": {
-            "description": "A server-side dependency needed to send a withdrawal was unavailable. This response is raised before the transfer is attempted, so no funds left the Deposit Wallet; an attempted transfer whose outcome is unknown is reported as 201 with status processing, never as an error. error.code is INTERNAL and error.details.reason is withdrawal_builder_code_missing, withdrawal_repository_unavailable, withdrawal_users_repository_unavailable, withdrawal_bridge_client_unavailable, withdrawal_collateral_reader_unavailable, withdrawal_rate_counters_unavailable, withdrawal_sender_unavailable, withdrawal_wallet_type_invalid, withdrawal_state_conflict, withdrawal_signer_unavailable, or a reason beginning with collateral_ raised while reading the Deposit Wallet balance; error.details is omitted for uncaught failures. When error.details.withdrawalId is present the quote was already consumed, so retrying requires a new quote from POST /v1/withdrawals/quotes and a new Idempotency-Key; read GET /v1/withdrawals/{withdrawalId} for that withdrawal's authoritative state rather than assuming it. When error.details.withdrawalId is absent the quote was not consumed and the same quoteId can be confirmed again once the underlying cause clears.",
+            "description": "A server-side dependency needed to send a withdrawal was unavailable. This response is raised before the transfer is attempted, so no funds left the Deposit Wallet; an attempted transfer whose outcome is unknown is reported as 201 with status processing, never as an error. error.code is INTERNAL and error.details.reason is withdrawal_builder_code_missing, withdrawal_repository_unavailable, withdrawal_users_repository_unavailable, withdrawal_bridge_client_unavailable, withdrawal_collateral_reader_unavailable, withdrawal_rate_counters_unavailable, withdrawal_sender_unavailable, withdrawal_wallet_type_invalid, withdrawal_state_conflict, withdrawal_signer_unavailable, or a reason beginning with collateral_ raised while reading the Deposit Wallet balance; error.details is omitted for uncaught failures. When error.details.withdrawalId is present the quote was already consumed, so retrying requires a new quote from POST /v1/withdrawals/quotes and a new Idempotency-Key; read GET /v1/withdrawals/{withdrawalId} for that withdrawal's authoritative state rather than assuming it. When error.details.withdrawalId is absent the quote was not consumed and the same quoteId can be confirmed again once the underlying cause clears. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6527,7 +6744,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "A server-side dependency needed to send a withdrawal was unavailable. This response is raised before the transfer is attempted, so no funds left the Deposit Wallet; an attempted transfer whose outcome is unknown is reported as 201 with status processing, never as an error. error.code is INTERNAL and error.details.reason is withdrawal_builder_code_missing, withdrawal_repository_unavailable, withdrawal_users_repository_unavailable, withdrawal_bridge_client_unavailable, withdrawal_collateral_reader_unavailable, withdrawal_rate_counters_unavailable, withdrawal_sender_unavailable, withdrawal_wallet_type_invalid, withdrawal_state_conflict, withdrawal_signer_unavailable, or a reason beginning with collateral_ raised while reading the Deposit Wallet balance; error.details is omitted for uncaught failures. When error.details.withdrawalId is present the quote was already consumed, so retrying requires a new quote from POST /v1/withdrawals/quotes and a new Idempotency-Key; read GET /v1/withdrawals/{withdrawalId} for that withdrawal's authoritative state rather than assuming it. When error.details.withdrawalId is absent the quote was not consumed and the same quoteId can be confirmed again once the underlying cause clears."
+                  "description": "A server-side dependency needed to send a withdrawal was unavailable. This response is raised before the transfer is attempted, so no funds left the Deposit Wallet; an attempted transfer whose outcome is unknown is reported as 201 with status processing, never as an error. error.code is INTERNAL and error.details.reason is withdrawal_builder_code_missing, withdrawal_repository_unavailable, withdrawal_users_repository_unavailable, withdrawal_bridge_client_unavailable, withdrawal_collateral_reader_unavailable, withdrawal_rate_counters_unavailable, withdrawal_sender_unavailable, withdrawal_wallet_type_invalid, withdrawal_state_conflict, withdrawal_signer_unavailable, or a reason beginning with collateral_ raised while reading the Deposit Wallet balance; error.details is omitted for uncaught failures. When error.details.withdrawalId is present the quote was already consumed, so retrying requires a new quote from POST /v1/withdrawals/quotes and a new Idempotency-Key; read GET /v1/withdrawals/{withdrawalId} for that withdrawal's authoritative state rather than assuming it. When error.details.withdrawalId is absent the quote was not consumed and the same quoteId can be confirmed again once the underlying cause clears. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
                 }
               }
             }
@@ -6810,7 +7027,7 @@
             }
           },
           "401": {
-            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6858,13 +7075,13 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
                 }
               }
             }
           },
           "403": {
-            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. The /v1/withdrawals routes require trade scope because withdrawals move funds, so bot-read and bot-link keys receive this response and cannot succeed until the key is reissued at trade scope.",
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. The /v1/withdrawals routes require trade scope because withdrawals move funds, so bot-read and bot-link keys receive this response and cannot succeed until the key is reissued at trade scope. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6912,7 +7129,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. The /v1/withdrawals routes require trade scope because withdrawals move funds, so bot-read and bot-link keys receive this response and cannot succeed until the key is reissued at trade scope."
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. The /v1/withdrawals routes require trade scope because withdrawals move funds, so bot-read and bot-link keys receive this response and cannot succeed until the key is reissued at trade scope. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result."
                 }
               }
             }
@@ -6972,7 +7189,7 @@
             }
           },
           "500": {
-            "description": "A dependency required to read withdrawals was unavailable, so no withdrawal state could be resolved. error.code is INTERNAL and error.details.reason is withdrawal_repository_unavailable or withdrawal_users_repository_unavailable, and error.details is omitted for uncaught failures.",
+            "description": "A dependency required to read withdrawals was unavailable, so no withdrawal state could be resolved. error.code is INTERNAL and error.details.reason is withdrawal_repository_unavailable or withdrawal_users_repository_unavailable, and error.details is omitted for uncaught failures. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7020,7 +7237,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "A dependency required to read withdrawals was unavailable, so no withdrawal state could be resolved. error.code is INTERNAL and error.details.reason is withdrawal_repository_unavailable or withdrawal_users_repository_unavailable, and error.details is omitted for uncaught failures."
+                  "description": "A dependency required to read withdrawals was unavailable, so no withdrawal state could be resolved. error.code is INTERNAL and error.details.reason is withdrawal_repository_unavailable or withdrawal_users_repository_unavailable, and error.details is omitted for uncaught failures. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
                 }
               }
             }
@@ -7178,7 +7395,7 @@
             }
           },
           "401": {
-            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7226,13 +7443,13 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <Privy access token>. Both are required. End-user token validation failures include the failure reason in error.details.reason. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match this app and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
                 }
               }
             }
           },
           "403": {
-            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. The /v1/withdrawals routes require trade scope because withdrawals move funds, so bot-read and bot-link keys receive this response and cannot succeed until the key is reissued at trade scope.",
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. The /v1/withdrawals routes require trade scope because withdrawals move funds, so bot-read and bot-link keys receive this response and cannot succeed until the key is reissued at trade scope. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7280,13 +7497,13 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. The /v1/withdrawals routes require trade scope because withdrawals move funds, so bot-read and bot-link keys receive this response and cannot succeed until the key is reissued at trade scope."
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. The /v1/withdrawals routes require trade scope because withdrawals move funds, so bot-read and bot-link keys receive this response and cannot succeed until the key is reissued at trade scope. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result."
                 }
               }
             }
           },
           "404": {
-            "description": "No withdrawal with this withdrawalId belongs to the authenticated user. The lookup is scoped to the calling builder and to the user resolved from the Privy access token, so another user's withdrawalId is indistinguishable from one that never existed. error.code is NOT_FOUND and error.details.reason is withdrawal_not_found.",
+            "description": "No withdrawal with this withdrawalId belongs to the authenticated user. The lookup is scoped to the calling builder and to the user resolved from the end-user token, so another user's withdrawalId is indistinguishable from one that never existed. error.code is NOT_FOUND and error.details.reason is withdrawal_not_found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7334,7 +7551,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "No withdrawal with this withdrawalId belongs to the authenticated user. The lookup is scoped to the calling builder and to the user resolved from the Privy access token, so another user's withdrawalId is indistinguishable from one that never existed. error.code is NOT_FOUND and error.details.reason is withdrawal_not_found."
+                  "description": "No withdrawal with this withdrawalId belongs to the authenticated user. The lookup is scoped to the calling builder and to the user resolved from the end-user token, so another user's withdrawalId is indistinguishable from one that never existed. error.code is NOT_FOUND and error.details.reason is withdrawal_not_found."
                 }
               }
             }
@@ -7394,7 +7611,7 @@
             }
           },
           "500": {
-            "description": "A dependency required to read withdrawals was unavailable, so no withdrawal state could be resolved. error.code is INTERNAL and error.details.reason is withdrawal_repository_unavailable or withdrawal_users_repository_unavailable, and error.details is omitted for uncaught failures.",
+            "description": "A dependency required to read withdrawals was unavailable, so no withdrawal state could be resolved. error.code is INTERNAL and error.details.reason is withdrawal_repository_unavailable or withdrawal_users_repository_unavailable, and error.details is omitted for uncaught failures. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7442,7 +7659,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "A dependency required to read withdrawals was unavailable, so no withdrawal state could be resolved. error.code is INTERNAL and error.details.reason is withdrawal_repository_unavailable or withdrawal_users_repository_unavailable, and error.details is omitted for uncaught failures."
+                  "description": "A dependency required to read withdrawals was unavailable, so no withdrawal state could be resolved. error.code is INTERNAL and error.details.reason is withdrawal_repository_unavailable or withdrawal_users_repository_unavailable, and error.details is omitted for uncaught failures. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
                 }
               }
             }
