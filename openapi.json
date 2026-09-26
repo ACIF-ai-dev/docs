@@ -11363,7 +11363,8 @@
             },
             "in": "query",
             "name": "category",
-            "required": false
+            "required": false,
+            "description": "Matches the stored category exactly. Gamma responses measured on 2026-09-26 carried no category, so this filter may match nothing; filter on the event, tags, sportsMarketType, or gameStartTime response fields instead."
           },
           {
             "schema": {
@@ -11390,7 +11391,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. lang also adds translation, or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered.",
+            "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache. The list holds only the markets the catalog sync keeps in scope: moneyline game markets from shortly before their start until shortly after it, and non-game markets above a lifetime volume threshold. A market that leaves that scope drops out of this list but is still returned by GET /v1/markets/{marketId}. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. lang also adds translation, or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11415,7 +11416,8 @@
                               {
                                 "type": "null"
                               }
-                            ]
+                            ],
+                            "description": "Copied from the Gamma market field category. Gamma responses measured on 2026-09-26 did not include that field on markets or events, so this value and the category query filter cannot be relied on to classify markets; use event, tags, sportsMarketType, and gameStartTime instead."
                           },
                           "active": {
                             "type": "boolean"
@@ -11467,6 +11469,128 @@
                             "format": "date-time",
                             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
                           },
+                          "event": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "slug": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "title": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "slug",
+                                  "title"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The first entry of the Gamma market field events (id, slug, title), or null when Gamma lists no event or the market was stored before this field existed."
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "slug": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "label": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "slug",
+                                "label"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "The slug and label of each entry in the Gamma market field tags, requested with include_tag. An empty array means no tag list was received: Gamma may send none for the market, and the upstream SDK reports a missing list and an empty list the same way, so an empty array does not prove the market has no tags."
+                          },
+                          "sportsMarketType": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The Gamma market field sportsMarketType, such as moneyline; null for markets that are not game markets."
+                          },
+                          "gameStartTime": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The Gamma market field gameStartTime, the scheduled start of the game, as an ISO 8601 timestamp; null for markets without a game."
+                          },
+                          "line": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The Gamma market field line, the handicap or total a spread or totals market is priced against; null when Gamma sends none, as for moneyline markets."
+                          },
+                          "groupItemTitle": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The Gamma market field groupItemTitle, which names this market within its event, for example a team or a draw in a three-way soccer result; null when Gamma sends none."
+                          },
                           "translation": {
                             "anyOf": [
                               {
@@ -11502,7 +11626,13 @@
                           "active",
                           "endDate",
                           "outcomes",
-                          "syncedAt"
+                          "syncedAt",
+                          "event",
+                          "tags",
+                          "sportsMarketType",
+                          "gameStartTime",
+                          "line",
+                          "groupItemTitle"
                         ],
                         "additionalProperties": false
                       }
@@ -11531,7 +11661,7 @@
                     "syncedAt"
                   ],
                   "additionalProperties": false,
-                  "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. lang also adds translation, or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."
+                  "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache. The list holds only the markets the catalog sync keeps in scope: moneyline game markets from shortly before their start until shortly after it, and non-game markets above a lifetime volume threshold. A market that leaves that scope drops out of this list but is still returned by GET /v1/markets/{marketId}. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. lang also adds translation, or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."
                 }
               }
             }
@@ -11813,7 +11943,8 @@
                         {
                           "type": "null"
                         }
-                      ]
+                      ],
+                      "description": "Copied from the Gamma market field category. Gamma responses measured on 2026-09-26 did not include that field on markets or events, so this value and the category query filter cannot be relied on to classify markets; use event, tags, sportsMarketType, and gameStartTime instead."
                     },
                     "active": {
                       "type": "boolean"
@@ -11865,6 +11996,128 @@
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
                     },
+                    "event": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "slug": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "title": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "slug",
+                            "title"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The first entry of the Gamma market field events (id, slug, title), or null when Gamma lists no event or the market was stored before this field existed."
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "slug": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "label": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "slug",
+                          "label"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "The slug and label of each entry in the Gamma market field tags, requested with include_tag. An empty array means no tag list was received: Gamma may send none for the market, and the upstream SDK reports a missing list and an empty list the same way, so an empty array does not prove the market has no tags."
+                    },
+                    "sportsMarketType": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The Gamma market field sportsMarketType, such as moneyline; null for markets that are not game markets."
+                    },
+                    "gameStartTime": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The Gamma market field gameStartTime, the scheduled start of the game, as an ISO 8601 timestamp; null for markets without a game."
+                    },
+                    "line": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The Gamma market field line, the handicap or total a spread or totals market is priced against; null when Gamma sends none, as for moneyline markets."
+                    },
+                    "groupItemTitle": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The Gamma market field groupItemTitle, which names this market within its event, for example a team or a draw in a three-way soccer result; null when Gamma sends none."
+                    },
                     "translation": {
                       "anyOf": [
                         {
@@ -11900,7 +12153,13 @@
                     "active",
                     "endDate",
                     "outcomes",
-                    "syncedAt"
+                    "syncedAt",
+                    "event",
+                    "tags",
+                    "sportsMarketType",
+                    "gameStartTime",
+                    "line",
+                    "groupItemTitle"
                   ],
                   "additionalProperties": false,
                   "description": "Returns one market with its outcomes and syncedAt, possibly from cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. Without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."
