@@ -21,9 +21,9 @@
       {
         "tab": "API reference",
         "openapi": "openapi.json",
-        "pages": [
-          "index",
-          "stream",
+          "pages": [
+            "index",
+            "stream",
           {
             "group": "Onboarding",
             "pages": [
@@ -90,6 +90,10 @@
               "POST /v1/webhooks/endpoints/{endpointId}/rotate",
               "POST /v1/webhooks/endpoints/{endpointId}/disable"
             ]
+          },
+          {
+            "group": "Stream",
+            "pages": ["POST /v1/stream/tickets"]
           }
         ]
       },

@@ -13,6 +13,16 @@ Authorization: Bearer <your API key>
 
 The stream requires a `trade`-scope key. Keep that key on your server: it is a credential that can reach trading and funding surfaces, not a browser or mobile-app credential.
 
+## Connecting from a browser
+
+Your builder backend, not the browser, sends its trade key to `POST /v1/stream/tickets`, optionally with `userId`. Pass the returned `ticket` to the browser, then connect it without an Authorization header:
+
+```js
+new WebSocket("wss://…/v1/stream?ticket=" + encodeURIComponent(ticket));
+```
+
+Tickets expire after **60 seconds** and are **one-time use**. Obtain a new ticket for every reconnect. Do not send an API-key header with a ticket. Invalid ticket upgrades return HTTP 401 before upgrade (browsers show this as close **1006**); request a fresh ticket and retry. A ticket `userId` has at most **3** simultaneous connections. A ticket issued without `userId` does not use that per-user limit and only receives the ticket per-subbuilder limit; provide `userId` when you need a per-user limit. Ticket connections have a separate per-subbuilder limit of **500** by default (key connections remain limited to **10**); either ticket limit closes with **4029**. More than **60** ticket attempts from the same IP in a minute return HTTP 429 before upgrade, and a busy ticket verifier returns HTTP 503 before upgrade; browsers show either as close **1006**. Because tickets are URL query parameters, proxy and CDN access logs can contain them; they are one-time and expire in 60 seconds, so a logged value was already used or will soon expire. Tickets are the browser-safe alternative: keep the trade key on your server.
+
 After the upgrade succeeds, the stream sends a `welcome` frame with a `connectionId` and `heartbeatIntervalMs`.
 
 ## Send frames
@@ -44,7 +54,7 @@ Server frames use `type` as their discriminator:
 ```
 
 ```json
-{"type":"subscribed","tokenIds":["token-id"]}
+{"type":"subscribed","tokenIds":["token-id"],"snapshot":[{"tokenId":"token-id","bestBid":"0.105","bestAsk":null,"ts":1727430000123}]}
 ```
 
 ```json
@@ -56,23 +66,39 @@ Server frames use `type` as their discriminator:
 ```
 
 ```json
-{"type":"event","tokenId":"token-id","event":{}}
+{"type":"price","tokenId":"token-id","bestBid":"0.105","bestAsk":null,"ts":1727430000123}
+```
+
+```json
+{"type":"resolved","tokenId":"token-id","market":"market-id","winningTokenId":"token-id","winningOutcome":"Yes","ts":1727430000123}
 ```
 
 ```json
 {"type":"error","code":"VALIDATION_FAILED","message":"Invalid stream frame.","details":{}}
 ```
 
-`details` on an `error` frame is optional. Ignore server frames with an unknown `type` to parse defensively. Within an `event` frame, new `event.type` values may be added without breaking existing consumers.
+`details` on an `error` frame is optional. Ignore server frames with an unknown `type` to parse defensively.
 
-## Events
+## Market frames
 
-An `event` frame carries the event object the stream forwards in `event`, paired with the subscribed `tokenId` it is routed through. Events with a single `tokenId`, including `best_bid_ask`, are forwarded through that token. A `market_resolved` event is forwarded once for each of its subscribed token IDs.
+A `price` frame is paired with the subscribed `tokenId`. A `best_bid_ask` event with a single `tokenId` is routed through that token. The service sends at most one `price` frame per token every **250 ms**; it keeps the newest price in that window. `resolved` frames are immediate and are not coalesced.
 
-`new_market` does not produce an `event` frame. This is a token-level subscription service: tokens belonging to a newly created market have, by definition, not been subscribed by any client, so there is no token-level recipient to route the event to.
+`bestBid` and `bestAsk` are decimal **strings**, or `null` when unavailable. Do not parse them as numbers for calculation. `ts` is epoch milliseconds: the upstream timestamp when present, otherwise the service receive time. After a snapshot, the service does not send a price with an older timestamp when both the snapshot and new price carry upstream timestamps. A price with the same value as a snapshot can follow it when that price was waiting in a coalescing window.
 
-If you subscribe to both YES and NO tokens for one market, that market's `market_resolved` event arrives in two frames, one for each token. Process events idempotently.
+The `subscribed` frame includes a snapshot for each newly subscribed token with a cached price. A token without a cache entry is omitted; its first `price` frame arrives on the next quote change. Read an initial value from REST when a snapshot is empty.
+
+`market_resolved` is forwarded as a `resolved` frame once for each of its subscribed token IDs. If you subscribe to both YES and NO tokens for one market, its resolution arrives in two `resolved` frames, one for each token. Process frames idempotently.
+
+Resolved tokens are omitted from snapshots; obtain their resolution status and final price from REST.
+
+`new_market` does not produce a frame. This is a token-level subscription service: tokens belonging to a newly created market have, by definition, not been subscribed by any client, so there is no token-level recipient to route the event to. The service does not send upstream `book`, `price_change`, `last_trade_price`, or `tick_size_change` events.
 
 ## Disconnections
 
 The service closes with **4029** when a connection limit is exceeded or when the client exceeds the frame-rate limit. It closes with **1011** when it rejects a connection, including a duplicate connection ID. It closes with **1001** during server shutdown or after the heartbeat timeout. It closes with **4008** when a client's `bufferedAmount` exceeds **1048576** bytes for **100** consecutive delivery attempts. This indicates a slow consumer; catch up on reads or reduce subscriptions before reconnecting.
+
+## Changes
+
+2026-09-27: Browser stream tickets were added: 60-second one-time tickets, three connections per user, and a default 500 ticket connections per subbuilder.
+
+2026-09-27: `event` frames were replaced by `price` and `resolved` frames (a breaking change). No compatibility layer was added: as of this change, no client had received `event` frames through the public route.
