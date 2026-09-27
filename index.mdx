@@ -29,7 +29,7 @@ A key's scope decides which route prefixes it may call. Scopes are cumulative â€
 
 | Scope | Adds | Use it for |
 |---|---|---|
-| `bot-read` | `/v1/markets`, `/v1/me` | reading market data and checking the key itself |
+| `bot-read` | `/v1/markets`, `/v1/me`, `/v1/sports` | reading market data and checking the key itself |
 | `bot-link` | `/v1/users`, `/v1/onboarding`, `/v1/webhooks/endpoints` | linking your users, onboarding their wallets, and registering or rotating webhook endpoints |
 | `trade` | `/v1/deposit`, `/v1/orders`, `/v1/withdrawals`, `/v1/webhooks/deliveries`, `/v1/stream` | deposits, order flow, withdrawals, webhook delivery operations, and the streaming surface |
 
@@ -187,6 +187,17 @@ Bids and asks are returned best first: bids are sorted descending by price, whil
 `status` is `ok` for a readable book, `no_book` when the outcome has no CLOB order book, and `no_token` when the outcome has no token ID.
 
 The `/v1/markets` response returns `outcomes[].price` as a snapshot; this route returns the order book.
+
+## Browse sports games
+
+```bash
+curl "https://api.tobuilder.app/v1/sports/games?status=live" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
+
+A game is the Gamma `gameId` grouping: one game can arrive as several Gamma events, so group by `gameId`, not `event.id`. Pass a selected `moneyline[].tokenId` unchanged to `POST /v1/orders`; do not offer a choice whose `active` is false or whose `tokenId` is null â€” the order route makes the final decision.
+
+Use `status` to determine game state. `period` and `elapsed` are display strings, not state values. This API rereads live games about once a minute, subject to response caching; use a faster live-data source if that freshness is not suitable. On 2026-09-27, Gamma updates were observed slower than 30 seconds. Ended games can remain in the list briefly. Gamma had no country field on that date, so use league and team fields where they fit your product.
 
 
 ## Preview the fee

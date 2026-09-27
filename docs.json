@@ -49,6 +49,10 @@
             "pages": ["GET /v1/markets", "GET /v1/markets/{marketId}", "GET /v1/markets/{marketId}/book", "GET /v1/markets/{marketId}/fee-preview"]
           },
           {
+            "group": "Sports",
+            "pages": ["GET /v1/sports", "GET /v1/sports/games", "GET /v1/sports/games/{gameId}"]
+          },
+          {
             "group": "Orders",
             "pages": [
               "POST /v1/orders",
