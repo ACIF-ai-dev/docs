@@ -85,19 +85,21 @@ A `price` frame is paired with the subscribed `tokenId`. A `best_bid_ask` event 
 
 `bestBid` and `bestAsk` are decimal **strings**, or `null` when unavailable. Do not parse them as numbers for calculation. `ts` is epoch milliseconds: the upstream timestamp when present, otherwise the service receive time. After a snapshot, the service does not send a price with an older timestamp when both the snapshot and new price carry upstream timestamps. A price with the same value as a snapshot can follow it when that price was waiting in a coalescing window.
 
-The `subscribed` frame includes a snapshot for each newly subscribed token with a cached price. A token without a cache entry is omitted; its first `price` frame arrives on the next quote change. Read an initial value from REST when a snapshot is empty.
+The `subscribed` frame includes a snapshot for each newly subscribed token with a cached price. A token without a cache entry is omitted. If the upstream sends an order book for a token that has no cached price, the service uses that book's highest bid and lowest ask as the token's first `price` frame. A token that already has a cached price ignores order books; its later prices come from best bid and ask updates. The upstream is not guaranteed to send an order book, and without one the token's first `price` frame follows the next quote change. Read an initial value from REST when a snapshot is empty.
 
 `market_resolved` is forwarded as a `resolved` frame once for each of its subscribed token IDs. If you subscribe to both YES and NO tokens for one market, its resolution arrives in two `resolved` frames, one for each token. Process frames idempotently.
 
 Resolved tokens are omitted from snapshots; obtain their resolution status and final price from REST.
 
-`new_market` does not produce a frame. This is a token-level subscription service: tokens belonging to a newly created market have, by definition, not been subscribed by any client, so there is no token-level recipient to route the event to. The service does not send upstream `book`, `price_change`, `last_trade_price`, or `tick_size_change` events.
+`new_market` does not produce a frame. This is a token-level subscription service: tokens belonging to a newly created market have, by definition, not been subscribed by any client, so there is no token-level recipient to route the event to. The service does not send upstream `book`, `price_change`, `last_trade_price`, or `tick_size_change` events; an upstream `book` only supplies a missing first price, as described above.
 
 ## Disconnections
 
 The service closes with **4029** when a connection limit is exceeded or when the client exceeds the frame-rate limit. It closes with **1011** when it rejects a connection, including a duplicate connection ID. It closes with **1001** during server shutdown or after the heartbeat timeout. It closes with **4008** when a client's `bufferedAmount` exceeds **1048576** bytes for **100** consecutive delivery attempts. This indicates a slow consumer; catch up on reads or reduce subscriptions before reconnecting.
 
 ## Changes
+
+2026-09-28: A token without a cached price can receive its first `price` frame from an upstream order book instead of waiting for the next quote change. Frame shapes did not change; keep reading an initial value from REST when a snapshot is empty.
 
 2026-09-27: Browser stream tickets were added: 60-second one-time tickets, three connections per user, and a default 500 ticket connections per subbuilder.
 
