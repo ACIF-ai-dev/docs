@@ -3111,7 +3111,7 @@
             }
           },
           "429": {
-            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "description": "Stream ticket issuance has its own rate budget: 600 requests per builder account in a fixed one-minute window by default, not counted against the per-key per-minute limit or the trade hourly limit. error.code is RATE_LIMITED. If the ticket budget is exceeded, error.details.reason is stream_ticket_limit_exceeded and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are present. If the ticket counter is unavailable, error.details is omitted and all four headers are absent. Every request that reaches the budget counts, including requests rejected with 429, so consumers must not assume every 429 response includes Retry-After.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3159,7 +3159,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                  "description": "Stream ticket issuance has its own rate budget: 600 requests per builder account in a fixed one-minute window by default, not counted against the per-key per-minute limit or the trade hourly limit. error.code is RATE_LIMITED. If the ticket budget is exceeded, error.details.reason is stream_ticket_limit_exceeded and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are present. If the ticket counter is unavailable, error.details is omitted and all four headers are absent. Every request that reaches the budget counts, including requests rejected with 429, so consumers must not assume every 429 response includes Retry-After."
                 }
               }
             }

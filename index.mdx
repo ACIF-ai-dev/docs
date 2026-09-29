@@ -65,13 +65,15 @@ Operations that act on behalf of one of your end users need a second credential,
 
 ## Rate limits
 
-Two budgets apply independently, and both are fixed windows rather than sliding ones.
+Three budgets apply, and all of them are fixed windows rather than sliding ones. Stream ticket issuance (`POST /v1/stream/tickets`) is counted only against the third; every other request is counted against the first two, which apply independently.
 
-**Per key, per minute.** Every request is counted against the key's own per-minute limit. `GET /v1/me` reports that limit as `rateLimitPerMinute`. Responses that reach the limiter carry `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset`.
+**Per key, per minute.** Every request except stream ticket issuance is counted against the key's own per-minute limit. `GET /v1/me` reports that limit as `rateLimitPerMinute`. Responses that reach the limiter carry `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset`.
 
-**Per account, per hour, for `trade` keys.** A `trade`-scope key is additionally limited to 600 requests per hour by default, counted per builder account in a window that resets at the top of the hour. Every request counts against that budget — including GET requests, and including the requests that are themselves rejected with 429. A tight retry loop therefore spends the budget it is waiting for. Exceeding it returns **429** with `error.details.reason` set to `trade_hourly_limit_exceeded`.
+**Per account, per hour, for `trade` keys.** A `trade`-scope key is additionally limited to 600 requests per hour by default, counted per builder account in a window that resets at the top of the hour. Every request except stream ticket issuance counts against that budget — including GET requests, and including the requests that are themselves rejected with 429. A tight retry loop therefore spends the budget it is waiting for. Exceeding it returns **429** with `error.details.reason` set to `trade_hourly_limit_exceeded`.
 
-`Retry-After` is a number of seconds, and it is not on every 429. A limit-exceeded response (per-minute or hourly) carries it. A 429 raised because the limiter itself is unavailable does not, and neither does `order_idempotency_in_flight`, which means another submission holding the same lock is in flight rather than "you are over a limit". Read the header when it is there; do not assume a value when it is not.
+**Stream tickets, per account, per minute.** `POST /v1/stream/tickets` has its own budget of 600 ticket requests per minute by default, shared by every key of the builder account, in a window that resets at the start of each minute. Issuing tickets therefore does not spend the per-minute or hourly budget your orders use. Every ticket request that reaches this budget counts — including requests rejected with 429 and requests the operation then rejects, such as an unknown `userId`. Its responses carry `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset` for this budget. Exceeding it returns **429** with `error.details.reason` set to `stream_ticket_limit_exceeded`.
+
+`Retry-After` is a number of seconds, and it is not on every 429. A limit-exceeded response (per-minute, hourly, or stream ticket) carries it. A 429 raised because the limiter itself is unavailable does not, and neither does `order_idempotency_in_flight`, which means another submission holding the same lock is in flight rather than "you are over a limit". Read the header when it is there; do not assume a value when it is not.
 
 ## Your first call
 

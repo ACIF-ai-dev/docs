@@ -23,6 +23,8 @@ new WebSocket("wss://…/v1/stream?ticket=" + encodeURIComponent(ticket));
 
 Tickets expire after **60 seconds** and are **one-time use**. Obtain a new ticket for every reconnect. Do not send an API-key header with a ticket. Invalid ticket upgrades return HTTP 401 before upgrade (browsers show this as close **1006**); request a fresh ticket and retry. A ticket `userId` has at most **3** simultaneous connections. A ticket issued without `userId` does not use that per-user limit and only receives the ticket per-subbuilder limit; provide `userId` when you need a per-user limit. Ticket connections have a separate per-subbuilder limit of **500** by default (key connections remain limited to **10**); either ticket limit closes with **4029**. More than **60** ticket attempts from the same IP in a minute return HTTP 429 before upgrade, and a busy ticket verifier returns HTTP 503 before upgrade; browsers show either as close **1006**. Because tickets are URL query parameters, proxy and CDN access logs can contain them; they are one-time and expire in 60 seconds, so a logged value was already used or will soon expire. Tickets are the browser-safe alternative: keep the trade key on your server.
 
+Issuing tickets has its own rate budget: by default 600 `POST /v1/stream/tickets` requests per minute per builder account, separate from the per-key and hourly budgets your other requests use (see **Rate limits** on the API reference home page). Exceeding it returns HTTP 429 with `error.details.reason` set to `stream_ticket_limit_exceeded` and a `Retry-After` header. It is a different limit from the 60 ticket attempts per IP per minute on the upgrade above.
+
 After the upgrade succeeds, the stream sends a `welcome` frame with a `connectionId` and `heartbeatIntervalMs`.
 
 ## Send frames
@@ -98,6 +100,8 @@ Resolved tokens are omitted from snapshots; obtain their resolution status and f
 The service closes with **4029** when a connection limit is exceeded or when the client exceeds the frame-rate limit. It closes with **1011** when it rejects a connection, including a duplicate connection ID. It closes with **1001** during server shutdown or after the heartbeat timeout. It closes with **4008** when a client's `bufferedAmount` exceeds **1048576** bytes for **100** consecutive delivery attempts. This indicates a slow consumer; catch up on reads or reduce subscriptions before reconnecting.
 
 ## Changes
+
+2026-09-29: Ticket issuance (`POST /v1/stream/tickets`) moved to its own rate budget, by default 600 requests per minute per builder account. It no longer counts against the per-key per-minute limit or the hourly `trade` budget.
 
 2026-09-28: A token without a cached price can receive its first `price` frame from an upstream order book instead of waiting for the next quote change. Frame shapes did not change; keep reading an initial value from REST when a snapshot is empty.
 
