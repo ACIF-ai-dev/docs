@@ -1,0 +1,234 @@
+---
+title: "Perps market data"
+description: "Read Perps instruments, prices, order books and candles"
+---
+
+## What these routes are
+
+Four read routes under `/v1/perps/instruments` return market data for perpetual instruments:
+
+| Route | Returns |
+|---|---|
+| `GET /v1/perps/instruments` | every listed instrument with its current prices |
+| `GET /v1/perps/instruments/{instrumentId}` | one instrument, plus its leverage tiers |
+| `GET /v1/perps/instruments/{instrumentId}/book` | the order book, up to ten levels per side |
+| `GET /v1/perps/instruments/{instrumentId}/candles` | candles for a fixed interval and range pair |
+
+They authenticate with your builder API key, and a key of any scope may call them. They take no user and move no money.
+
+Perps instruments are a separate family from `/v1/markets`. An `instrumentId` is not a `marketId` or a `tokenId`, and a Perps price is an amount of the instrument's `quoteAsset`, not a probability between 0 and 1.
+
+## When Perps market data is not open
+
+Whether these routes serve data is a setting of the deployment you call. If Perps market data is not open on it, every route under `/v1/perps/instruments` answers an authenticated request the same way, whatever the path, the instrument or the query:
+
+```json
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Perps market data is not open on this deployment.",
+    "requestId": "req-1",
+    "details": { "reason": "perps_not_open" }
+  }
+}
+```
+
+The status is **404** and there is no `Retry-After` header. Do not retry: waiting does not change the answer, and neither does a different instrument or query. Treat `perps_not_open` as "this feature is off here" and hide the feature. To learn that a deployment has opened, ask again when your process starts or on a long interval, not in a retry loop — these requests count against your key's rate limit like any other.
+
+Authentication, scope and the key's rate limit are checked first, so a missing or invalid key still gets 401, and a key over its limit still gets 429.
+
+`perps_not_open` is the gate of these market-data routes only.
+
+Every 404 these routes produce carries a reason; a 404 without one did not reach them. Branch on `error.details.reason`, not on the status:
+
+| `error.details.reason` | Meaning |
+|---|---|
+| `perps_not_open` | Perps market data is off on this deployment |
+| `perps_instrument_not_found` | no listed instrument has this `instrumentId` |
+| absent | the URL matches no route of this API — check the URL; it says nothing about an instrument |
+
+## Identifiers are strings
+
+`instrumentId` is a decimal **string** such as `"12"` — in every response and in the path. It has no leading zeros and at most ten digits; `012`, `1e1` and `abc` are rejected with 400. Do not convert it to a number.
+
+## Prices are decimal strings in the quote asset
+
+Every price, rate and amount is a plain decimal string: no exponent notation, and the precision the provider sent, trailing zeros included (`"118633.0"`). Prices are in units of the instrument's `quoteAsset`. Compare and compute with a decimal library, not with floating point.
+
+## List instruments
+
+```bash
+curl "https://api.tobuilder.app/v1/perps/instruments?category=crypto" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
+
+```json
+{
+  "fetchedAt": "2026-10-02T10:15:00.000Z",
+  "instruments": [
+    {
+      "instrumentId": "12",
+      "symbol": "BTC-USD",
+      "displaySymbol": null,
+      "baseAsset": "BTC",
+      "quoteAsset": "pUSD",
+      "category": "crypto",
+      "status": "open",
+      "isolatedOnly": false,
+      "instrumentMaxLeverage": 50,
+      "minNotional": "10",
+      "priceDecimals": 1,
+      "quantityDecimals": 4,
+      "fundingIntervalSeconds": 3600,
+      "logo": {
+        "light": "/public/perps/instruments/12/logo/light?v=1e95a1e68295fecb",
+        "dark": "/public/perps/instruments/12/logo/dark?v=f6378431367dcebc"
+      },
+      "ticker": {
+        "markPrice": "118633.0",
+        "indexPrice": "118640.2",
+        "lastPrice": "118630.5",
+        "openPrice24h": "116540.0",
+        "change24h": "0.017938",
+        "fundingRate": "0.00000625",
+        "nextFundingTs": 1790938800000,
+        "ts": 1790936099600
+      }
+    }
+  ]
+}
+```
+
+The values above illustrate the shape; they are not market observations.
+
+- The list is complete: it is not paginated and has no `total`.
+- `category` is optional: `crypto`, `equity`, `index` or `commodity`. A deployment can allow only some categories; instruments of a category it does not allow are absent, and filtering by such a category returns an empty list rather than an error.
+- `status` is an **open string**, not a closed list. The values this service emits are `open`, `close_only`, `settled` and `unknown`. Treat every value other than `open` — including one you do not recognise — as not open for new positions.
+- `instrumentMaxLeverage` is the instrument's own ceiling. The single-instrument route adds `riskTiers`, which lowers that ceiling as position size grows. Both are the provider's values for the instrument.
+- `ticker` is `null` when that instrument's prices could not be read, or when the provider's own timestamp for them (`ticker.ts`) was already older than the price ceiling (15 seconds by default) at the moment this service read them; the rest of the list still stands.
+- `logo` is always an object; `logo.light` and `logo.dark` are each a path or `null`. See [Logos](#logos).
+- `change24h` is `(lastPrice − openPrice24h) / openPrice24h` rounded to six decimal places, as a ratio: `"0.018"` means +1.8%. It uses `lastPrice`, not `markPrice`, and is `null` whenever `openPrice24h` is `null`.
+- `nextFundingTs` and `ts` are epoch **milliseconds**. `fetchedAt` is an ISO 8601 string.
+- `fundingRate`, `riskTiers[].lowerBound` and the candle `ts` are passed through as the provider gives them; this API adds no interpretation of its own to them.
+
+## Freshness: `fetchedAt` and `ticker.ts`
+
+The list and the single-instrument route are served from a snapshot shared by all callers. Requests do not each trigger a provider read, so polling faster than the price refresh period (5 seconds by default) returns the same snapshot.
+
+- `fetchedAt` is when this service read the prices from the provider. It is not the time of your request.
+- `ticker.ts` is the provider's own timestamp for that instrument's prices. A recent `fetchedAt` does not by itself mean a recent price: compare `ticker.ts` when the age of the price matters.
+
+Two ceilings apply, and `fetchedAt` speaks for the first one only:
+
+- **Prices** (`markPrice`, `indexPrice`, `lastPrice`, `fundingRate`, `nextFundingTs`, `ts`) read more than 15 seconds ago by default are not served. The route answers 502 instead.
+- **Instrument fields** — including `status` — and **`openPrice24h` with `change24h`** are refreshed on a longer period (60 seconds by default) and are served for up to 5 minutes by default when the provider cannot be read. They can therefore be older than `fetchedAt`. If `openPrice24h` cannot be read at all, it and `change24h` are `null` and the prices still stand.
+
+The order book and candles are cached for a short time (2 seconds and 15 seconds by default), and their `fetchedAt` keeps the provider read time on a cache hit.
+
+## Order book
+
+```bash
+curl "https://api.tobuilder.app/v1/perps/instruments/12/book" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
+
+```json
+{
+  "instrumentId": "12",
+  "fetchedAt": "2026-10-02T10:15:00.000Z",
+  "sequence": 1234567890,
+  "bids": [{ "price": "118630.0", "quantity": "0.5210" }],
+  "asks": [{ "price": "118631.0", "quantity": "0.3300" }]
+}
+```
+
+Bids and asks are returned best first: bids descending by price, asks ascending. Each side has at most ten levels; the depth is fixed and a `depth` query key is ignored. The level field is `quantity`, in the instrument's own quantity units — it is not the `size` of `GET /v1/markets/{marketId}/book`, which counts outcome shares.
+
+## Candles
+
+```bash
+curl "https://api.tobuilder.app/v1/perps/instruments/12/candles?interval=1m&range=1h" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
+
+`interval` and `range` are both required and are accepted only as one of these pairs:
+
+| `interval` | `range` |
+|---|---|
+| `1m` | `1h` |
+| `5m` | `6h` |
+| `15m` | `1d` |
+| `1h` | `1w` |
+
+Any other pair, or a missing value, is a 400. A free start or end time is not supported: query keys other than `interval` and `range` are ignored. The range ends at the time the candles were read (`fetchedAt`).
+
+```json
+{
+  "instrumentId": "12",
+  "interval": "1m",
+  "range": "1h",
+  "fetchedAt": "2026-10-02T10:15:00.000Z",
+  "candles": [
+    { "ts": 1790935980000, "open": "118500.0", "high": "118660.0", "low": "118480.0", "close": "118633.0", "volume": "12.4410", "trades": 87 }
+  ]
+}
+```
+
+- Candles are in ascending time order.
+- **Gaps are not filled.** An interval in which nothing traded has no candle, so an hour of `1m` candles can hold fewer than sixty rows. Do not assume evenly spaced rows.
+- `volume` is in base-asset units, not dollars.
+
+## Logos
+
+Every instrument carries a `logo` object with a `light` and a `dark` entry: `light` is drawn for light backgrounds, `dark` for dark ones. Each entry is either `null` or a path on this API's origin:
+
+```json
+"logo": {
+  "light": "/public/perps/instruments/12/logo/light?v=1e95a1e68295fecb",
+  "dark": "/public/perps/instruments/12/logo/dark?v=f6378431367dcebc"
+}
+```
+
+Append the path to the API origin and use it as an image source. The path is **not** under `/v1`:
+
+```html
+<img src="https://api.tobuilder.app/public/perps/instruments/12/logo/light?v=1e95a1e68295fecb" alt="BTC" width="32" height="32" />
+```
+
+- **No API key.** The logo route takes no credential, so a browser can load it directly. Do not put your API key in a page to fetch a logo, and do not send one to this route. Requests are limited per client address instead (300 a minute by default); beyond that the route answers 429 with `Retry-After`.
+- **The image is SVG.** Use it as an image (`<img>`, CSS `background-image`, a native image view). Do not fetch the markup and insert it into your page: as an image it cannot run script or load anything, and inline markup loses that guarantee.
+- **Either entry can be `null`**, on its own: the instrument has no logo for that theme, or its logo could not be verified as safe to serve. Show your own placeholder.
+- **A path that is not `null` can still fail.** A logo is fetched and verified the first time anyone asks for it, so a request for a logo can answer 404 with `perps_logo_not_found`; the list then reports `null` for it for a while, until the service checks it again. A logo the provider could not deliver answers 502, and its path stays in the list. Handle the image's error event with the same placeholder in every case.
+- **No cross-origin read.** The route sends no CORS headers: a plain `<img>` works from any origin, while `fetch()` from a page and `<img crossorigin>` do not.
+- **Caching.** The response carries an `ETag` and `Cache-Control: public, max-age=3600`, and answers a matching `If-None-Match` with 304. The `v` value changes when the logo changes, so a new logo is a new URL; `v` has no other meaning and the route ignores it, like every other query key.
+- **Content Security Policy.** If your page or mini app sets an `img-src` directive, add the API origin to it (for example `img-src 'self' https://api.tobuilder.app`). No `script-src`, `connect-src` or `frame-src` entry is needed for logos.
+- The route is `GET /public/perps/instruments/{instrumentId}/logo/{theme}` with `theme` either `light` or `dark`. Take the paths from the instrument routes rather than building them.
+
+Like the market-data routes, the logo route answers 404 with `perps_not_open` on a deployment where Perps market data is not open. Its failures use the standard error envelope:
+
+| HTTP | `error.code` | `error.details.reason` | When |
+|---:|---|---|---|
+| 400 | `VALIDATION_FAILED` | — | malformed `instrumentId`, or a `theme` other than `light` or `dark` |
+| 404 | `NOT_FOUND` | `perps_not_open` | Perps market data is not open on this deployment |
+| 404 | `NOT_FOUND` | `perps_instrument_not_found` | no listed instrument has this `instrumentId` |
+| 404 | `NOT_FOUND` | `perps_logo_not_found` | the instrument has no logo for this theme, or its logo could not be verified |
+| 429 | `RATE_LIMITED` | — | the client address exceeded the route's limit |
+| 429 | `RATE_LIMITED` | `perps_capacity` | this service's cap on fetching logos from the provider is spent; logos already fetched are still served |
+| 502 | `UPSTREAM_UNAVAILABLE` | `perps_unavailable` | the logo could not be read from the provider |
+
+## Errors
+
+All four routes use the standard error envelope. Branch on `error.code` and, where one is listed, `error.details.reason`. 401 and 403 are the same as on every other route of this API.
+
+| HTTP | `error.code` | `error.details.reason` | When | `Retry-After` |
+|---:|---|---|---|---|
+| 400 | `VALIDATION_FAILED` | — | malformed `instrumentId`, unknown `category`, or an `interval` and `range` pair outside the table | no |
+| 404 | `NOT_FOUND` | `perps_not_open` | Perps market data is not open on this deployment | no |
+| 404 | `NOT_FOUND` | `perps_instrument_not_found` | no listed instrument has this `instrumentId` | no |
+| 429 | `RATE_LIMITED` | `perps_capacity` | this service's own budget for reading Perps data from the provider is spent | yes, 1 to 60 seconds |
+| 502 | `UPSTREAM_UNAVAILABLE` | `perps_rate_limited` | the provider rate-limited this service | only when the provider supplied a usable value |
+| 502 | `UPSTREAM_UNAVAILABLE` | `perps_unavailable` | the provider could not be read, or the prices held are older than their freshness ceiling | no |
+
+The API key rate limit described on the API reference home page applies to these routes as to any other; a 429 from that limit carries no `perps_capacity` reason. On a `perps_capacity` response the `RateLimit-*` headers still describe your key's limit, and `Retry-After` describes the Perps budget. That budget is shared by every caller of the deployment.
+
+An instrument the provider hides, or one whose category the deployment does not allow, is answered exactly like one that does not exist.

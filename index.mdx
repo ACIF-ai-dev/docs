@@ -29,13 +29,15 @@ A key's scope decides which route prefixes it may call. Scopes are cumulative â€
 
 | Scope | Adds | Use it for |
 |---|---|---|
-| `bot-read` | `/v1/markets`, `/v1/me`, `/v1/sports` | reading market data and checking the key itself |
+| `bot-read` | `/v1/markets`, `/v1/me`, `/v1/sports`, `/v1/perps/instruments` | reading market data and checking the key itself |
 | `bot-link` | `/v1/users`, `/v1/onboarding`, `/v1/webhooks/endpoints` | linking your users, onboarding their wallets, and registering or rotating webhook endpoints |
 | `trade` | `/v1/deposit`, `/v1/orders`, `/v1/withdrawals`, `/v1/webhooks/deliveries`, `/v1/stream` | deposits, order flow, withdrawals, webhook delivery operations, and the streaming surface |
 
 Calling a route outside the key's scope returns **403**, with `error.details.reason` set to `api_key_scope_insufficient`. The check runs on the route prefix before the handler, so the same request with the same key always gets the same answer â€” use a key issued with the scope you need. Issue the narrowest scope that covers the job: a read-only bot does not need a key that can move money.
 
 The streaming surface behind `/v1/stream` is documented in the [Stream guide](stream); the operations documented in this reference are the HTTP ones.
+
+The `/v1/perps/instruments` routes are market-data reads for perpetual instruments, documented in the [Perps market data guide](perps). A deployment where that data is not open answers them with 404 and `error.details.reason` set to `perps_not_open`.
 
 The webhook routes under `/v1/webhooks` are split across two rungs: `bot-link` opens `/v1/webhooks/endpoints`, and `trade` adds the rest, including `/v1/webhooks/deliveries`.
 

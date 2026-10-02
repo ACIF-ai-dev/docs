@@ -15566,6 +15566,2100 @@
         }
       }
     },
+    "/v1/perps/instruments": {
+      "get": {
+        "summary": "List Perps instruments with prices",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "crypto",
+                "equity",
+                "index",
+                "commodity"
+              ]
+            },
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "description": "Return only instruments of this category. A category this deployment does not allow yields an empty list, not an error."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns every listed Perps instrument together with its current prices, so one call renders a market list. Perps instruments are a separate family from /v1/markets: prices are amounts of the instrument's quoteAsset, not 0-to-1 probabilities, and instrumentId is not a marketId. The list is complete and not paginated. The data is a snapshot this service refreshes on a short period and shares between callers; fetchedAt says when the prices were read, and ticker.ts is the time of each price. Prices older than this service's freshness ceiling are answered with 502 instead of being served; instrument fields such as status, and openPrice24h with change24h, are refreshed on a longer period and can be older than fetchedAt. Instruments that upstream hides, or whose category this deployment does not allow, are absent. Query keys other than category are ignored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "fetchedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "description": "When this service read the data upstream (ISO 8601). It is not the request time, and it stays the same on cache hits. On the instrument routes it is the read time of the prices; instrument fields and the 24-hour open are refreshed on a longer period and can be older."
+                    },
+                    "instruments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "instrumentId": {
+                            "type": "string",
+                            "description": "Perps instrument identifier: a decimal string without leading zeros, at most ten digits (for example 12). It is a string everywhere in this API, never a JSON number."
+                          },
+                          "symbol": {
+                            "type": "string",
+                            "description": "Upstream symbol, for example BTC-USD: letters, digits, hyphen, dot, and slash, at most 32 characters."
+                          },
+                          "displaySymbol": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Upstream display symbol when it differs from symbol, under the same character rules; otherwise null."
+                          },
+                          "baseAsset": {
+                            "type": "string",
+                            "description": "Underlying asset, for example BTC."
+                          },
+                          "quoteAsset": {
+                            "type": "string",
+                            "description": "Asset prices are quoted in."
+                          },
+                          "category": {
+                            "type": "string",
+                            "description": "Upstream category; crypto, equity, index, commodity are the values this service emits. Instruments of a category this deployment does not allow are absent."
+                          },
+                          "status": {
+                            "type": "string",
+                            "description": "An open string, not a closed enumeration. The values this service emits are open, close_only, settled, and unknown; treat any value other than open, including one you do not recognize, as not open for new positions."
+                          },
+                          "isolatedOnly": {
+                            "type": "boolean",
+                            "description": "Whether the instrument supports isolated margin only."
+                          },
+                          "instrumentMaxLeverage": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "The instrument's own maximum leverage upstream. It is the ceiling for the smallest positions; riskTiers on the single-instrument route lowers it as position size grows."
+                          },
+                          "minNotional": {
+                            "type": "string",
+                            "description": "Minimum order notional as a plain decimal string in quote-asset units."
+                          },
+                          "priceDecimals": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Decimal places of a price."
+                          },
+                          "quantityDecimals": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Decimal places of a quantity."
+                          },
+                          "fundingIntervalSeconds": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Seconds between funding payments."
+                          },
+                          "logo": {
+                            "type": "object",
+                            "properties": {
+                              "light": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Logo for light backgrounds. A path on this API's origin, not under /v1, such as /public/perps/instruments/12/logo/light?v=1e95a1e68295fecb: append it to the origin and use it as an image source. It needs no API key. The image is SVG. The v value changes when the logo changes and has no other meaning. null when the instrument has no logo for this theme, or when the logo could not be verified as safe to serve; show your own placeholder. A non-null path can still answer 404 with perps_logo_not_found, because a logo is verified the first time it is requested."
+                              },
+                              "dark": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Logo for dark backgrounds. A path on this API's origin, not under /v1, such as /public/perps/instruments/12/logo/light?v=1e95a1e68295fecb: append it to the origin and use it as an image source. It needs no API key. The image is SVG. The v value changes when the logo changes and has no other meaning. null when the instrument has no logo for this theme, or when the logo could not be verified as safe to serve; show your own placeholder. A non-null path can still answer 404 with perps_logo_not_found, because a logo is verified the first time it is requested."
+                              }
+                            },
+                            "required": [
+                              "light",
+                              "dark"
+                            ],
+                            "additionalProperties": false,
+                            "description": "The instrument's logo per theme, served by this API. The object is always present; each theme is null on its own."
+                          },
+                          "ticker": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "markPrice": {
+                                    "type": "string",
+                                    "description": "Mark price: a plain decimal string in units of the instrument's quoteAsset, never exponent notation, with the upstream precision kept as is, trailing zeros included. It is not a 0-to-1 probability."
+                                  },
+                                  "indexPrice": {
+                                    "type": "string",
+                                    "description": "Index price: a plain decimal string in units of the instrument's quoteAsset, never exponent notation, with the upstream precision kept as is, trailing zeros included. It is not a 0-to-1 probability."
+                                  },
+                                  "lastPrice": {
+                                    "type": "string",
+                                    "description": "Last traded price: a plain decimal string in units of the instrument's quoteAsset, never exponent notation, with the upstream precision kept as is, trailing zeros included. It is not a 0-to-1 probability."
+                                  },
+                                  "openPrice24h": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Price 24 hours ago, in the same form as the other prices; null when it could not be read or is not positive."
+                                  },
+                                  "change24h": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "(lastPrice - openPrice24h) / openPrice24h, computed by this service and rounded to six decimal places, as a ratio string: 0.018 means +1.8%. null whenever openPrice24h is null."
+                                  },
+                                  "fundingRate": {
+                                    "type": "string",
+                                    "description": "Funding rate as upstream reports it, a plain decimal ratio string; it can be negative."
+                                  },
+                                  "nextFundingTs": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Next funding time, epoch milliseconds."
+                                  },
+                                  "ts": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "The upstream timestamp of these prices, epoch milliseconds. This, not fetchedAt, is the time of the price itself."
+                                  }
+                                },
+                                "required": [
+                                  "markPrice",
+                                  "indexPrice",
+                                  "lastPrice",
+                                  "openPrice24h",
+                                  "change24h",
+                                  "fundingRate",
+                                  "nextFundingTs",
+                                  "ts"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Current prices; null when this instrument's prices could not be read, while the rest of the list still stands."
+                          }
+                        },
+                        "required": [
+                          "instrumentId",
+                          "symbol",
+                          "displaySymbol",
+                          "baseAsset",
+                          "quoteAsset",
+                          "category",
+                          "status",
+                          "isolatedOnly",
+                          "instrumentMaxLeverage",
+                          "minNotional",
+                          "priceDecimals",
+                          "quantityDecimals",
+                          "fundingIntervalSeconds",
+                          "logo",
+                          "ticker"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "fetchedAt",
+                    "instruments"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Returns every listed Perps instrument together with its current prices, so one call renders a market list. Perps instruments are a separate family from /v1/markets: prices are amounts of the instrument's quoteAsset, not 0-to-1 probabilities, and instrumentId is not a marketId. The list is complete and not paginated. The data is a snapshot this service refreshes on a short period and shares between callers; fetchedAt says when the prices were read, and ticker.ts is the time of each price. Prices older than this service's freshness ceiling are answered with 502 instead of being served; instrument fields such as status, and openPrice24h with change24h, are refreshed on a longer period and can be older than fetchedAt. Instruments that upstream hides, or whose category this deployment does not allow, are absent. Query keys other than category are ignored."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A category that is not one of crypto, equity, index, commodity, or that is empty or repeated, produces error.code VALIDATION_FAILED with error.details omitted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A category that is not one of crypto, equity, index, commodity, or that is empty or repeated, produces error.code VALIDATION_FAILED with error.details omitted."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/perps/instruments through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/perps/instruments through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "While Perps market data is not open on this deployment, every /v1/perps/instruments route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_not_open, without Retry-After, before the request is judged; waiting or retrying does not change that answer. perps_not_open is the market-data gate only.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "While Perps market data is not open on this deployment, every /v1/perps/instruments route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_not_open, without Retry-After, before the request is judged; waiting or retrying does not change that answer. perps_not_open is the market-data gate only."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After. This route can also answer 429 with error.details.reason perps_capacity when this service's own per-minute budget for reading Perps market data upstream is spent; that response always carries Retry-After, a whole number of seconds from 1 through 60, and its RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset headers still describe the API key limit, not that budget.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After. This route can also answer 429 with error.details.reason perps_capacity when this service's own per-minute budget for reading Perps market data upstream is spent; that response always carries Retry-After, a whole number of seconds from 1 through 60, and its RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset headers still describe the API key limit, not that budget."
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The Perps market data provider could not be read, or the data this service holds is older than its freshness ceiling. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is perps_rate_limited when the provider rate-limited this service, otherwise perps_unavailable. Retry-After is returned only with perps_rate_limited, and only when the provider supplied a usable value. Stale data is never served in place of this response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The Perps market data provider could not be read, or the data this service holds is older than its freshness ceiling. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is perps_rate_limited when the provider rate-limited this service, otherwise perps_unavailable. Retry-After is returned only with perps_rate_limited, and only when the provider supplied a usable value. Stale data is never served in place of this response."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/perps/instruments/{instrumentId}": {
+      "get": {
+        "summary": "Get a Perps instrument",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,9})$"
+            },
+            "in": "path",
+            "name": "instrumentId",
+            "required": true,
+            "description": "Perps instrument identifier: a decimal string without leading zeros, at most ten digits (for example 12). It is a string everywhere in this API, never a JSON number."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns one instrument with the same fields and the same snapshot as the list, plus riskTiers. fetchedAt says when the prices were read upstream, and ticker.ts is the time of the price itself.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "fetchedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "description": "When this service read the data upstream (ISO 8601). It is not the request time, and it stays the same on cache hits. On the instrument routes it is the read time of the prices; instrument fields and the 24-hour open are refreshed on a longer period and can be older."
+                    },
+                    "instrumentId": {
+                      "type": "string",
+                      "description": "Perps instrument identifier: a decimal string without leading zeros, at most ten digits (for example 12). It is a string everywhere in this API, never a JSON number."
+                    },
+                    "symbol": {
+                      "type": "string",
+                      "description": "Upstream symbol, for example BTC-USD: letters, digits, hyphen, dot, and slash, at most 32 characters."
+                    },
+                    "displaySymbol": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Upstream display symbol when it differs from symbol, under the same character rules; otherwise null."
+                    },
+                    "baseAsset": {
+                      "type": "string",
+                      "description": "Underlying asset, for example BTC."
+                    },
+                    "quoteAsset": {
+                      "type": "string",
+                      "description": "Asset prices are quoted in."
+                    },
+                    "category": {
+                      "type": "string",
+                      "description": "Upstream category; crypto, equity, index, commodity are the values this service emits. Instruments of a category this deployment does not allow are absent."
+                    },
+                    "status": {
+                      "type": "string",
+                      "description": "An open string, not a closed enumeration. The values this service emits are open, close_only, settled, and unknown; treat any value other than open, including one you do not recognize, as not open for new positions."
+                    },
+                    "isolatedOnly": {
+                      "type": "boolean",
+                      "description": "Whether the instrument supports isolated margin only."
+                    },
+                    "instrumentMaxLeverage": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "The instrument's own maximum leverage upstream. It is the ceiling for the smallest positions; riskTiers on the single-instrument route lowers it as position size grows."
+                    },
+                    "minNotional": {
+                      "type": "string",
+                      "description": "Minimum order notional as a plain decimal string in quote-asset units."
+                    },
+                    "priceDecimals": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "Decimal places of a price."
+                    },
+                    "quantityDecimals": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "Decimal places of a quantity."
+                    },
+                    "fundingIntervalSeconds": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "Seconds between funding payments."
+                    },
+                    "logo": {
+                      "type": "object",
+                      "properties": {
+                        "light": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Logo for light backgrounds. A path on this API's origin, not under /v1, such as /public/perps/instruments/12/logo/light?v=1e95a1e68295fecb: append it to the origin and use it as an image source. It needs no API key. The image is SVG. The v value changes when the logo changes and has no other meaning. null when the instrument has no logo for this theme, or when the logo could not be verified as safe to serve; show your own placeholder. A non-null path can still answer 404 with perps_logo_not_found, because a logo is verified the first time it is requested."
+                        },
+                        "dark": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Logo for dark backgrounds. A path on this API's origin, not under /v1, such as /public/perps/instruments/12/logo/light?v=1e95a1e68295fecb: append it to the origin and use it as an image source. It needs no API key. The image is SVG. The v value changes when the logo changes and has no other meaning. null when the instrument has no logo for this theme, or when the logo could not be verified as safe to serve; show your own placeholder. A non-null path can still answer 404 with perps_logo_not_found, because a logo is verified the first time it is requested."
+                        }
+                      },
+                      "required": [
+                        "light",
+                        "dark"
+                      ],
+                      "additionalProperties": false,
+                      "description": "The instrument's logo per theme, served by this API. The object is always present; each theme is null on its own."
+                    },
+                    "ticker": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "markPrice": {
+                              "type": "string",
+                              "description": "Mark price: a plain decimal string in units of the instrument's quoteAsset, never exponent notation, with the upstream precision kept as is, trailing zeros included. It is not a 0-to-1 probability."
+                            },
+                            "indexPrice": {
+                              "type": "string",
+                              "description": "Index price: a plain decimal string in units of the instrument's quoteAsset, never exponent notation, with the upstream precision kept as is, trailing zeros included. It is not a 0-to-1 probability."
+                            },
+                            "lastPrice": {
+                              "type": "string",
+                              "description": "Last traded price: a plain decimal string in units of the instrument's quoteAsset, never exponent notation, with the upstream precision kept as is, trailing zeros included. It is not a 0-to-1 probability."
+                            },
+                            "openPrice24h": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Price 24 hours ago, in the same form as the other prices; null when it could not be read or is not positive."
+                            },
+                            "change24h": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "(lastPrice - openPrice24h) / openPrice24h, computed by this service and rounded to six decimal places, as a ratio string: 0.018 means +1.8%. null whenever openPrice24h is null."
+                            },
+                            "fundingRate": {
+                              "type": "string",
+                              "description": "Funding rate as upstream reports it, a plain decimal ratio string; it can be negative."
+                            },
+                            "nextFundingTs": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Next funding time, epoch milliseconds."
+                            },
+                            "ts": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "The upstream timestamp of these prices, epoch milliseconds. This, not fetchedAt, is the time of the price itself."
+                            }
+                          },
+                          "required": [
+                            "markPrice",
+                            "indexPrice",
+                            "lastPrice",
+                            "openPrice24h",
+                            "change24h",
+                            "fundingRate",
+                            "nextFundingTs",
+                            "ts"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Current prices; null when this instrument's prices could not be read, while the rest of the list still stands."
+                    },
+                    "riskTiers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "lowerBound": {
+                            "type": "string",
+                            "description": "Lower bound of the position size this tier starts at, as a plain decimal string exactly as upstream gives it."
+                          },
+                          "maxLeverage": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Maximum leverage within this tier."
+                          }
+                        },
+                        "required": [
+                          "lowerBound",
+                          "maxLeverage"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "Leverage tiers by position size, as upstream gives them. Only this route returns them."
+                    }
+                  },
+                  "required": [
+                    "fetchedAt",
+                    "instrumentId",
+                    "symbol",
+                    "displaySymbol",
+                    "baseAsset",
+                    "quoteAsset",
+                    "category",
+                    "status",
+                    "isolatedOnly",
+                    "instrumentMaxLeverage",
+                    "minNotional",
+                    "priceDecimals",
+                    "quantityDecimals",
+                    "fundingIntervalSeconds",
+                    "logo",
+                    "ticker",
+                    "riskTiers"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Returns one instrument with the same fields and the same snapshot as the list, plus riskTiers. fetchedAt says when the prices were read upstream, and ticker.ts is the time of the price itself."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An instrumentId that is not a decimal string of at most ten digits without leading zeros produces error.code VALIDATION_FAILED with error.details omitted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "An instrumentId that is not a decimal string of at most ten digits without leading zeros produces error.code VALIDATION_FAILED with error.details omitted."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/perps/instruments through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/perps/instruments through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "error.code is NOT_FOUND with error.details.reason perps_instrument_not_found when no listed instrument has this identifier; an instrument that upstream hides or whose category this deployment does not allow is answered the same way. A 404 with no error.details is an unregistered path, not a statement about an instrument. While Perps market data is not open on this deployment, every /v1/perps/instruments route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_not_open, without Retry-After, before the request is judged; waiting or retrying does not change that answer. perps_not_open is the market-data gate only.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is NOT_FOUND with error.details.reason perps_instrument_not_found when no listed instrument has this identifier; an instrument that upstream hides or whose category this deployment does not allow is answered the same way. A 404 with no error.details is an unregistered path, not a statement about an instrument. While Perps market data is not open on this deployment, every /v1/perps/instruments route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_not_open, without Retry-After, before the request is judged; waiting or retrying does not change that answer. perps_not_open is the market-data gate only."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After. This route can also answer 429 with error.details.reason perps_capacity when this service's own per-minute budget for reading Perps market data upstream is spent; that response always carries Retry-After, a whole number of seconds from 1 through 60, and its RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset headers still describe the API key limit, not that budget.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After. This route can also answer 429 with error.details.reason perps_capacity when this service's own per-minute budget for reading Perps market data upstream is spent; that response always carries Retry-After, a whole number of seconds from 1 through 60, and its RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset headers still describe the API key limit, not that budget."
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The Perps market data provider could not be read, or the data this service holds is older than its freshness ceiling. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is perps_rate_limited when the provider rate-limited this service, otherwise perps_unavailable. Retry-After is returned only with perps_rate_limited, and only when the provider supplied a usable value. Stale data is never served in place of this response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The Perps market data provider could not be read, or the data this service holds is older than its freshness ceiling. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is perps_rate_limited when the provider rate-limited this service, otherwise perps_unavailable. Retry-After is returned only with perps_rate_limited, and only when the provider supplied a usable value. Stale data is never served in place of this response."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/perps/instruments/{instrumentId}/book": {
+      "get": {
+        "summary": "Read a Perps instrument's order book",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,9})$"
+            },
+            "in": "path",
+            "name": "instrumentId",
+            "required": true,
+            "description": "Perps instrument identifier: a decimal string without leading zeros, at most ten digits (for example 12). It is a string everywhere in this API, never a JSON number."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns the instrument's order book with at most 10 levels per side, best first: bids descending by price and asks ascending. The depth is fixed; a depth query key is ignored. The level field is quantity, not the size of GET /v1/markets/{marketId}/book: it counts the instrument's own quantity units, not outcome shares. The response is cached for a short time and fetchedAt stays the upstream read time on cache hits.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "instrumentId": {
+                      "type": "string",
+                      "description": "Perps instrument identifier: a decimal string without leading zeros, at most ten digits (for example 12). It is a string everywhere in this API, never a JSON number."
+                    },
+                    "fetchedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "description": "When this service read the data upstream (ISO 8601). It is not the request time, and it stays the same on cache hits. On the instrument routes it is the read time of the prices; instrument fields and the 24-hour open are refreshed on a longer period and can be older."
+                    },
+                    "sequence": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "Upstream book sequence number of this snapshot."
+                    },
+                    "bids": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "price": {
+                            "type": "string",
+                            "description": "Level price: a plain decimal string in units of the instrument's quoteAsset, never exponent notation, with the upstream precision kept as is, trailing zeros included. It is not a 0-to-1 probability."
+                          },
+                          "quantity": {
+                            "type": "string",
+                            "description": "Quantity at this price as a plain decimal string, in the instrument's own quantity units (see quantityDecimals); it is not a number of outcome shares."
+                          }
+                        },
+                        "required": [
+                          "price",
+                          "quantity"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "Buy levels, highest price first."
+                    },
+                    "asks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "price": {
+                            "type": "string",
+                            "description": "Level price: a plain decimal string in units of the instrument's quoteAsset, never exponent notation, with the upstream precision kept as is, trailing zeros included. It is not a 0-to-1 probability."
+                          },
+                          "quantity": {
+                            "type": "string",
+                            "description": "Quantity at this price as a plain decimal string, in the instrument's own quantity units (see quantityDecimals); it is not a number of outcome shares."
+                          }
+                        },
+                        "required": [
+                          "price",
+                          "quantity"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "Sell levels, lowest price first."
+                    }
+                  },
+                  "required": [
+                    "instrumentId",
+                    "fetchedAt",
+                    "sequence",
+                    "bids",
+                    "asks"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Returns the instrument's order book with at most 10 levels per side, best first: bids descending by price and asks ascending. The depth is fixed; a depth query key is ignored. The level field is quantity, not the size of GET /v1/markets/{marketId}/book: it counts the instrument's own quantity units, not outcome shares. The response is cached for a short time and fetchedAt stays the upstream read time on cache hits."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An instrumentId that is not a decimal string of at most ten digits without leading zeros produces error.code VALIDATION_FAILED with error.details omitted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "An instrumentId that is not a decimal string of at most ten digits without leading zeros produces error.code VALIDATION_FAILED with error.details omitted."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/perps/instruments through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/perps/instruments through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "error.code is NOT_FOUND with error.details.reason perps_instrument_not_found when no listed instrument has this identifier; an instrument that upstream hides or whose category this deployment does not allow is answered the same way. A 404 with no error.details is an unregistered path, not a statement about an instrument. While Perps market data is not open on this deployment, every /v1/perps/instruments route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_not_open, without Retry-After, before the request is judged; waiting or retrying does not change that answer. perps_not_open is the market-data gate only.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is NOT_FOUND with error.details.reason perps_instrument_not_found when no listed instrument has this identifier; an instrument that upstream hides or whose category this deployment does not allow is answered the same way. A 404 with no error.details is an unregistered path, not a statement about an instrument. While Perps market data is not open on this deployment, every /v1/perps/instruments route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_not_open, without Retry-After, before the request is judged; waiting or retrying does not change that answer. perps_not_open is the market-data gate only."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After. This route can also answer 429 with error.details.reason perps_capacity when this service's own per-minute budget for reading Perps market data upstream is spent; that response always carries Retry-After, a whole number of seconds from 1 through 60, and its RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset headers still describe the API key limit, not that budget.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After. This route can also answer 429 with error.details.reason perps_capacity when this service's own per-minute budget for reading Perps market data upstream is spent; that response always carries Retry-After, a whole number of seconds from 1 through 60, and its RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset headers still describe the API key limit, not that budget."
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The Perps market data provider could not be read, or the data this service holds is older than its freshness ceiling. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is perps_rate_limited when the provider rate-limited this service, otherwise perps_unavailable. Retry-After is returned only with perps_rate_limited, and only when the provider supplied a usable value. Stale data is never served in place of this response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The Perps market data provider could not be read, or the data this service holds is older than its freshness ceiling. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is perps_rate_limited when the provider rate-limited this service, otherwise perps_unavailable. Retry-After is returned only with perps_rate_limited, and only when the provider supplied a usable value. Stale data is never served in place of this response."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/perps/instruments/{instrumentId}/candles": {
+      "get": {
+        "summary": "Read a Perps instrument's candles",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1m",
+                "5m",
+                "15m",
+                "1h"
+              ]
+            },
+            "in": "query",
+            "name": "interval",
+            "required": true,
+            "description": "Candle width. interval and range are accepted only as one of these pairs: 1m with 1h, 5m with 6h, 15m with 1d, 1h with 1w."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1h",
+                "6h",
+                "1d",
+                "1w"
+              ]
+            },
+            "in": "query",
+            "name": "range",
+            "required": true,
+            "description": "How far back from now the candles reach. Accepted only in the pair its interval belongs to: 1m with 1h, 5m with 6h, 15m with 1d, 1h with 1w."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,9})$"
+            },
+            "in": "path",
+            "name": "instrumentId",
+            "required": true,
+            "description": "Perps instrument identifier: a decimal string without leading zeros, at most ten digits (for example 12). It is a string everywhere in this API, never a JSON number."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns candles in ascending time order for one of the accepted interval and range pairs (1m with 1h, 5m with 6h, 15m with 1d, 1h with 1w); the range ends at the upstream read time. An interval with no trade has no candle: gaps are not filled, so do not assume evenly spaced rows. volume is in base-asset units, not dollars. Free start and end times are not accepted, and query keys other than interval and range are ignored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "instrumentId": {
+                      "type": "string",
+                      "description": "Perps instrument identifier: a decimal string without leading zeros, at most ten digits (for example 12). It is a string everywhere in this API, never a JSON number."
+                    },
+                    "interval": {
+                      "type": "string",
+                      "description": "The requested interval."
+                    },
+                    "range": {
+                      "type": "string",
+                      "description": "The requested range."
+                    },
+                    "fetchedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "description": "When this service read the data upstream (ISO 8601). It is not the request time, and it stays the same on cache hits. On the instrument routes it is the read time of the prices; instrument fields and the 24-hour open are refreshed on a longer period and can be older."
+                    },
+                    "candles": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "ts": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Candle timestamp as upstream gives it, epoch milliseconds; candles are unique by it and ordered by it."
+                          },
+                          "open": {
+                            "type": "string",
+                            "description": "Open: a plain decimal string in units of the instrument's quoteAsset, never exponent notation, with the upstream precision kept as is, trailing zeros included. It is not a 0-to-1 probability."
+                          },
+                          "high": {
+                            "type": "string",
+                            "description": "High: a plain decimal string in units of the instrument's quoteAsset, never exponent notation, with the upstream precision kept as is, trailing zeros included. It is not a 0-to-1 probability."
+                          },
+                          "low": {
+                            "type": "string",
+                            "description": "Low: a plain decimal string in units of the instrument's quoteAsset, never exponent notation, with the upstream precision kept as is, trailing zeros included. It is not a 0-to-1 probability."
+                          },
+                          "close": {
+                            "type": "string",
+                            "description": "Close: a plain decimal string in units of the instrument's quoteAsset, never exponent notation, with the upstream precision kept as is, trailing zeros included. It is not a 0-to-1 probability."
+                          },
+                          "volume": {
+                            "type": "string",
+                            "description": "Traded volume in base-asset units, not dollars, as a plain decimal string."
+                          },
+                          "trades": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Number of trades in the candle."
+                          }
+                        },
+                        "required": [
+                          "ts",
+                          "open",
+                          "high",
+                          "low",
+                          "close",
+                          "volume",
+                          "trades"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "instrumentId",
+                    "interval",
+                    "range",
+                    "fetchedAt",
+                    "candles"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Returns candles in ascending time order for one of the accepted interval and range pairs (1m with 1h, 5m with 6h, 15m with 1d, 1h with 1w); the range ends at the upstream read time. An interval with no trade has no candle: gaps are not filled, so do not assume evenly spaced rows. volume is in base-asset units, not dollars. Free start and end times are not accepted, and query keys other than interval and range are ignored."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An invalid instrumentId, a missing or repeated interval or range, or a pair other than 1m with 1h, 5m with 6h, 15m with 1d, 1h with 1w produces error.code VALIDATION_FAILED with error.details omitted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "An invalid instrumentId, a missing or repeated interval or range, or a pair other than 1m with 1h, 5m with 6h, 15m with 1d, 1h with 1w produces error.code VALIDATION_FAILED with error.details omitted."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/perps/instruments through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/perps/instruments through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "error.code is NOT_FOUND with error.details.reason perps_instrument_not_found when no listed instrument has this identifier; an instrument that upstream hides or whose category this deployment does not allow is answered the same way. A 404 with no error.details is an unregistered path, not a statement about an instrument. While Perps market data is not open on this deployment, every /v1/perps/instruments route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_not_open, without Retry-After, before the request is judged; waiting or retrying does not change that answer. perps_not_open is the market-data gate only.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is NOT_FOUND with error.details.reason perps_instrument_not_found when no listed instrument has this identifier; an instrument that upstream hides or whose category this deployment does not allow is answered the same way. A 404 with no error.details is an unregistered path, not a statement about an instrument. While Perps market data is not open on this deployment, every /v1/perps/instruments route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_not_open, without Retry-After, before the request is judged; waiting or retrying does not change that answer. perps_not_open is the market-data gate only."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After. This route can also answer 429 with error.details.reason perps_capacity when this service's own per-minute budget for reading Perps market data upstream is spent; that response always carries Retry-After, a whole number of seconds from 1 through 60, and its RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset headers still describe the API key limit, not that budget.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After. This route can also answer 429 with error.details.reason perps_capacity when this service's own per-minute budget for reading Perps market data upstream is spent; that response always carries Retry-After, a whole number of seconds from 1 through 60, and its RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset headers still describe the API key limit, not that budget."
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The Perps market data provider could not be read, or the data this service holds is older than its freshness ceiling. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is perps_rate_limited when the provider rate-limited this service, otherwise perps_unavailable. Retry-After is returned only with perps_rate_limited, and only when the provider supplied a usable value. Stale data is never served in place of this response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The Perps market data provider could not be read, or the data this service holds is older than its freshness ceiling. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is perps_rate_limited when the provider rate-limited this service, otherwise perps_unavailable. Retry-After is returned only with perps_rate_limited, and only when the provider supplied a usable value. Stale data is never served in place of this response."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/webhooks/deliveries/{deliveryId}/resend": {
       "post": {
         "summary": "Resend a webhook delivery",

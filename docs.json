@@ -24,6 +24,7 @@
           "pages": [
             "index",
             "stream",
+            "perps",
           {
             "group": "Onboarding",
             "pages": [
@@ -51,6 +52,15 @@
           {
             "group": "Sports",
             "pages": ["GET /v1/sports", "GET /v1/sports/games", "GET /v1/sports/games/{gameId}"]
+          },
+          {
+            "group": "Perps",
+            "pages": [
+              "GET /v1/perps/instruments",
+              "GET /v1/perps/instruments/{instrumentId}",
+              "GET /v1/perps/instruments/{instrumentId}/book",
+              "GET /v1/perps/instruments/{instrumentId}/candles"
+            ]
           },
           {
             "group": "Orders",
