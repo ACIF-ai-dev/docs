@@ -12045,6 +12045,28 @@
                             ],
                             "description": "The Gamma market field groupItemTitle, which names this market within its event, for example a team or a draw in a three-way soccer result; null when Gamma sends none."
                           },
+                          "icon": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The Gamma market field icon, passed through as an opaque absolute https URL. Null when Gamma sends none, when the value is not an https URL on a host the catalog accepts, or when the market was last stored before this field existed. Use it only as an image source, exactly as received; do not build URLs from its host, which may change."
+                          },
+                          "image": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The Gamma market field image, passed through as an opaque absolute https URL; it may be the same URL as icon. Null when Gamma sends none, when the value is not an https URL on a host the catalog accepts, or when the market was last stored before this field existed. Use it only as an image source, exactly as received; do not build URLs from its host, which may change."
+                          },
                           "translation": {
                             "anyOf": [
                               {
@@ -12086,7 +12108,9 @@
                           "sportsMarketType",
                           "gameStartTime",
                           "line",
-                          "groupItemTitle"
+                          "groupItemTitle",
+                          "icon",
+                          "image"
                         ],
                         "additionalProperties": false
                       }
@@ -12572,6 +12596,28 @@
                       ],
                       "description": "The Gamma market field groupItemTitle, which names this market within its event, for example a team or a draw in a three-way soccer result; null when Gamma sends none."
                     },
+                    "icon": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The Gamma market field icon, passed through as an opaque absolute https URL. Null when Gamma sends none, when the value is not an https URL on a host the catalog accepts, or when the market was last stored before this field existed. Use it only as an image source, exactly as received; do not build URLs from its host, which may change."
+                    },
+                    "image": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The Gamma market field image, passed through as an opaque absolute https URL; it may be the same URL as icon. Null when Gamma sends none, when the value is not an https URL on a host the catalog accepts, or when the market was last stored before this field existed. Use it only as an image source, exactly as received; do not build URLs from its host, which may change."
+                    },
                     "translation": {
                       "anyOf": [
                         {
@@ -12613,7 +12659,9 @@
                     "sportsMarketType",
                     "gameStartTime",
                     "line",
-                    "groupItemTitle"
+                    "groupItemTitle",
+                    "icon",
+                    "image"
                   ],
                   "additionalProperties": false,
                   "description": "Returns one market with its outcomes and syncedAt, possibly from cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. Without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."

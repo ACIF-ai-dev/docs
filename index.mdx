@@ -117,7 +117,9 @@ curl "https://api.tobuilder.app/v1/markets?limit=5&category=politics" \
         { "outcome": "Yes", "price": "0.42", "tokenId": "71453-example" },
         { "outcome": "No", "price": "0.58", "tokenId": "71454-example" }
       ],
-      "syncedAt": "2026-09-13T00:00:00.000Z"
+      "syncedAt": "2026-09-13T00:00:00.000Z",
+      "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/example-icon.png",
+      "image": null
     }
   ],
   "total": 1,
@@ -125,7 +127,16 @@ curl "https://api.tobuilder.app/v1/markets?limit=5&category=politics" \
 }
 ```
 
-Each outcome carries `outcome`, `price`, and `tokenId` — the CTF token id you pass as `tokenId` to the order operations. Choose the outcome by its `outcome` label, never by array position; a `null` `tokenId` means that outcome cannot be traded. Note that `/v1/markets` declares `limit` and `offset` as strings, while `/v1/users/positions` declares `limit` as an integer and pages with a `cursor`; the reference is authoritative per operation.
+The example is abridged; the API reference lists every field of a market. Each outcome carries `outcome`, `price`, and `tokenId` — the CTF token id you pass as `tokenId` to the order operations. Choose the outcome by its `outcome` label, never by array position; a `null` `tokenId` means that outcome cannot be traded. Note that `/v1/markets` declares `limit` and `offset` as strings, while `/v1/users/positions` declares `limit` as an integer and pages with a `cursor`; the reference is authoritative per operation.
+
+### Market images
+
+Each market, in the list and from `GET /v1/markets/{marketId}`, carries `icon` and `image`: the market's images from Gamma, each an absolute `https` URL or `null`. The two may be the same URL. `null` means Gamma sent no image, sent one this service did not accept, or the market was last stored before these fields existed; show your own placeholder.
+
+- **Use the URL only as an image source** (`<img src>`), exactly as received. Do not fetch it and insert its contents into your page, and do not build image URLs from the host or path yourself.
+- **The host can change.** The URL points at an image store, not at this API, and the service may later move images to its own origin; code that expects a particular host will break. In a sample of Gamma data taken on 2026-09-26, every image URL that was not empty was on `https://polymarket-upload.s3.us-east-2.amazonaws.com`, and it is the only host this service passes through today.
+- **Content Security Policy.** If your page or mini app sets an `img-src` directive, add that host to it (for example `img-src 'self' https://polymarket-upload.s3.us-east-2.amazonaws.com`). If the host changes, images are blocked until the directive is updated, so treat a failed image like a `null` one.
+- A URL that is not `null` can still fail to load. Handle the image's error event with the same placeholder.
 
 ## Read the order book
 
