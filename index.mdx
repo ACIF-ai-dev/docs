@@ -67,11 +67,11 @@ Operations that act on behalf of one of your end users need a second credential,
 
 ## Rate limits
 
-Three budgets apply, and all of them are fixed windows rather than sliding ones. Stream ticket issuance (`POST /v1/stream/tickets`) is counted only against the third; every other request is counted against the first two, which apply independently.
+Three budgets apply, and all of them are fixed windows rather than sliding ones. Stream ticket issuance (`POST /v1/stream/tickets`) is counted only against the third. The two market reads, `GET /v1/markets` and `GET /v1/markets/{marketId}`, are counted only against the first. Every other request is counted against the first and, when the key is a `trade` key, the second; the two apply independently.
 
 **Per key, per minute.** Every request except stream ticket issuance is counted against the key's own per-minute limit. `GET /v1/me` reports that limit as `rateLimitPerMinute`. Responses that reach the limiter carry `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset`.
 
-**Per account, per hour, for `trade` keys.** A `trade`-scope key is additionally limited to 600 requests per hour by default, counted per builder account in a window that resets at the top of the hour. Every request except stream ticket issuance counts against that budget — including GET requests, and including the requests that are themselves rejected with 429. A tight retry loop therefore spends the budget it is waiting for. Exceeding it returns **429** with `error.details.reason` set to `trade_hourly_limit_exceeded`.
+**Per account, per hour, for `trade` keys.** A `trade`-scope key is additionally limited to 600 requests per hour by default, counted per builder account in a window that resets at the top of the hour. Two reads are outside this budget: `GET /v1/markets` and `GET /v1/markets/{marketId}` are not counted against it and are not rejected when it is exhausted, so an account whose orders this budget is refusing can still read its market list; the per-minute limit still applies to both. Nothing else under `/v1/markets` is outside it — a market's order book and fee preview count. Every other request except stream ticket issuance counts against the budget — including the other GET requests, and including the requests that are themselves rejected with 429 by this budget. A tight retry loop therefore spends the budget it is waiting for. Exceeding it returns **429** with `error.details.reason` set to `trade_hourly_limit_exceeded`.
 
 **Stream tickets, per account, per minute.** `POST /v1/stream/tickets` has its own budget of 600 ticket requests per minute by default, shared by every key of the builder account, in a window that resets at the start of each minute. Issuing tickets therefore does not spend the per-minute or hourly budget your orders use. Every ticket request that reaches this budget counts — including requests rejected with 429 and requests the operation then rejects, such as an unknown `userId`. Its responses carry `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset` for this budget. Exceeding it returns **429** with `error.details.reason` set to `stream_ticket_limit_exceeded`.
 
@@ -119,7 +119,8 @@ curl "https://api.tobuilder.app/v1/markets?limit=5&category=politics" \
       ],
       "syncedAt": "2026-09-13T00:00:00.000Z",
       "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/example-icon.png",
-      "image": null
+      "image": null,
+      "volume24h": "2672.1804860000007"
     }
   ],
   "total": 1,
@@ -129,6 +130,36 @@ curl "https://api.tobuilder.app/v1/markets?limit=5&category=politics" \
 
 The example is abridged; the API reference lists every field of a market. Each outcome carries `outcome`, `price`, and `tokenId` — the CTF token id you pass as `tokenId` to the order operations. Choose the outcome by its `outcome` label, never by array position; a `null` `tokenId` means that outcome cannot be traded. Note that `/v1/markets` declares `limit` and `offset` as strings, while `/v1/users/positions` declares `limit` as an integer and pages with a `cursor`; the reference is authoritative per operation.
 
+### Order, sorting, and filters
+
+The list has a fixed order: most recently synced first and, among markets synced together, by `marketId`. One catalog sync stamps the markets it stores with the same time, so `marketId` decides most of that order; it is compared as text and the order it gives carries no meaning. Because the order is total, paging with `limit` and `offset` returns every market exactly once while the catalog does not change between your requests. A sync between two page requests can still move markets, and a page may be served from the route cache, so a walk taken across a sync can repeat or miss a market.
+
+Three optional query parameters reorder or narrow the list. They combine with each other and with `category`, and `total` counts the markets that match them.
+
+| Parameter | Value | Effect |
+| --- | --- | --- |
+| `sort` | `volume24h` | Largest `volume24h` first, compared as numbers. Markets whose `volume24h` is `null` come last, and markets with the same volume are ordered by `marketId`. Without `sort` the list keeps the default order above. |
+| `tag` | one tag slug | Only markets that carry that slug in `tags[].slug`. Exact and case-sensitive: a slug does not match a longer slug that starts with it or the same letters in another case, and labels are not searched. At most 100 characters, made of letters, digits, hyphen, underscore, and dot. |
+| `game` | `true` or `false` | `true` returns only game markets, `false` only the others; without it both are returned. A game market is one whose `sportsMarketType` is not `null`. |
+
+Any other value is a 400 `VALIDATION_FAILED`: a `sort` that is not `volume24h`, a `tag` that is empty, too long, or holds another character, a `game` that is not `true` or `false`. A tag no listed market carries is not an error; the list is empty and `total` is `0`. Take slugs from `tags[].slug` in the responses rather than guessing them.
+
+```bash
+# Trending: highest 24-hour volume first.
+curl "https://api.tobuilder.app/v1/markets?sort=volume24h&limit=20" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+
+# A crypto home: one tag, by volume.
+curl "https://api.tobuilder.app/v1/markets?tag=crypto&sort=volume24h" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+
+# A sports season view: markets tagged sports that are not single games.
+curl "https://api.tobuilder.app/v1/markets?tag=sports&game=false" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
+
+Sorting by volume orders the values the catalog sync last read (see below), not live figures.
+
 ### Market images
 
 Each market, in the list and from `GET /v1/markets/{marketId}`, carries `icon` and `image`: the market's images from Gamma, each an absolute `https` URL or `null`. The two may be the same URL. `null` means Gamma sent no image, sent one this service did not accept, or the market was last stored before these fields existed; show your own placeholder.
@@ -137,6 +168,16 @@ Each market, in the list and from `GET /v1/markets/{marketId}`, carries `icon` a
 - **The host can change.** The URL points at an image store, not at this API, and the service may later move images to its own origin; code that expects a particular host will break. In a sample of Gamma data taken on 2026-09-26, every image URL that was not empty was on `https://polymarket-upload.s3.us-east-2.amazonaws.com`, and it is the only host this service passes through today.
 - **Content Security Policy.** If your page or mini app sets an `img-src` directive, add that host to it (for example `img-src 'self' https://polymarket-upload.s3.us-east-2.amazonaws.com`). If the host changes, images are blocked until the directive is updated, so treat a failed image like a `null` one.
 - A URL that is not `null` can still fail to load. Handle the image's error event with the same placeholder.
+
+### 24-hour volume
+
+Each market, in the list and from `GET /v1/markets/{marketId}`, carries `volume24h`: the market's trading volume over the last 24 hours, as Gamma reports it.
+
+- **A decimal string or `null`.** The string is a non-negative decimal with no exponent and no sign, such as `"0"` or `"2672.1804860000007"`. Gamma sends this figure as a number, and it often carries more decimal places than a currency has; round it for display, and parse it as a decimal rather than a floating-point number if you calculate with it.
+- **`null` means unknown, not zero.** Gamma sent no value for the market, sent one that is not a non-negative number or whose decimal form is longer than 64 characters, or the market was last stored before this field existed. Do not show `null` as `0`.
+- **It is as fresh as the catalog sync.** The value is read when the sync stores the market, not when you call; the market's own `syncedAt` is the time of that reading.
+- **Game markets.** Moneyline game markets are in this list and get the value from the same sync as every other listed market. Totals and spreads markets are not in this list; `GET /v1/markets/{marketId}` serves them from a separate sync of Gamma's event data, which refreshes on its own schedule, and in the samples of that data this service has kept Gamma left the value out of most of them, so expect `null` there often.
+- **Unit.** The value is passed through without conversion. The Gamma data this service reads does not state a unit; the service treats Gamma's volume figures as US dollars.
 
 ## Read the order book
 
@@ -365,7 +406,7 @@ A suspended account answers **403** with `error.details.reason` set to `subbuild
 
 **Nothing in this API retries for you**, and the SDK does not retry either. Three reasons:
 
-1. **Rate budget.** The hourly budget counts GET requests and counts rejected requests, so an automatic retry spends the budget on the failure instead of on your next real call.
+1. **Rate budget.** The hourly budget counts GET requests — all but the two market reads named under **Rate limits** — and counts rejected requests, so an automatic retry spends the budget on the failure instead of on your next real call.
 2. **Money.** `POST /v1/orders` and `POST /v1/orders/market` submit real funds. After a 5xx you do not know whether the submission was stored, so a blind retry can duplicate an order; read `GET /v1/orders` and `GET /v1/orders/fills` back before sending anything again.
 3. **429 is not uniform.** Some 429 responses carry `Retry-After` and some do not, so any single backoff policy baked into a client would be wrong for half of them.
 

@@ -11818,7 +11818,7 @@
             "in": "query",
             "name": "category",
             "required": false,
-            "description": "Matches the stored category exactly. Gamma responses measured on 2026-09-26 carried no category, so this filter may match nothing; filter on the event, tags, sportsMarketType, or gameStartTime response fields instead."
+            "description": "Matches the stored category exactly. Gamma responses measured on 2026-09-26 carried no category, so this filter may match nothing; use the tag and game parameters, or the event and gameStartTime response fields, instead."
           },
           {
             "schema": {
@@ -11827,6 +11827,33 @@
             "in": "query",
             "name": "lang",
             "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "description": "Order of the list. The only value is volume24h: largest volume24h first, compared as numbers; markets whose volume24h is null come last; markets with the same volume are ordered by marketId. Without sort the list keeps its default order: most recently synced first, and by marketId among markets synced together. Both orders are total, so the same request returns the same order while the catalog is unchanged. marketId is compared as text. Any other value is VALIDATION_FAILED."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "description": "Returns only markets that carry this tag. The value is one tag slug of at most 100 characters, made of letters, digits, hyphen, underscore, and dot; anything else is VALIDATION_FAILED. It is compared with tags[].slug exactly and case-sensitive: no prefix or partial match, and the label is not searched. A slug no listed market carries returns an empty list. Combines with category, game, and sort."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "game",
+            "required": false,
+            "description": "true returns only game markets and false only the other markets; without it both are returned. A game market is one whose sportsMarketType is not null. Any other value is VALIDATION_FAILED. Combines with category, tag, and sort."
           },
           {
             "schema": {
@@ -11845,7 +11872,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache. The list holds only the markets the catalog sync keeps in scope: moneyline game markets from shortly before their start until shortly after it, and non-game markets above a lifetime volume threshold. A market that leaves that scope drops out of this list but is still returned by GET /v1/markets/{marketId}. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. lang also adds translation, or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered.",
+            "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache. The list holds only the markets the catalog sync keeps in scope: moneyline game markets from shortly before their start until shortly after it, and non-game markets above a lifetime volume threshold. A market that leaves that scope drops out of this list but is still returned by GET /v1/markets/{marketId}. The list is ordered most recently synced first and, among markets synced together, by marketId, so paging with limit and offset returns every market once while the catalog does not change between the requests; sort=volume24h orders by 24-hour volume instead. total counts the markets that match category, tag, and game, and the top-level syncedAt is the latest sync of the whole catalog whatever the filters. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. lang also adds translation, or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12067,6 +12094,17 @@
                             ],
                             "description": "The Gamma market field image, passed through as an opaque absolute https URL; it may be the same URL as icon. Null when Gamma sends none, when the value is not an https URL on a host the catalog accepts, or when the market was last stored before this field existed. Use it only as an image source, exactly as received; do not build URLs from its host, which may change."
                           },
+                          "volume24h": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The Gamma market field volume24hr, the market's trading volume over the last 24 hours, as a non-negative decimal string with no exponent and no sign, in the unit Gamma reports it in. It is the value read at syncedAt, not a live figure. Null means the volume is unknown, not zero: Gamma sent none, sent a value that is not a non-negative number or whose decimal form is longer than 64 characters, or the market was last stored before this field existed. Parse it as a decimal, not as a floating-point number."
+                          },
                           "translation": {
                             "anyOf": [
                               {
@@ -12110,7 +12148,8 @@
                           "line",
                           "groupItemTitle",
                           "icon",
-                          "image"
+                          "image",
+                          "volume24h"
                         ],
                         "additionalProperties": false
                       }
@@ -12139,13 +12178,13 @@
                     "syncedAt"
                   ],
                   "additionalProperties": false,
-                  "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache. The list holds only the markets the catalog sync keeps in scope: moneyline game markets from shortly before their start until shortly after it, and non-game markets above a lifetime volume threshold. A market that leaves that scope drops out of this list but is still returned by GET /v1/markets/{marketId}. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. lang also adds translation, or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."
+                  "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache. The list holds only the markets the catalog sync keeps in scope: moneyline game markets from shortly before their start until shortly after it, and non-game markets above a lifetime volume threshold. A market that leaves that scope drops out of this list but is still returned by GET /v1/markets/{marketId}. The list is ordered most recently synced first and, among markets synced together, by marketId, so paging with limit and offset returns every market once while the catalog does not change between the requests; sort=volume24h orders by 24-hour volume instead. total counts the markets that match category, tag, and game, and the top-level syncedAt is the latest sync of the whole catalog whatever the filters. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. lang also adds translation, or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid query syntax or values such as limit outside 1-100, offset outside 0-10000, empty category, or an invalid lang produce error.code VALIDATION_FAILED with error.details omitted.",
+            "description": "Invalid query syntax or values such as limit outside 1-100, offset outside 0-10000, empty category, an invalid lang, a sort other than volume24h, a tag that is empty, longer than 100 characters, or holds a character other than letters, digits, hyphen, underscore, and dot, or a game other than true or false produce error.code VALIDATION_FAILED with error.details omitted.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12193,7 +12232,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "Invalid query syntax or values such as limit outside 1-100, offset outside 0-10000, empty category, or an invalid lang produce error.code VALIDATION_FAILED with error.details omitted."
+                  "description": "Invalid query syntax or values such as limit outside 1-100, offset outside 0-10000, empty category, an invalid lang, a sort other than volume24h, a tag that is empty, longer than 100 characters, or holds a character other than letters, digits, hyphen, underscore, and dot, or a game other than true or false produce error.code VALIDATION_FAILED with error.details omitted."
                 }
               }
             }
@@ -12307,7 +12346,7 @@
             }
           },
           "429": {
-            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12355,7 +12394,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
                 }
               }
             }
@@ -12618,6 +12657,17 @@
                       ],
                       "description": "The Gamma market field image, passed through as an opaque absolute https URL; it may be the same URL as icon. Null when Gamma sends none, when the value is not an https URL on a host the catalog accepts, or when the market was last stored before this field existed. Use it only as an image source, exactly as received; do not build URLs from its host, which may change."
                     },
+                    "volume24h": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The Gamma market field volume24hr, the market's trading volume over the last 24 hours, as a non-negative decimal string with no exponent and no sign, in the unit Gamma reports it in. It is the value read at syncedAt, not a live figure. Null means the volume is unknown, not zero: Gamma sent none, sent a value that is not a non-negative number or whose decimal form is longer than 64 characters, or the market was last stored before this field existed. Parse it as a decimal, not as a floating-point number."
+                    },
                     "translation": {
                       "anyOf": [
                         {
@@ -12661,7 +12711,8 @@
                     "line",
                     "groupItemTitle",
                     "icon",
-                    "image"
+                    "image",
+                    "volume24h"
                   ],
                   "additionalProperties": false,
                   "description": "Returns one market with its outcomes and syncedAt, possibly from cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. Without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."
@@ -12886,7 +12937,7 @@
             }
           },
           "429": {
-            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12934,7 +12985,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
                 }
               }
             }
