@@ -229,6 +229,6 @@ All four routes use the standard error envelope. Branch on `error.code` and, whe
 | 502 | `UPSTREAM_UNAVAILABLE` | `perps_rate_limited` | the provider rate-limited this service | only when the provider supplied a usable value |
 | 502 | `UPSTREAM_UNAVAILABLE` | `perps_unavailable` | the provider could not be read, or the prices held are older than their freshness ceiling | no |
 
-The API key rate limit described on the API reference home page applies to these routes as to any other; a 429 from that limit carries no `perps_capacity` reason. On a `perps_capacity` response the `RateLimit-*` headers still describe your key's limit, and `Retry-After` describes the Perps budget. That budget is shared by every caller of the deployment.
+The API key rate limit described on the API reference home page applies to these routes as to any other; a 429 from that limit carries no `perps_capacity` reason. On a `perps_capacity` response the `RateLimit-*` headers still describe your key's limit, and `Retry-After` describes the Perps budget. That budget is shared by every caller of the deployment. One builder account can spend only part of it on order books and candles, so `perps_capacity` can also mean that your account's part is spent while other accounts are still served; `Retry-After` is the wait that applies to you in both cases.
 
 An instrument the provider hides, or one whose category the deployment does not allow, is answered exactly like one that does not exist.
