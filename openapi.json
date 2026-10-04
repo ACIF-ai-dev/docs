@@ -12105,6 +12105,19 @@
                             ],
                             "description": "The Gamma market field volume24hr, the market's trading volume over the last 24 hours, as a non-negative decimal string with no exponent and no sign, in the unit Gamma reports it in. It is the value read at syncedAt, not a live figure. Null means the volume is unknown, not zero: Gamma sent none, sent a value that is not a non-negative number or whose decimal form is longer than 64 characters, or the market was last stored before this field existed. Parse it as a decimal, not as a floating-point number."
                           },
+                          "eventStartTime": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The Gamma market field eventStartTime, as an ISO 8601 UTC timestamp. It is the value read at syncedAt, copied from that one field: a separate field from gameStartTime and endDate, never filled from them or from any other field. Null means the value is unknown: Gamma sent none, sent a value this service does not read as a timestamp with a time zone, or the market was last stored before this field existed."
+                          },
                           "translation": {
                             "anyOf": [
                               {
@@ -12149,7 +12162,8 @@
                           "groupItemTitle",
                           "icon",
                           "image",
-                          "volume24h"
+                          "volume24h",
+                          "eventStartTime"
                         ],
                         "additionalProperties": false
                       }
@@ -12668,6 +12682,19 @@
                       ],
                       "description": "The Gamma market field volume24hr, the market's trading volume over the last 24 hours, as a non-negative decimal string with no exponent and no sign, in the unit Gamma reports it in. It is the value read at syncedAt, not a live figure. Null means the volume is unknown, not zero: Gamma sent none, sent a value that is not a non-negative number or whose decimal form is longer than 64 characters, or the market was last stored before this field existed. Parse it as a decimal, not as a floating-point number."
                     },
+                    "eventStartTime": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The Gamma market field eventStartTime, as an ISO 8601 UTC timestamp. It is the value read at syncedAt, copied from that one field: a separate field from gameStartTime and endDate, never filled from them or from any other field. Null means the value is unknown: Gamma sent none, sent a value this service does not read as a timestamp with a time zone, or the market was last stored before this field existed."
+                    },
                     "translation": {
                       "anyOf": [
                         {
@@ -12712,7 +12739,8 @@
                     "groupItemTitle",
                     "icon",
                     "image",
-                    "volume24h"
+                    "volume24h",
+                    "eventStartTime"
                   ],
                   "additionalProperties": false,
                   "description": "Returns one market with its outcomes and syncedAt, possibly from cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. Without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."

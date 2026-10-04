@@ -120,7 +120,8 @@ curl "https://api.tobuilder.app/v1/markets?limit=5&category=politics" \
       "syncedAt": "2026-09-13T00:00:00.000Z",
       "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/example-icon.png",
       "image": null,
-      "volume24h": "2672.1804860000007"
+      "volume24h": "2672.1804860000007",
+      "eventStartTime": "2026-10-02T10:10:00.000Z"
     }
   ],
   "total": 1,
@@ -178,6 +179,15 @@ Each market, in the list and from `GET /v1/markets/{marketId}`, carries `volume2
 - **It is as fresh as the catalog sync.** The value is read when the sync stores the market, not when you call; the market's own `syncedAt` is the time of that reading.
 - **Game markets.** Moneyline game markets are in this list and get the value from the same sync as every other listed market. Totals and spreads markets are not in this list; `GET /v1/markets/{marketId}` serves them from a separate sync of Gamma's event data, which refreshes on its own schedule, and in the samples of that data this service has kept Gamma left the value out of most of them, so expect `null` there often.
 - **Unit.** The value is passed through without conversion. The Gamma data this service reads does not state a unit; the service treats Gamma's volume figures as US dollars.
+
+### Event start time
+
+Each market, in the list and from `GET /v1/markets/{marketId}`, carries `eventStartTime`: the Gamma market field of the same name, as an ISO 8601 UTC timestamp such as `2026-10-02T10:10:00.000Z`, or `null`.
+
+- **It is no other field.** The service copies Gamma's `eventStartTime` into it and nothing else. It is separate from `gameStartTime` and `endDate` and is never filled from them, so the two start times of one market are not guaranteed to be equal. The service passes on the instant Gamma reports under that name and adds no meaning of its own; compare it with the markets you show before you build a countdown on it.
+- **`null` means unknown.** Gamma sent no value for the market, sent one that is not a timestamp with a time zone, or the market was last stored before this field existed. Handle `null` as an ordinary case, not as an error, and do not show another field in its place without deciding that yourself.
+- **It is as fresh as the catalog sync.** The value is read when the sync stores the market, not when you call; the market's own `syncedAt` is the time of that reading.
+- **Game markets.** Totals and spreads markets are not in this list; `GET /v1/markets/{marketId}` serves them from a separate sync of Gamma's event data. In the samples of that data this service has kept, Gamma sent the field on none of them, so expect `null` there.
 
 ## Read the order book
 
