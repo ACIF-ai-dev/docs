@@ -36,12 +36,18 @@ Client frames use `op` as their discriminator, not `type`:
 ```
 
 ```json
+{"op":"subscribe","tokenIds":["token-id"],"trades":true}
+```
+
+```json
 {"op":"unsubscribe","tokenIds":["token-id"]}
 ```
 
 ```json
 {"op":"ping"}
 ```
+
+`trades` is optional and opts those tokens into `trade` frames (see **Trade frames** below); the only accepted value is `true`. A `subscribe` without it behaves exactly as it did before the flag existed.
 
 `subscribe` and `unsubscribe` each require from **1** through **200** token IDs. Each token ID is a string from **1** through **128** characters. A WebSocket frame can be at most **65536** bytes (**64 KiB**).
 
@@ -76,6 +82,10 @@ Server frames use `type` as their discriminator:
 ```
 
 ```json
+{"type":"trade","tokenId":"token-id","side":"BUY","price":"0.07","size":"1234.56","amountUsd":"86.4192","ts":1727430000123}
+```
+
+```json
 {"type":"error","code":"VALIDATION_FAILED","message":"Invalid stream frame.","details":{}}
 ```
 
@@ -93,13 +103,44 @@ The `subscribed` frame includes a snapshot for each newly subscribed token with 
 
 Resolved tokens are omitted from snapshots; obtain their resolution status and final price from REST.
 
-`new_market` does not produce a frame. This is a token-level subscription service: tokens belonging to a newly created market have, by definition, not been subscribed by any client, so there is no token-level recipient to route the event to. The service does not send upstream `book`, `price_change`, `last_trade_price`, or `tick_size_change` events; an upstream `book` only supplies a missing first price, as described above.
+`new_market` does not produce a frame. This is a token-level subscription service: tokens belonging to a newly created market have, by definition, not been subscribed by any client, so there is no token-level recipient to route the event to. The service does not send upstream `book`, `price_change`, or `tick_size_change` events; an upstream `book` only supplies a missing first price, as described above. An upstream `last_trade_price` becomes a `trade` frame only for connections that opted in, as described below.
+
+## Trade frames
+
+A `trade` frame reports one public trade on a token. It is sent only to a connection that subscribed that token with `"trades":true`; a connection that did not opt in receives no `trade` frames, and the frames it does receive are unchanged. The opt-in is per token:
+
+| You send | Effect on `trade` frames for those tokens |
+|---|---|
+| `subscribe` with `"trades":true` | On, whether or not the token was already subscribed. The reply is the usual `subscribed` frame; a token that was already subscribed is not listed in it again. |
+| `subscribe` without `trades` | No change. A token already opted in stays opted in. |
+| `unsubscribe` | Off, together with the token's `price` and `resolved` frames. |
+| `"trades"` with any value other than `true` | The whole frame is refused with `VALIDATION_FAILED`, as any invalid frame is. |
+
+The opt-in does not count against the 200-token subscription limit separately; only the tokens do.
+
+The frame has these keys and no others. They are the same keys, with the same meaning, as each element of `GET /v1/markets/{marketId}/trades`:
+
+- `tokenId`: the outcome token the trade was on.
+- `side`: `"BUY"` or `"SELL"`, as the source reports it.
+- `price`, `size`: decimal **strings** (shares for `size`), with no exponent and no trailing zeros.
+- `amountUsd`: `price` × `size` in decimal, not rounded, as a decimal string.
+- `ts`: the trade time in epoch milliseconds, from the source.
+
+`trade` frames carry no trader identity, transaction hash, or fee rate. An upstream event without a size or a trade time, or with a price or size that is not a plain decimal, is dropped rather than completed with a guessed value. Trade frames are sent as they arrive, without coalescing, and are not part of the `subscribed` snapshot. Their order relative to `price` frames is not guaranteed.
+
+A connection receives at most **50** `trade` frames in each **1000 ms** window; trades beyond that are dropped, not queued. Trade frames are also skipped while the connection's `bufferedAmount` is over half of the **4008** close threshold below. Skipped trades never count toward that close, and they never hold back a `price` frame. A busy market can therefore show gaps in the trade feed: treat it as a live tape, not a complete record.
+
+To show recent trades, read `GET /v1/markets/{marketId}/trades` when the view opens and subscribe with `"trades":true` before or right after that read, then add each `trade` frame to the top. The REST read and the stream can contain the same trade. With no trade ID or transaction hash in either, complete de-duplication is not guaranteed; dropping a frame whose `tokenId`, `side`, `price`, `size`, and `ts` all match an element already shown removes most repeats but can also drop a distinct trade with identical values.
+
+While a new version of the service is being rolled out, an instance that predates the flag ignores `"trades":true` without an error: a connection that lands on it gets the usual `subscribed` frame and no `trade` frame. Keep the REST read as the source of recent trades, and send `subscribe` with `"trades":true` again after every reconnect.
 
 ## Disconnections
 
 The service closes with **4029** when a connection limit is exceeded or when the client exceeds the frame-rate limit. It closes with **1011** when it rejects a connection, including a duplicate connection ID. It closes with **1001** during server shutdown or after the heartbeat timeout. It closes with **4008** when a client's `bufferedAmount` exceeds **1048576** bytes for **100** consecutive delivery attempts. This indicates a slow consumer; catch up on reads or reduce subscriptions before reconnecting.
 
 ## Changes
+
+2026-10-05: `subscribe` accepts an optional `"trades":true`, and opted-in tokens receive `trade` frames built from the upstream `last_trade_price` event. Connections that do not send the flag receive exactly the frames they received before.
 
 2026-09-29: Ticket issuance (`POST /v1/stream/tickets`) moved to its own rate budget, by default 600 requests per minute per builder account. It no longer counts against the per-key per-minute limit or the hourly `trade` budget.
 

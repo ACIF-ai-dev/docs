@@ -265,6 +265,33 @@ Bids and asks are returned best first: bids are sorted descending by price, whil
 
 The `/v1/markets` response returns `outcomes[].price` as a snapshot; this route returns the order book.
 
+## Read recent trades
+
+```bash
+curl "https://api.tobuilder.app/v1/markets/0x9a1c-example/trades?limit=3" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
+
+```json
+{
+  "marketId": "0x9a1c-example",
+  "fetchedAt": "2026-10-05T12:00:00.000Z",
+  "trades": [
+    { "tokenId": "71453-example", "side": "BUY", "price": "0.55", "size": "10", "amountUsd": "5.5", "ts": 1791201598000 },
+    { "tokenId": "71454-example", "side": "SELL", "price": "0.44", "size": "250", "amountUsd": "110", "ts": 1791201591000 },
+    { "tokenId": "71453-example", "side": "BUY", "price": "0.07", "size": "1234.56", "amountUsd": "86.4192", "ts": 1791201591000 }
+  ]
+}
+```
+
+Trades are returned newest first. `limit` is an integer from 1 to 50 and defaults to 10; the response can contain fewer trades.
+
+Each trade carries six keys and nothing about who traded: `tokenId` names the outcome, so read its label from the same market's `outcomes[]`. `amountUsd` is `price` × `size`, computed in decimal and not rounded; parse `price`, `size`, and `amountUsd` as decimals. `ts` is in milliseconds, but the source reports whole seconds, so several trades can share a `ts`.
+
+This is a recent sample read from the Polymarket Data API, not a complete or live feed. One read per market is served for about two seconds (`fetchedAt` is that read), and the delay between a trade and the source listing it has not been measured.
+
+A `502` whose `error.details.reason` is `trades_market_ids_missing` means the catalog does not yet hold the identifiers the source is asked with; it is not an answer that the market has no trades. An empty `trades` array is that answer.
+
 ## Browse sports games
 
 ```bash
