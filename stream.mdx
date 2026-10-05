@@ -134,11 +134,82 @@ To show recent trades, read `GET /v1/markets/{marketId}/trades` when the view op
 
 While a new version of the service is being rolled out, an instance that predates the flag ignores `"trades":true` without an error: a connection that lands on it gets the usual `subscribed` frame and no `trade` frame. Keep the REST read as the source of recent trades, and send `subscribe` with `"trades":true` again after every reconnect.
 
+## Perps frames
+
+Perps instruments use their own operations on the same connection:
+
+```json
+{"op":"subscribePerps","instrumentIds":["12","7"]}
+```
+
+```json
+{"op":"subscribePerps","instrumentIds":["12"],"trades":true}
+```
+
+```json
+{"op":"unsubscribePerps","instrumentIds":["7"]}
+```
+
+`subscribePerps` and `unsubscribePerps` each require from **1** through **10** `instrumentIds`, each an `instrumentId` string as listed by `GET /v1/perps/instruments`. An identifier that is not a decimal string of that form (no sign, no leading zero) refuses the whole frame with `VALIDATION_FAILED`; a well-formed identifier is not checked against the list, and one that names no instrument is held and counted like any other but receives no `perpsPrice` or `perpsTrade` frames. An identifier listed twice counts once. A connection holds at most **10** instruments at a time: a `subscribePerps` that would hold more is refused with an `error` frame whose `code` is `RATE_LIMITED` and whose `details` carry `reason` `perps_subscription_limit`, `currentSubscriptions`, and `requestedSubscriptions`. The token operations above are unchanged. Tokens and Perps instruments are counted separately: neither counts against the other's limit.
+
+`trades` is optional and opts the listed instruments into `perpsTrade` frames; the only accepted value is `true`, and any other value refuses the whole frame with `VALIDATION_FAILED`. It turns trades on for every listed instrument, including one the connection already holds. A `subscribePerps` without it leaves trades as they were. `unsubscribePerps` turns off an instrument's prices and trades together.
+
+The reply to `subscribePerps` is a `perpsSubscribed` frame:
+
+```json
+{"type":"perpsSubscribed","instrumentIds":["12"],"snapshot":[{"instrumentId":"12","lastPrice":"118630.5","markPrice":"118633.00","indexPrice":"118631.10","fundingRate":"-0.0000125","nextFundingTs":1790003600000,"ts":1790000000400}],"trades":[{"instrumentId":"12","side":"long","price":"118630.5","quantity":"0.015","amountUsd":"1779.4575","ts":1790000000500},{"instrumentId":"12","side":"short","price":"118629","quantity":"0.2","amountUsd":"23725.8","ts":1790000000450}],"feed":"live"}
+```
+
+- `instrumentIds`: the instruments this frame added. An instrument the connection already holds is not listed again.
+- `snapshot`: for each instrument in `instrumentIds` that the service has a price for, that price in the shape of a `perpsPrice` frame without `type`. An instrument without one is omitted; read its `ticker` from `GET /v1/perps/instruments` for an initial value.
+- `trades`: only when the frame carried `"trades":true`. For each instrument whose trades this frame turned on, up to **5** of its most recent public trades, newest first, each in the shape of a `perpsTrade` frame without `type`. An instrument whose trades were already on is not listed again.
+- `feed`: `"live"` or `"interrupted"`, the state of the service's Perps upstream when the frame was sent.
+
+Later frames:
+
+```json
+{"type":"perpsPrice","instrumentId":"12","lastPrice":"118630.5","markPrice":"118633.00","indexPrice":"118631.10","fundingRate":"-0.0000125","nextFundingTs":1790003600000,"ts":1790000000400}
+```
+
+```json
+{"type":"perpsTrade","instrumentId":"12","side":"short","price":"118640","quantity":"1","amountUsd":"118640","ts":1790000000900}
+```
+
+```json
+{"type":"perpsUnsubscribed","instrumentIds":["12"]}
+```
+
+```json
+{"type":"perpsFeed","state":"interrupted","ts":1790000001000}
+```
+
+A `perpsPrice` frame carries the values of an instrument's `ticker` in `GET /v1/perps/instruments`, with the same key names and notation: `lastPrice`, `markPrice`, `indexPrice`, and `fundingRate` are decimal **strings** exactly as the source reports them, trailing zeros included, and `fundingRate` can be negative. `nextFundingTs` is epoch milliseconds, and `ts` is the time of the source frame in epoch milliseconds. The service sends at most one `perpsPrice` frame per instrument every **250 ms**, with the newest values in that window, and only when at least one of `lastPrice`, `markPrice`, `indexPrice`, `fundingRate`, and `nextFundingTs` changed. A price the service cannot read in full is not sent rather than completed with a guessed value.
+
+A `perpsTrade` frame reports one public trade on an instrument the connection holds with `"trades":true`. If the service carries no trades for an instrument, `"trades":true` is accepted for it, but its `trades` list stays empty and no `perpsTrade` frame arrives. Besides `type`, the frame has these keys and no others:
+
+- `instrumentId`: the instrument the trade was on.
+- `side`: `"long"` or `"short"`, as the source reports it.
+- `price`, `quantity`: decimal **strings** (base-asset units for `quantity`), with no exponent and no trailing zeros. This notation differs from `perpsPrice`, which keeps the source's text.
+- `amountUsd`: `price` × `quantity` in decimal, not rounded, as a decimal string.
+- `ts`: the trade time in epoch milliseconds, from the source.
+
+`perpsTrade` frames carry no trade identifier, trader identity, or transaction hash. A trade the service cannot read in full is dropped rather than completed with a guessed value. At most **50** `perpsTrade` frames are sent per connection in each **1000 ms** window, counted apart from `trade` frames; trades beyond that are dropped, not queued. Like `trade` frames, they are skipped while the connection's `bufferedAmount` is over half of the slow-consumer threshold in **Disconnections**, and skipped trades never count toward that close. `perpsPrice` frames follow the buffer rule of `price` frames and count toward the same close. Treat the trades as a live tape, not a complete record.
+
+A trade listed in `perpsSubscribed.trades` is not sent again as a `perpsTrade` frame, and a trade the source repeats after the service reconnects to it is dropped. The list in `perpsSubscribed.trades` is the instrument's recent trades, not only the ones this connection has not seen: after your own reconnect, or after `unsubscribePerps` followed by a new `subscribePerps` with `"trades":true`, replace your trade list with the new `trades` rather than adding to it. Recent trades are kept in memory only: after the service restarts, the list holds only the trades it has read since.
+
+A `perpsUnsubscribed` frame lists the instruments that `unsubscribePerps` let go of; an instrument the connection did not hold is left out.
+
+`perpsFeed` reports the service's own Perps upstream: `"interrupted"` whenever the upstream is not delivering, including while the service is starting, and `"live"` when it delivers. A connection that subscribes during start-up can therefore see `"interrupted"` followed by a first `"live"`. It is sent only when that state changes, and only to connections that hold at least one Perps instrument. After `"live"`, the next price of each held instrument is sent even when it did not change. Trades during an interruption are not sent later. Show a live indicator from `perpsSubscribed.feed` and `perpsFeed`, not from the arrival of frames.
+
+When Perps market data is not open on this deployment, `subscribePerps` is answered with an `error` frame whose `code` is `NOT_FOUND` and whose `details.reason` is `perps_not_open`, and `unsubscribePerps` is answered with a `perpsUnsubscribed` frame with an empty `instrumentIds`. While a new version of the service is being rolled out, an instance that predates these operations answers both with `VALIDATION_FAILED`; send `subscribePerps` again after every reconnect.
+
 ## Disconnections
 
 The service closes with **4029** when a connection limit is exceeded or when the client exceeds the frame-rate limit. It closes with **1011** when it rejects a connection, including a duplicate connection ID. It closes with **1001** during server shutdown or after the heartbeat timeout. It closes with **4008** when a client's `bufferedAmount` exceeds **1048576** bytes for **100** consecutive delivery attempts. This indicates a slow consumer; catch up on reads or reduce subscriptions before reconnecting.
 
 ## Changes
+
+2026-10-06: Perps live prices and trades: the `subscribePerps` and `unsubscribePerps` operations and the `perpsSubscribed`, `perpsUnsubscribed`, `perpsPrice`, `perpsTrade`, and `perpsFeed` frames (see **Perps frames**). Token operations and frames did not change: a connection that does not send the new operations receives exactly the frames it received before.
 
 2026-10-05: `subscribe` accepts an optional `"trades":true`, and opted-in tokens receive `trade` frames built from the upstream `last_trade_price` event. Connections that do not send the flag receive exactly the frames they received before.
 
