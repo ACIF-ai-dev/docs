@@ -11872,7 +11872,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache. The list holds only the markets the catalog sync keeps in scope: moneyline game markets from shortly before their start until shortly after it, and non-game markets above a lifetime volume threshold. A market that leaves that scope drops out of this list but is still returned by GET /v1/markets/{marketId}. The list is ordered most recently synced first and, among markets synced together, by marketId, so paging with limit and offset returns every market once while the catalog does not change between the requests; sort=volume24h orders by 24-hour volume instead. total counts the markets that match category, tag, and game, and the top-level syncedAt is the latest sync of the whole catalog whatever the filters. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. lang also adds translation, or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered.",
+            "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache. The list holds only the markets the catalog sync keeps in scope: moneyline game markets from shortly before their start until shortly after it, and non-game markets above a lifetime volume threshold. A market that leaves that scope drops out of this list but is still returned by GET /v1/markets/{marketId}. The list is ordered most recently synced first and, among markets synced together, by marketId, so paging with limit and offset returns every market once while the catalog does not change between the requests; sort=volume24h orders by 24-hour volume instead. total counts the markets that match category, tag, and game, and the top-level syncedAt is the latest sync of the whole catalog whatever the filters. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price, tokenId, and oneHourPriceChange stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. lang also adds translation, or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11935,12 +11935,24 @@
                                       "type": "null"
                                     }
                                   ]
+                                },
+                                "oneHourPriceChange": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The Gamma market field oneHourPriceChange, the price change over the last hour as Gamma computes it, passed through as a signed decimal string from -1 to 1 with no exponent; the service does not recompute it. Gamma reports one value per market, so only the first element of outcomes carries it; the second element is always null and is never derived from the first. In the samples this service has kept, the value follows the first outcome's price as a difference on the same 0 to 1 scale as price; the service has not measured Gamma's definition beyond those samples. It is the value read at syncedAt, which follows the catalog sync interval, not a live figure. Null on the first element means the change is unknown, not zero: Gamma sent none, sent a value that is not a number from -1 to 1 or whose decimal form is longer than 64 characters, or the market was last stored before this field existed or by an older version of the service. Parse it as a decimal, not as a floating-point number."
                                 }
                               },
                               "required": [
                                 "outcome",
                                 "price",
-                                "tokenId"
+                                "tokenId",
+                                "oneHourPriceChange"
                               ],
                               "additionalProperties": false
                             }
@@ -12192,7 +12204,7 @@
                     "syncedAt"
                   ],
                   "additionalProperties": false,
-                  "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache. The list holds only the markets the catalog sync keeps in scope: moneyline game markets from shortly before their start until shortly after it, and non-game markets above a lifetime volume threshold. A market that leaves that scope drops out of this list but is still returned by GET /v1/markets/{marketId}. The list is ordered most recently synced first and, among markets synced together, by marketId, so paging with limit and offset returns every market once while the catalog does not change between the requests; sort=volume24h orders by 24-hour volume instead. total counts the markets that match category, tag, and game, and the top-level syncedAt is the latest sync of the whole catalog whatever the filters. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. lang also adds translation, or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."
+                  "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache. The list holds only the markets the catalog sync keeps in scope: moneyline game markets from shortly before their start until shortly after it, and non-game markets above a lifetime volume threshold. A market that leaves that scope drops out of this list but is still returned by GET /v1/markets/{marketId}. The list is ordered most recently synced first and, among markets synced together, by marketId, so paging with limit and offset returns every market once while the catalog does not change between the requests; sort=volume24h orders by 24-hour volume instead. total counts the markets that match category, tag, and game, and the top-level syncedAt is the latest sync of the whole catalog whatever the filters. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price, tokenId, and oneHourPriceChange stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. lang also adds translation, or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."
                 }
               }
             }
@@ -12454,7 +12466,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns one market with its outcomes and syncedAt, possibly from cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. Without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered.",
+            "description": "Returns one market with its outcomes and syncedAt, possibly from cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price, tokenId, and oneHourPriceChange stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. Without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12512,12 +12524,24 @@
                                 "type": "null"
                               }
                             ]
+                          },
+                          "oneHourPriceChange": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The Gamma market field oneHourPriceChange, the price change over the last hour as Gamma computes it, passed through as a signed decimal string from -1 to 1 with no exponent; the service does not recompute it. Gamma reports one value per market, so only the first element of outcomes carries it; the second element is always null and is never derived from the first. In the samples this service has kept, the value follows the first outcome's price as a difference on the same 0 to 1 scale as price; the service has not measured Gamma's definition beyond those samples. It is the value read at syncedAt, which follows the catalog sync interval, not a live figure. Null on the first element means the change is unknown, not zero: Gamma sent none, sent a value that is not a number from -1 to 1 or whose decimal form is longer than 64 characters, or the market was last stored before this field existed or by an older version of the service. Parse it as a decimal, not as a floating-point number."
                           }
                         },
                         "required": [
                           "outcome",
                           "price",
-                          "tokenId"
+                          "tokenId",
+                          "oneHourPriceChange"
                         ],
                         "additionalProperties": false
                       }
@@ -12743,7 +12767,7 @@
                     "eventStartTime"
                   ],
                   "additionalProperties": false,
-                  "description": "Returns one market with its outcomes and syncedAt, possibly from cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price and tokenId stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. Without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."
+                  "description": "Returns one market with its outcomes and syncedAt, possibly from cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price, tokenId, and oneHourPriceChange stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. Without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."
                 }
               }
             }
