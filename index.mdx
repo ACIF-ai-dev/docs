@@ -29,7 +29,7 @@ A key's scope decides which route prefixes it may call. Scopes are cumulative �
 
 | Scope | Adds | Use it for |
 |---|---|---|
-| `bot-read` | `/v1/markets`, `/v1/me`, `/v1/sports`, `/v1/perps/instruments` | reading market data and checking the key itself |
+| `bot-read` | `/v1/markets`, `/v1/me`, `/v1/sports`, `/v1/perps/instruments`, `/v1/events` | reading market data and checking the key itself |
 | `bot-link` | `/v1/users`, `/v1/onboarding`, `/v1/webhooks/endpoints` | linking your users, onboarding their wallets, and registering or rotating webhook endpoints |
 | `trade` | `/v1/deposit`, `/v1/orders`, `/v1/withdrawals`, `/v1/webhooks/deliveries`, `/v1/stream` | deposits, order flow, withdrawals, webhook delivery operations, and the streaming surface |
 
@@ -291,6 +291,85 @@ Each trade carries six keys and nothing about who traded: `tokenId` names the ou
 This is a recent sample read from the Polymarket Data API, not a complete or live feed. One read per market is served for about two seconds (`fetchedAt` is that read), and the delay between a trade and the source listing it has not been measured.
 
 A `502` whose `error.details.reason` is `trades_market_ids_missing` means the catalog does not yet hold the identifiers the source is asked with; it is not an answer that the market has no trades. An empty `trades` array is that answer.
+
+## Read price history
+
+```bash
+curl "https://api.tobuilder.app/v1/markets/516710/price-history?range=1w" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
+
+```json
+{
+  "marketId": "516710",
+  "range": "1w",
+  "outcomes": [
+    {
+      "outcome": "Yes",
+      "tokenId": "8501497159083948713316135768103773293754490207922884688769443031624417212426",
+      "status": "ok",
+      "fetchedAt": "2026-10-06T03:00:00.000Z",
+      "points": [
+        { "ts": 1790330400000, "price": "0.535" },
+        { "ts": 1790334000000, "price": "0.54" }
+      ]
+    },
+    {
+      "outcome": "No",
+      "tokenId": "8501497159083948713316135768103773293754490207922884688769443031624417212427",
+      "status": "ok",
+      "fetchedAt": "2026-10-06T03:00:00.000Z",
+      "points": [
+        { "ts": 1790330400000, "price": "0.465" },
+        { "ts": 1790334000000, "price": "0.46" }
+      ]
+    }
+  ]
+}
+```
+
+```bash
+curl "https://api.tobuilder.app/v1/events/903193/price-history?range=1w" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
+
+```json
+{
+  "eventId": "903193",
+  "range": "1w",
+  "series": [
+    {
+      "marketId": "516710",
+      "groupItemTitle": "$90K–$100K",
+      "outcome": "Yes",
+      "tokenId": "8501497159083948713316135768103773293754490207922884688769443031624417212426",
+      "status": "ok",
+      "fetchedAt": "2026-10-06T03:00:00.000Z",
+      "points": [{ "ts": 1790330400000, "price": "0.41" }]
+    },
+    {
+      "marketId": "516711",
+      "groupItemTitle": "$80K–$90K",
+      "outcome": "Yes",
+      "tokenId": "1234567890",
+      "status": "unavailable",
+      "fetchedAt": null,
+      "points": []
+    }
+  ],
+  "omitted": 0
+}
+```
+
+`GET /v1/markets/{marketId}/price-history` returns past prices of a market's outcomes, and `GET /v1/events/{eventId}/price-history` returns the price of the first outcome (Yes on a Yes or No market) of each market in an event, for one closed `range`: `1h`, `6h`, `1d`, `1w`, or `max` (all the history the source keeps). The resolution of each range is fixed by the service; start and end times cannot be chosen, and query keys other than `range` and `lang` are ignored. `ts` is epoch milliseconds; `price` is a probability string from 0 to 1 — parse it as a decimal; converting it to a number is acceptable only to place a point on a chart. Points are in ascending `ts` order, with at most one point per `ts` and at most 1000 points per series. `eventId` is the `event.id` of a market in `GET /v1/markets`.
+
+**Joining the live tail.** History is served from a cache and from Polymarket's own CDN, so its last point can be a few minutes old; `fetchedAt` says when each series was read. Continue the line with the `price` frames of `/v1/stream`: a display point is the midpoint of `bestBid` and `bestAsk`, and a frame where either is null adds no point. History points and stream frames come from different sources, so the line can step where they meet.
+
+**Empty is not an error.** An empty `points` array means there was no price in that range — a new market, or a token Polymarket has no history for. `status: no_token` means the outcome has no token. In an event response, `status: unavailable` means that one market could not be read this time; its line is left empty rather than filled with an older value.
+
+**Which markets an event response covers.** The series are the markets of the event that this service's catalog lists, at most 8, ordered by the current price of that first outcome; `omitted` counts the listed markets cut by that cap. Because prices move, the order can change from one request to the next — key colours and legend entries by `marketId`, not by position. Markets of the event that the catalog does not list — the catalog keeps markets above a trading-volume threshold — are not included and not counted.
+
+**When it is not available.** A 404 with `error.details.reason` `price_history_not_open` means price history is not open on this deployment; retrying does not change it. That 404 is counted against the key's per-minute limit and, for a `trade` key, its hourly budget like any other request, so stop calling the route after the first one and hide the chart until your deployment changes. A 404 without `error.details` on this path can also mean the deployment you reached does not have the route yet — do not cache it. A 429 with `price_history_limit_exceeded` or `price_history_capacity` is this service's own budget for reading Polymarket; a read answered from the cache does not spend it. Wait for `Retry-After`. Do not retry a 502 immediately; when its reason is `clob_rate_limited`, its `Retry-After` says when reads resume.
 
 ## Browse sports games
 

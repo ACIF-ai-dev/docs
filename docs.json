@@ -47,7 +47,11 @@
           },
           {
             "group": "Markets",
-            "pages": ["GET /v1/markets", "GET /v1/markets/{marketId}", "GET /v1/markets/{marketId}/book", "GET /v1/markets/{marketId}/trades", "GET /v1/markets/{marketId}/fee-preview"]
+            "pages": ["GET /v1/markets", "GET /v1/markets/{marketId}", "GET /v1/markets/{marketId}/book", "GET /v1/markets/{marketId}/trades", "GET /v1/markets/{marketId}/price-history", "GET /v1/markets/{marketId}/fee-preview"]
+          },
+          {
+            "group": "Events",
+            "pages": ["GET /v1/events/{eventId}/price-history"]
           },
           {
             "group": "Sports",

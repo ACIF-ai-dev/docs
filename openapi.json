@@ -14043,6 +14043,496 @@
         }
       }
     },
+    "/v1/markets/{marketId}/price-history": {
+      "get": {
+        "summary": "Read a market's price history",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1h",
+                "6h",
+                "1d",
+                "1w",
+                "max"
+              ]
+            },
+            "in": "query",
+            "name": "range",
+            "required": true,
+            "description": "How far back the history reaches: 1h, 6h, 1d, and 1w are the last hour, six hours, day, and week, and max is all the history the source keeps for the outcome. The resolution of each range is fixed by this service and cannot be chosen; free start and end times are not accepted, and query keys other than range and lang are ignored. The value is matched exactly and case-sensitive: any other value, or a missing or repeated range, is VALIDATION_FAILED."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "lang",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "path",
+            "name": "marketId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns past prices of this market's outcomes over one range, read from Polymarket's price history. Each outcome's series can be served from a cache, for longer on the longer ranges, and the source's own CDN can add to that, so the last point is not a live price; fetchedAt says when each series was read. Continue the line with the price frames of /v1/stream. History points and stream frames come from different sources, so the line can step where they meet. lang localizes each outcomes[].outcome label through the same fixed per-language dictionary as GET /v1/markets, changing only the label so tokenId and points stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. This route does not add a translation field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "marketId": {
+                      "type": "string"
+                    },
+                    "range": {
+                      "type": "string",
+                      "enum": [
+                        "1h",
+                        "6h",
+                        "1d",
+                        "1w",
+                        "max"
+                      ],
+                      "description": "The range that was asked for."
+                    },
+                    "outcomes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "outcome": {
+                            "type": "string"
+                          },
+                          "tokenId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The outcome's CTF token ID as a decimal string, the one GET /v1/markets/{marketId} returns for it. Null when the outcome has no token ID, or one that is not a decimal string; status is then no_token."
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "ok",
+                              "no_token"
+                            ],
+                            "description": "ok when the history was read, also when it has no point; no_token when tokenId is null. No other value is returned."
+                          },
+                          "fetchedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "When this service read the series from the source, as an ISO 8601 timestamp. It stays that time while the series is served from the cache, so it can be older than the response and differ between the outcomes. Null when status is no_token."
+                          },
+                          "points": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "ts": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "The time of the price, in milliseconds since the Unix epoch. The source reports whole seconds, so the last three digits are 000."
+                                },
+                                "price": {
+                                  "type": "string",
+                                  "description": "The price at ts, a probability from 0 to 1 inclusive, as a plain decimal string with no exponent: the source's value written out in full, not rounded. Parse it as a decimal; converting it to a number is acceptable only to place a point on a chart."
+                                }
+                              },
+                              "required": [
+                                "ts",
+                                "price"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "Past prices in ascending ts order, with at most one point per ts and at most 1000 points (the most recent ones when the source has more). An empty array is a normal answer: the source has no price for this outcome in the range, as for a new market. A point the service cannot read as a time and a probability from 0 to 1 is left out."
+                          }
+                        },
+                        "required": [
+                          "outcome",
+                          "tokenId",
+                          "status",
+                          "fetchedAt",
+                          "points"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "The market's outcomes in the order GET /v1/markets/{marketId} returns them, at most 2."
+                    }
+                  },
+                  "required": [
+                    "marketId",
+                    "range",
+                    "outcomes"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Returns past prices of this market's outcomes over one range, read from Polymarket's price history. Each outcome's series can be served from a cache, for longer on the longer ranges, and the source's own CDN can add to that, so the last point is not a live price; fetchedAt says when each series was read. Continue the line with the price frames of /v1/stream. History points and stream frames come from different sources, so the line can step where they meet. lang localizes each outcomes[].outcome label through the same fixed per-language dictionary as GET /v1/markets, changing only the label so tokenId and points stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. This route does not add a translation field."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "While price history is open, a missing or repeated range, a range other than 1h, 6h, 1d, 1w, or max (matched exactly and case-sensitive), an empty marketId, or an invalid lang produces error.code VALIDATION_FAILED with error.details omitted. While it is not open, each of these is answered with the 404 price_history_not_open instead.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "While price history is open, a missing or repeated range, a range other than 1h, 6h, 1d, 1w, or max (matched exactly and case-sensitive), an empty marketId, or an invalid lang produces error.code VALIDATION_FAILED with error.details omitted. While it is not open, each of these is answered with the 404 price_history_not_open instead."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/markets through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/markets through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "error.code is NOT_FOUND. With error.details.reason price_history_not_open, price history is not open on this deployment: that answer comes before the query and the identifier are checked or anything is looked up, carries no Retry-After, and retrying does not change it, so stop asking until the deployment changes. It is counted against the API key's rate limits like any other request. Without error.details, the repository has no market for the requested identifier; on this path a 404 without error.details can also come from a deployment that does not have the route yet, so do not cache it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is NOT_FOUND. With error.details.reason price_history_not_open, price history is not open on this deployment: that answer comes before the query and the identifier are checked or anything is looked up, carries no Retry-After, and retrying does not change it, so stop asking until the deployment changes. It is counted against the API key's rate limits like any other request. Without error.details, the repository has no market for the requested identifier; on this path a 404 without error.details can also come from a deployment that does not have the route yet, so do not cache it."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After. This operation also has a budget of its own for reading price history from Polymarket, and only a read that calls Polymarket counts against it; an answer from the cache does not. When that budget refuses, error.details.reason is price_history_limit_exceeded if this subbuilder's share of it is used up, or price_history_capacity if the deployment's is; Polymarket was not called. Both carry Retry-After, from 1 to 60 seconds, and their RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset describe the API key's rate limits, not this budget.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After. This operation also has a budget of its own for reading price history from Polymarket, and only a read that calls Polymarket counts against it; an answer from the cache does not. When that budget refuses, error.details.reason is price_history_limit_exceeded if this subbuilder's share of it is used up, or price_history_capacity if the deployment's is; Polymarket was not called. Both carry Retry-After, from 1 to 60 seconds, and their RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset describe the API key's rate limits, not this budget."
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "error.code is UPSTREAM_UNAVAILABLE and no outcome is returned: the price history of at least one outcome could not be read, and an older value is not served instead. error.details.reason is clob_rate_limited when Polymarket limited this service's calls, with Retry-After from 1 to 60 seconds saying when calls resume, and clob_unavailable for any other failure; a failed read is answered the same way for a few seconds without asking Polymarket again. When the outcomes failed differently, clob_rate_limited is returned. Do not retry immediately.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is UPSTREAM_UNAVAILABLE and no outcome is returned: the price history of at least one outcome could not be read, and an older value is not served instead. error.details.reason is clob_rate_limited when Polymarket limited this service's calls, with Retry-After from 1 to 60 seconds saying when calls resume, and clob_unavailable for any other failure; a failed read is answered the same way for a few seconds without asking Polymarket again. When the outcomes failed differently, clob_rate_limited is returned. Do not retry immediately."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/markets/{marketId}/fee-preview": {
       "get": {
         "summary": "Preview the fee for an order",
@@ -14486,6 +14976,515 @@
                   ],
                   "additionalProperties": false,
                   "description": "Gamma fee schedule failures produce error.details.reason fee_schedule_absent, fee_schedule_schema_invalid, fee_schedule_value_invalid, gamma_rate_limited, or gamma_unavailable. Retry-After is returned when supplied by Gamma."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/events/{eventId}/price-history": {
+      "get": {
+        "summary": "Read an event's price history",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1h",
+                "6h",
+                "1d",
+                "1w",
+                "max"
+              ]
+            },
+            "in": "query",
+            "name": "range",
+            "required": true,
+            "description": "How far back the history reaches: 1h, 6h, 1d, and 1w are the last hour, six hours, day, and week, and max is all the history the source keeps for the outcome. The resolution of each range is fixed by this service and cannot be chosen; free start and end times are not accepted, and query keys other than range and lang are ignored. The value is matched exactly and case-sensitive: any other value, or a missing or repeated range, is VALIDATION_FAILED."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "lang",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "in": "path",
+            "name": "eventId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns past prices of the first outcome (Yes on a Yes or No market) of each market of this event over one range, one series per market, for drawing the event's markets on one chart. The series are the markets of the event that this service's catalog lists, at most 8, ordered by their current price; omitted counts the listed markets the cap left out. Markets of the event the catalog does not list (the catalog keeps markets above a lifetime volume threshold) are neither included nor counted. Because prices move, the order can change from one request to the next: key colours and legend entries by marketId, not by position. Each series can be served from a cache, for longer on the longer ranges, and the source's own CDN can add to that, so the last point is not a live price; fetchedAt says when each series was read. Continue the lines with the price frames of /v1/stream. History points and stream frames come from different sources, so a line can step where they meet. A series whose history could not be read this time has status unavailable and no point, and the others are still returned. lang localizes each series[].outcome label through the same fixed per-language dictionary as GET /v1/markets, changing only the label so tokenId and points stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. groupItemTitle is not translated, and this route does not add a translation field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "eventId": {
+                      "type": "string"
+                    },
+                    "range": {
+                      "type": "string",
+                      "enum": [
+                        "1h",
+                        "6h",
+                        "1d",
+                        "1w",
+                        "max"
+                      ],
+                      "description": "The range that was asked for."
+                    },
+                    "series": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "marketId": {
+                            "type": "string",
+                            "description": "The market this series belongs to, the identifier GET /v1/markets/{marketId} takes. The order of the series can change from one request to the next, so key colours and legend entries by marketId, not by position."
+                          },
+                          "groupItemTitle": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The market's label within the event as the catalog holds it, the value GET /v1/markets/{marketId} returns; lang does not translate it. Null when the catalog has none."
+                          },
+                          "outcome": {
+                            "type": "string",
+                            "description": "The label of the market's first outcome, Yes on a Yes or No market, whose price the series is. lang localizes it through the same fixed per-language dictionary as GET /v1/markets."
+                          },
+                          "tokenId": {
+                            "type": "string",
+                            "description": "The first outcome's CTF token ID as a decimal string, the one GET /v1/markets/{marketId} returns for it. A market whose first outcome has no such token ID has no series."
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "ok",
+                              "unavailable"
+                            ],
+                            "description": "ok when the history was read, also when it has no point; unavailable when this market's history could not be read this time, and points is then empty rather than filled with an older value. No other value is returned."
+                          },
+                          "fetchedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "When this service read the series from the source, as an ISO 8601 timestamp. It stays that time while the series is served from the cache, so it can be older than the response and differ between the series. Null when status is unavailable."
+                          },
+                          "points": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "ts": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "The time of the price, in milliseconds since the Unix epoch. The source reports whole seconds, so the last three digits are 000."
+                                },
+                                "price": {
+                                  "type": "string",
+                                  "description": "The price at ts, a probability from 0 to 1 inclusive, as a plain decimal string with no exponent: the source's value written out in full, not rounded. Parse it as a decimal; converting it to a number is acceptable only to place a point on a chart."
+                                }
+                              },
+                              "required": [
+                                "ts",
+                                "price"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "Past prices of the first outcome in ascending ts order, with at most one point per ts and at most 1000 points (the most recent ones when the source has more). An empty array with status ok is a normal answer: the source has no price for it in the range, as for a new market. A point the service cannot read as a time and a probability from 0 to 1 is left out."
+                          }
+                        },
+                        "required": [
+                          "marketId",
+                          "groupItemTitle",
+                          "outcome",
+                          "tokenId",
+                          "status",
+                          "fetchedAt",
+                          "points"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "One series per market of the event that this service's catalog lists and whose first outcome has a token ID, at most 8: the ones whose first outcome has the highest current price in the catalog, highest first, and by marketId when prices are equal. At least one; an event without such a market is a 404."
+                    },
+                    "omitted": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "How many more of those markets the cap of 8 left out. Markets of the event the catalog does not list are not in series and not counted. An event with very many listed markets is read in part: series are chosen among the markets read, and every listed market not read is counted here."
+                    }
+                  },
+                  "required": [
+                    "eventId",
+                    "range",
+                    "series",
+                    "omitted"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Returns past prices of the first outcome (Yes on a Yes or No market) of each market of this event over one range, one series per market, for drawing the event's markets on one chart. The series are the markets of the event that this service's catalog lists, at most 8, ordered by their current price; omitted counts the listed markets the cap left out. Markets of the event the catalog does not list (the catalog keeps markets above a lifetime volume threshold) are neither included nor counted. Because prices move, the order can change from one request to the next: key colours and legend entries by marketId, not by position. Each series can be served from a cache, for longer on the longer ranges, and the source's own CDN can add to that, so the last point is not a live price; fetchedAt says when each series was read. Continue the lines with the price frames of /v1/stream. History points and stream frames come from different sources, so a line can step where they meet. A series whose history could not be read this time has status unavailable and no point, and the others are still returned. lang localizes each series[].outcome label through the same fixed per-language dictionary as GET /v1/markets, changing only the label so tokenId and points stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. groupItemTitle is not translated, and this route does not add a translation field."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "While price history is open, a missing or repeated range, a range other than 1h, 6h, 1d, 1w, or max (matched exactly and case-sensitive), an eventId holding anything other than letters, digits, hyphens, and underscores, or an invalid lang produces error.code VALIDATION_FAILED with error.details omitted. While it is not open, each of these is answered with the 404 price_history_not_open instead.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "While price history is open, a missing or repeated range, a range other than 1h, 6h, 1d, 1w, or max (matched exactly and case-sensitive), an eventId holding anything other than letters, digits, hyphens, and underscores, or an invalid lang produces error.code VALIDATION_FAILED with error.details omitted. While it is not open, each of these is answered with the 404 price_history_not_open instead."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/events through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/events through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "error.code is NOT_FOUND. With error.details.reason price_history_not_open, price history is not open on this deployment: that answer comes before the query and the identifier are checked or anything is looked up, carries no Retry-After, and retrying does not change it, so stop asking until the deployment changes. It is counted against the API key's rate limits like any other request. Without error.details, the catalog lists no market of this event whose first outcome has a token ID; on this path a 404 without error.details can also come from a deployment that does not have the route yet, so do not cache it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is NOT_FOUND. With error.details.reason price_history_not_open, price history is not open on this deployment: that answer comes before the query and the identifier are checked or anything is looked up, carries no Retry-After, and retrying does not change it, so stop asking until the deployment changes. It is counted against the API key's rate limits like any other request. Without error.details, the catalog lists no market of this event whose first outcome has a token ID; on this path a 404 without error.details can also come from a deployment that does not have the route yet, so do not cache it."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After. This operation also has a budget of its own for reading price history from Polymarket, and only a read that calls Polymarket counts against it; an answer from the cache does not. When that budget refuses, error.details.reason is price_history_limit_exceeded if this subbuilder's share of it is used up, or price_history_capacity if the deployment's is; Polymarket was not called. Both carry Retry-After, from 1 to 60 seconds, and their RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset describe the API key's rate limits, not this budget.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After. This operation also has a budget of its own for reading price history from Polymarket, and only a read that calls Polymarket counts against it; an answer from the cache does not. When that budget refuses, error.details.reason is price_history_limit_exceeded if this subbuilder's share of it is used up, or price_history_capacity if the deployment's is; Polymarket was not called. Both carry Retry-After, from 1 to 60 seconds, and their RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset describe the API key's rate limits, not this budget."
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "error.code is UPSTREAM_UNAVAILABLE and no series is returned: the price history of every series failed to be read, and an older value is not served instead (when only some fail, the answer is 200 with those series unavailable). error.details.reason is clob_rate_limited when Polymarket limited this service's calls, with Retry-After from 1 to 60 seconds saying when calls resume, and clob_unavailable for any other failure; a failed read is answered the same way for a few seconds without asking Polymarket again. When the series failed differently, clob_rate_limited is returned. Do not retry immediately.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is UPSTREAM_UNAVAILABLE and no series is returned: the price history of every series failed to be read, and an older value is not served instead (when only some fail, the answer is 200 with those series unavailable). error.details.reason is clob_rate_limited when Polymarket limited this service's calls, with Retry-After from 1 to 60 seconds saying when calls resume, and clob_unavailable for any other failure; a failed read is answered the same way for a few seconds without asking Polymarket again. When the series failed differently, clob_rate_limited is returned. Do not retry immediately."
                 }
               }
             }
