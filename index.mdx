@@ -67,11 +67,11 @@ Operations that act on behalf of one of your end users need a second credential,
 
 ## Rate limits
 
-Three budgets apply, and all of them are fixed windows rather than sliding ones. Stream ticket issuance (`POST /v1/stream/tickets`) is counted only against the third. The two market reads, `GET /v1/markets` and `GET /v1/markets/{marketId}`, are counted only against the first. Every other request is counted against the first and, when the key is a `trade` key, the second; the two apply independently.
+Three budgets apply, and all of them are fixed windows rather than sliding ones. Stream ticket issuance (`POST /v1/stream/tickets`) is counted only against the third. The three market reads, `GET /v1/markets`, `GET /v1/markets/{marketId}` and `GET /v1/markets/rounds`, are counted only against the first. Every other request is counted against the first and, when the key is a `trade` key, the second; the two apply independently.
 
 **Per key, per minute.** Every request except stream ticket issuance is counted against the key's own per-minute limit. `GET /v1/me` reports that limit as `rateLimitPerMinute`. Responses that reach the limiter carry `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset`.
 
-**Per account, per hour, for `trade` keys.** A `trade`-scope key is additionally limited to 600 requests per hour by default, counted per builder account in a window that resets at the top of the hour. Two reads are outside this budget: `GET /v1/markets` and `GET /v1/markets/{marketId}` are not counted against it and are not rejected when it is exhausted, so an account whose orders this budget is refusing can still read its market list; the per-minute limit still applies to both. Nothing else under `/v1/markets` is outside it — a market's order book and fee preview count. Every other request except stream ticket issuance counts against the budget — including the other GET requests, and including the requests that are themselves rejected with 429 by this budget. A tight retry loop therefore spends the budget it is waiting for. Exceeding it returns **429** with `error.details.reason` set to `trade_hourly_limit_exceeded`.
+**Per account, per hour, for `trade` keys.** A `trade`-scope key is additionally limited to 600 requests per hour by default, counted per builder account in a window that resets at the top of the hour. Three reads are outside this budget: `GET /v1/markets`, `GET /v1/markets/{marketId}` and `GET /v1/markets/rounds` are not counted against it and are not rejected when it is exhausted, so an account whose orders this budget is refusing can still read its market list; the per-minute limit still applies to all three. Nothing else under `/v1/markets` is outside it — a market's order book and fee preview count. Every other request except stream ticket issuance counts against the budget — including the other GET requests, and including the requests that are themselves rejected with 429 by this budget. A tight retry loop therefore spends the budget it is waiting for. Exceeding it returns **429** with `error.details.reason` set to `trade_hourly_limit_exceeded`.
 
 **Stream tickets, per account, per minute.** `POST /v1/stream/tickets` has its own budget of 600 ticket requests per minute by default, shared by every key of the builder account, in a window that resets at the start of each minute. Issuing tickets therefore does not spend the per-minute or hourly budget your orders use. Every ticket request that reaches this budget counts — including requests rejected with 429 and requests the operation then rejects, such as an unknown `userId`. Its responses carry `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset` for this budget. Exceeding it returns **429** with `error.details.reason` set to `stream_ticket_limit_exceeded`.
 
@@ -382,6 +382,62 @@ A game is the Gamma `gameId` grouping: one game can arrive as several Gamma even
 
 Use `status` to determine game state. `period` and `elapsed` are display strings, not state values. This API rereads live games about once a minute, subject to response caching; use a faster live-data source if that freshness is not suitable. On 2026-09-27, Gamma updates were observed slower than 30 seconds. Ended games can remain in the list briefly. Gamma had no country field on that date, so use league and team fields where they fit your product.
 
+## Crypto rounds
+
+```bash
+curl "https://api.tobuilder.app/v1/markets/rounds?asset=BTC&interval=5m" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
+
+```json
+{
+  "data": [
+    {
+      "asset": "BTC",
+      "interval": "5m",
+      "state": "ok",
+      "fetchedAt": "2026-10-02T10:12:03.000Z",
+      "current": {
+        "marketId": "516710",
+        "eventId": "903193",
+        "slug": "btc-updown-5m-1790935800",
+        "eventStartTime": "2026-10-02T10:10:00.000Z",
+        "endDate": "2026-10-02T10:15:00.000Z",
+        "status": "live",
+        "targetPrice": null,
+        "targetPriceSource": null,
+        "outcomes": [
+          { "outcome": "Up", "tokenId": "71453-example" },
+          { "outcome": "Down", "tokenId": "71454-example" }
+        ],
+        "winningOutcome": null
+      },
+      "next": [
+        { "marketId": "516711", "eventId": "903194", "slug": "btc-updown-5m-1790936100", "eventStartTime": "2026-10-02T10:15:00.000Z", "endDate": "2026-10-02T10:20:00.000Z", "status": "upcoming", "targetPrice": null, "targetPriceSource": null, "outcomes": [{ "outcome": "Up", "tokenId": "71455-example" }, { "outcome": "Down", "tokenId": "71456-example" }], "winningOutcome": null }
+      ],
+      "past": [
+        { "marketId": "516709", "eventId": "903192", "slug": "btc-updown-5m-1790935500", "eventStartTime": "2026-10-02T10:05:00.000Z", "endDate": "2026-10-02T10:10:00.000Z", "status": "resolved", "targetPrice": "118420.15", "targetPriceSource": "polymarket", "outcomes": [{ "outcome": "Up", "tokenId": "71451-example" }, { "outcome": "Down", "tokenId": "71452-example" }], "winningOutcome": "Up" }
+      ]
+    }
+  ]
+}
+```
+
+`GET /v1/markets/rounds` lists the recurring short-window crypto Up or Down markets this deployment carries. Each element of `data` is one `asset` and `interval` pair, in the order the deployment lists them, with the `current` round, up to **2** `next` rounds, soonest first, and up to **5** `past` rounds, newest first. A round is one market with two outcome tokens; `eventStartTime` and `endDate` are the start and end of its window. The values in the example are made up; only the shape is real.
+
+**Query.** Both parameters are optional; without them every pair is returned. `asset` is one asset in upper case, such as `BTC`: 1 to 10 letters or digits. `interval` is the length of the rounds, and `5m` is the only value. While rounds are open, a value of another form, a repeated parameter, or an `asset` and `interval` that select no pair this deployment carries is a 400 `VALIDATION_FAILED`.
+
+**Rounds and their status.** `status` is `upcoming` before `eventStartTime`, `live` from `eventStartTime` up to `endDate`, then `ended` until Polymarket settles the round and `resolved` once it has. The first three are computed from the two times by the service's clock when it answers; `resolved` goes with a non-null `winningOutcome`, which is one of the round's `outcomes[].outcome` labels and is `null` until then. `next` and `past` hold only rounds the service has already read, so they can be shorter than their limits, for example right after the service starts. A round's `slug` names that one round and does not change.
+
+**Target price.** `targetPrice` is the price the round resolves against, as Polymarket publishes it, in US dollars as a decimal string; the service never computes, estimates, or rounds it. Parse it as a decimal, not as a floating-point number. It is `null` before the round starts and is usually still `null` while the round is live: Polymarket fills it in around or after the end of the round. It also stays `null` when it was not published within 20 minutes of the end. `targetPriceSource` says where the value came from and is `null` exactly when `targetPrice` is. Today it is `polymarket` or `null`; `polybolt_twap` is reserved for a later live estimate and is not returned yet. A non-null `targetPrice` with `targetPriceSource` `polymarket`, and a non-null `winningOutcome`, are final: keep them, and do not overwrite them with a `null` from a later response.
+
+**Freshness.** The service reads the rounds from Polymarket on its own schedule, never because of a request, and `fetchedAt` says when it last read a round of the pair. A new target price or result reaches the list after Polymarket publishes it and the service reads it again, so it can arrive minutes after the round ends. Each instance of the service keeps its own copy of the rounds: two requests that reach different instances can disagree for a short while, which is why a final value must not be replaced by a later `null`.
+
+**Prices, trades, and settlement.** The list carries no prices. Subscribe to a round's `outcomes[].tokenId` on `/v1/stream` with `subscribe` for its `price` frames (best bid and ask), add `"trades":true` for its `trade` frames, and read its settlement from `resolved` frames. The stream also offers `subscribeRounds`, which sends the same pairs as this list and a `roundUpdate` frame whenever a round appears, changes status, gets its target price, or gets its result; see the stream guide. Subscribe to the tokens of `next[0]` before it starts, so there is no gap when it becomes `current`. A running volume for a live round is the sum of `amountUsd` over the `trade` frames you received for its tokens; the stream can drop trades on a busy connection, so treat that sum as an indication, not a settled figure.
+
+**The market routes.** These markets are not in `GET /v1/markets`. `GET /v1/markets/{marketId}` and its `/book`, `/trades`, `/price-history`, and `/fee-preview` answer for a round's `marketId` while the round is in the instance's memory — the current round, the next 2, or the past 5 of a pair — and answer 404 once it has left that window. They also answer 404 for a round whose event title, active flag, or outcome prices the service could not read, even while it is listed. A round's market has `question` and `event.title` set to the round's event title, its window in `eventStartTime` and `endDate`, and `null` or empty for what a round does not carry, such as `category`, `tags`, `volume24h`, `icon`, and `image`. Its `outcomes[].price` is a snapshot from the service's last read of the round and can be minutes old while the round is live; read live prices from the stream. Because each instance keeps its own copy, a round one instance answers can be a 404 on another: do not cache a 404 that follows a 200. With `lang=ko`, the outcome labels stay `Up` and `Down`. Orders on a round's tokens are placed like any other market's.
+
+**When it is not available.** A 404 with `error.details.reason` `rounds_not_open` means crypto rounds are not open on this deployment, and that answer comes before the query is checked; retrying does not change it, so hide the rounds view and do not cache the answer as a fact about a pair. A 404 without `error.details` can mean the instance you reached predates this route and read `rounds` as a market identifier; do not cache it. `state: "unavailable"` means the service has not yet read that pair's current round from Polymarket, and `current` is then `null`; a 502 whose `error.details.reason` is `gamma_unavailable` means no requested pair could be read. Neither carries `Retry-After`, and retrying does not cause a read; try again after a few seconds. The list is outside the hourly budget of `trade` keys (see **Rate limits**) but counts against the key's per-minute limit, and every key scope can read it.
 
 ## Preview the fee
 
@@ -533,7 +589,7 @@ A suspended account answers **403** with `error.details.reason` set to `subbuild
 
 **Nothing in this API retries for you**, and the SDK does not retry either. Three reasons:
 
-1. **Rate budget.** The hourly budget counts GET requests — all but the two market reads named under **Rate limits** — and counts rejected requests, so an automatic retry spends the budget on the failure instead of on your next real call.
+1. **Rate budget.** The hourly budget counts GET requests — all but the three market reads named under **Rate limits** — and counts rejected requests, so an automatic retry spends the budget on the failure instead of on your next real call.
 2. **Money.** `POST /v1/orders` and `POST /v1/orders/market` submit real funds. After a 5xx you do not know whether the submission was stored, so a blind retry can duplicate an order; read `GET /v1/orders` and `GET /v1/orders/fills` back before sending anything again.
 3. **429 is not uniform.** Some 429 responses carry `Retry-After` and some do not, so any single backoff policy baked into a client would be wrong for half of them.
 

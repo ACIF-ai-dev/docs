@@ -11898,7 +11898,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "Copied from the Gamma market field category. Gamma responses measured on 2026-09-26 did not include that field on markets or events, so this value and the category query filter cannot be relied on to classify markets; use event, tags, sportsMarketType, and gameStartTime instead."
+                            "description": "Copied from the Gamma market field category. Gamma responses measured on 2026-09-26 did not include that field on markets or events, so this value and the category query filter cannot be relied on to classify markets; use event, tags, sportsMarketType, and gameStartTime instead. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves."
                           },
                           "active": {
                             "type": "boolean"
@@ -11945,7 +11945,7 @@
                                       "type": "null"
                                     }
                                   ],
-                                  "description": "The Gamma market field oneHourPriceChange, the price change over the last hour as Gamma computes it, passed through as a signed decimal string from -1 to 1 with no exponent; the service does not recompute it. Gamma reports one value per market, so only the first element of outcomes carries it; the second element is always null and is never derived from the first. In the samples this service has kept, the value follows the first outcome's price as a difference on the same 0 to 1 scale as price; the service has not measured Gamma's definition beyond those samples. It is the value read at syncedAt, which follows the catalog sync interval, not a live figure. Null on the first element means the change is unknown, not zero: Gamma sent none, sent a value that is not a number from -1 to 1 or whose decimal form is longer than 64 characters, or the market was last stored before this field existed or by an older version of the service. Parse it as a decimal, not as a floating-point number."
+                                  "description": "The Gamma market field oneHourPriceChange, the price change over the last hour as Gamma computes it, passed through as a signed decimal string from -1 to 1 with no exponent; the service does not recompute it. Gamma reports one value per market, so only the first element of outcomes carries it; the second element is always null and is never derived from the first. In the samples this service has kept, the value follows the first outcome's price as a difference on the same 0 to 1 scale as price; the service has not measured Gamma's definition beyond those samples. It is the value read at syncedAt, which follows the catalog sync interval, not a live figure. Null on the first element means the change is unknown, not zero: Gamma sent none, sent a value that is not a number from -1 to 1 or whose decimal form is longer than 64 characters, or the market was last stored before this field existed or by an older version of the service. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves. Parse it as a decimal, not as a floating-point number."
                                 }
                               },
                               "required": [
@@ -12002,7 +12002,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "The first entry of the Gamma market field events (id, slug, title), or null when Gamma lists no event or the market was stored before this field existed."
+                            "description": "The first entry of the Gamma market field events (id, slug, title), or null when Gamma lists no event or the market was stored before this field existed. On a crypto round's market, which only GET /v1/markets/{marketId} serves, it is the round's event."
                           },
                           "tags": {
                             "type": "array",
@@ -12036,7 +12036,7 @@
                               ],
                               "additionalProperties": false
                             },
-                            "description": "The slug and label of each entry in the Gamma market field tags, requested with include_tag. An empty array means no tag list was received: Gamma may send none for the market, and the upstream SDK reports a missing list and an empty list the same way, so an empty array does not prove the market has no tags."
+                            "description": "The slug and label of each entry in the Gamma market field tags, requested with include_tag. An empty array means no tag list was received: Gamma may send none for the market, and the upstream SDK reports a missing list and an empty list the same way, so an empty array does not prove the market has no tags. It is always empty on a crypto round's market, which only GET /v1/markets/{marketId} serves, because this service does not read a round's tags."
                           },
                           "sportsMarketType": {
                             "anyOf": [
@@ -12071,7 +12071,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "The Gamma market field line, the handicap or total a spread or totals market is priced against; null when Gamma sends none, as for moneyline markets."
+                            "description": "The Gamma market field line, the handicap or total a spread or totals market is priced against; null when Gamma sends none, as for moneyline markets. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves."
                           },
                           "groupItemTitle": {
                             "anyOf": [
@@ -12082,7 +12082,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "The Gamma market field groupItemTitle, which names this market within its event, for example a team or a draw in a three-way soccer result; null when Gamma sends none."
+                            "description": "The Gamma market field groupItemTitle, which names this market within its event, for example a team or a draw in a three-way soccer result; null when Gamma sends none. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves."
                           },
                           "icon": {
                             "anyOf": [
@@ -12093,7 +12093,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "The Gamma market field icon, passed through as an opaque absolute https URL. Null when Gamma sends none, when the value is not an https URL on a host the catalog accepts, or when the market was last stored before this field existed. Use it only as an image source, exactly as received; do not build URLs from its host, which may change."
+                            "description": "The Gamma market field icon, passed through as an opaque absolute https URL. Null when Gamma sends none, when the value is not an https URL on a host the catalog accepts, or when the market was last stored before this field existed. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves. Use it only as an image source, exactly as received; do not build URLs from its host, which may change."
                           },
                           "image": {
                             "anyOf": [
@@ -12104,7 +12104,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "The Gamma market field image, passed through as an opaque absolute https URL; it may be the same URL as icon. Null when Gamma sends none, when the value is not an https URL on a host the catalog accepts, or when the market was last stored before this field existed. Use it only as an image source, exactly as received; do not build URLs from its host, which may change."
+                            "description": "The Gamma market field image, passed through as an opaque absolute https URL; it may be the same URL as icon. Null when Gamma sends none, when the value is not an https URL on a host the catalog accepts, or when the market was last stored before this field existed. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves. Use it only as an image source, exactly as received; do not build URLs from its host, which may change."
                           },
                           "volume24h": {
                             "anyOf": [
@@ -12115,7 +12115,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "The Gamma market field volume24hr, the market's trading volume over the last 24 hours, as a non-negative decimal string with no exponent and no sign, in the unit Gamma reports it in. It is the value read at syncedAt, not a live figure. Null means the volume is unknown, not zero: Gamma sent none, sent a value that is not a non-negative number or whose decimal form is longer than 64 characters, or the market was last stored before this field existed. Parse it as a decimal, not as a floating-point number."
+                            "description": "The Gamma market field volume24hr, the market's trading volume over the last 24 hours, as a non-negative decimal string with no exponent and no sign, in the unit Gamma reports it in. It is the value read at syncedAt, not a live figure. Null means the volume is unknown, not zero: Gamma sent none, sent a value that is not a non-negative number or whose decimal form is longer than 64 characters, or the market was last stored before this field existed. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves. Parse it as a decimal, not as a floating-point number."
                           },
                           "eventStartTime": {
                             "anyOf": [
@@ -12128,7 +12128,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "The Gamma market field eventStartTime, as an ISO 8601 UTC timestamp. It is the value read at syncedAt, copied from that one field: a separate field from gameStartTime and endDate, never filled from them or from any other field. Null means the value is unknown: Gamma sent none, sent a value this service does not read as a timestamp with a time zone, or the market was last stored before this field existed."
+                            "description": "The Gamma market field eventStartTime, as an ISO 8601 UTC timestamp. It is the value read at syncedAt, copied from that one field: a separate field from gameStartTime and endDate, never filled from them or from any other field. Null means the value is unknown: Gamma sent none, sent a value this service does not read as a timestamp with a time zone, or the market was last stored before this field existed. On a crypto round's market, which only GET /v1/markets/{marketId} serves, it is the start of the round's window, never null: this service keeps a round only when at least one of that field and the event's start time is present and every one present equals the start its slug names."
                           },
                           "translation": {
                             "anyOf": [
@@ -12466,7 +12466,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns one market with its outcomes and syncedAt, possibly from cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price, tokenId, and oneHourPriceChange stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. Without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered.",
+            "description": "Returns one market with its outcomes and syncedAt, possibly from cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price, tokenId, and oneHourPriceChange stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. Without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered. A crypto round's market (see the 404 response) is built from the round as this service last read it from Polymarket: question and event.title are the round's event title, eventStartTime and endDate are the round's window, each outcomes[].price is the price Polymarket listed for that outcome at that read, a snapshot that can be minutes old while the round is live (read live prices from /v1/stream), and syncedAt is the time of that read rather than of a catalog sync. Its question is not translated: with lang, translation is null.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12487,7 +12487,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "Copied from the Gamma market field category. Gamma responses measured on 2026-09-26 did not include that field on markets or events, so this value and the category query filter cannot be relied on to classify markets; use event, tags, sportsMarketType, and gameStartTime instead."
+                      "description": "Copied from the Gamma market field category. Gamma responses measured on 2026-09-26 did not include that field on markets or events, so this value and the category query filter cannot be relied on to classify markets; use event, tags, sportsMarketType, and gameStartTime instead. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves."
                     },
                     "active": {
                       "type": "boolean"
@@ -12534,7 +12534,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "The Gamma market field oneHourPriceChange, the price change over the last hour as Gamma computes it, passed through as a signed decimal string from -1 to 1 with no exponent; the service does not recompute it. Gamma reports one value per market, so only the first element of outcomes carries it; the second element is always null and is never derived from the first. In the samples this service has kept, the value follows the first outcome's price as a difference on the same 0 to 1 scale as price; the service has not measured Gamma's definition beyond those samples. It is the value read at syncedAt, which follows the catalog sync interval, not a live figure. Null on the first element means the change is unknown, not zero: Gamma sent none, sent a value that is not a number from -1 to 1 or whose decimal form is longer than 64 characters, or the market was last stored before this field existed or by an older version of the service. Parse it as a decimal, not as a floating-point number."
+                            "description": "The Gamma market field oneHourPriceChange, the price change over the last hour as Gamma computes it, passed through as a signed decimal string from -1 to 1 with no exponent; the service does not recompute it. Gamma reports one value per market, so only the first element of outcomes carries it; the second element is always null and is never derived from the first. In the samples this service has kept, the value follows the first outcome's price as a difference on the same 0 to 1 scale as price; the service has not measured Gamma's definition beyond those samples. It is the value read at syncedAt, which follows the catalog sync interval, not a live figure. Null on the first element means the change is unknown, not zero: Gamma sent none, sent a value that is not a number from -1 to 1 or whose decimal form is longer than 64 characters, or the market was last stored before this field existed or by an older version of the service. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves. Parse it as a decimal, not as a floating-point number."
                           }
                         },
                         "required": [
@@ -12591,7 +12591,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "The first entry of the Gamma market field events (id, slug, title), or null when Gamma lists no event or the market was stored before this field existed."
+                      "description": "The first entry of the Gamma market field events (id, slug, title), or null when Gamma lists no event or the market was stored before this field existed. On a crypto round's market, which only GET /v1/markets/{marketId} serves, it is the round's event."
                     },
                     "tags": {
                       "type": "array",
@@ -12625,7 +12625,7 @@
                         ],
                         "additionalProperties": false
                       },
-                      "description": "The slug and label of each entry in the Gamma market field tags, requested with include_tag. An empty array means no tag list was received: Gamma may send none for the market, and the upstream SDK reports a missing list and an empty list the same way, so an empty array does not prove the market has no tags."
+                      "description": "The slug and label of each entry in the Gamma market field tags, requested with include_tag. An empty array means no tag list was received: Gamma may send none for the market, and the upstream SDK reports a missing list and an empty list the same way, so an empty array does not prove the market has no tags. It is always empty on a crypto round's market, which only GET /v1/markets/{marketId} serves, because this service does not read a round's tags."
                     },
                     "sportsMarketType": {
                       "anyOf": [
@@ -12660,7 +12660,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "The Gamma market field line, the handicap or total a spread or totals market is priced against; null when Gamma sends none, as for moneyline markets."
+                      "description": "The Gamma market field line, the handicap or total a spread or totals market is priced against; null when Gamma sends none, as for moneyline markets. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves."
                     },
                     "groupItemTitle": {
                       "anyOf": [
@@ -12671,7 +12671,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "The Gamma market field groupItemTitle, which names this market within its event, for example a team or a draw in a three-way soccer result; null when Gamma sends none."
+                      "description": "The Gamma market field groupItemTitle, which names this market within its event, for example a team or a draw in a three-way soccer result; null when Gamma sends none. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves."
                     },
                     "icon": {
                       "anyOf": [
@@ -12682,7 +12682,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "The Gamma market field icon, passed through as an opaque absolute https URL. Null when Gamma sends none, when the value is not an https URL on a host the catalog accepts, or when the market was last stored before this field existed. Use it only as an image source, exactly as received; do not build URLs from its host, which may change."
+                      "description": "The Gamma market field icon, passed through as an opaque absolute https URL. Null when Gamma sends none, when the value is not an https URL on a host the catalog accepts, or when the market was last stored before this field existed. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves. Use it only as an image source, exactly as received; do not build URLs from its host, which may change."
                     },
                     "image": {
                       "anyOf": [
@@ -12693,7 +12693,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "The Gamma market field image, passed through as an opaque absolute https URL; it may be the same URL as icon. Null when Gamma sends none, when the value is not an https URL on a host the catalog accepts, or when the market was last stored before this field existed. Use it only as an image source, exactly as received; do not build URLs from its host, which may change."
+                      "description": "The Gamma market field image, passed through as an opaque absolute https URL; it may be the same URL as icon. Null when Gamma sends none, when the value is not an https URL on a host the catalog accepts, or when the market was last stored before this field existed. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves. Use it only as an image source, exactly as received; do not build URLs from its host, which may change."
                     },
                     "volume24h": {
                       "anyOf": [
@@ -12704,7 +12704,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "The Gamma market field volume24hr, the market's trading volume over the last 24 hours, as a non-negative decimal string with no exponent and no sign, in the unit Gamma reports it in. It is the value read at syncedAt, not a live figure. Null means the volume is unknown, not zero: Gamma sent none, sent a value that is not a non-negative number or whose decimal form is longer than 64 characters, or the market was last stored before this field existed. Parse it as a decimal, not as a floating-point number."
+                      "description": "The Gamma market field volume24hr, the market's trading volume over the last 24 hours, as a non-negative decimal string with no exponent and no sign, in the unit Gamma reports it in. It is the value read at syncedAt, not a live figure. Null means the volume is unknown, not zero: Gamma sent none, sent a value that is not a non-negative number or whose decimal form is longer than 64 characters, or the market was last stored before this field existed. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves. Parse it as a decimal, not as a floating-point number."
                     },
                     "eventStartTime": {
                       "anyOf": [
@@ -12717,7 +12717,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "The Gamma market field eventStartTime, as an ISO 8601 UTC timestamp. It is the value read at syncedAt, copied from that one field: a separate field from gameStartTime and endDate, never filled from them or from any other field. Null means the value is unknown: Gamma sent none, sent a value this service does not read as a timestamp with a time zone, or the market was last stored before this field existed."
+                      "description": "The Gamma market field eventStartTime, as an ISO 8601 UTC timestamp. It is the value read at syncedAt, copied from that one field: a separate field from gameStartTime and endDate, never filled from them or from any other field. Null means the value is unknown: Gamma sent none, sent a value this service does not read as a timestamp with a time zone, or the market was last stored before this field existed. On a crypto round's market, which only GET /v1/markets/{marketId} serves, it is the start of the round's window, never null: this service keeps a round only when at least one of that field and the event's start time is present and every one present equals the start its slug names."
                     },
                     "translation": {
                       "anyOf": [
@@ -12767,7 +12767,7 @@
                     "eventStartTime"
                   ],
                   "additionalProperties": false,
-                  "description": "Returns one market with its outcomes and syncedAt, possibly from cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price, tokenId, and oneHourPriceChange stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. Without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."
+                  "description": "Returns one market with its outcomes and syncedAt, possibly from cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price, tokenId, and oneHourPriceChange stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. Without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered. A crypto round's market (see the 404 response) is built from the round as this service last read it from Polymarket: question and event.title are the round's event title, eventStartTime and endDate are the round's window, each outcomes[].price is the price Polymarket listed for that outcome at that read, a snapshot that can be minutes old while the round is live (read live prices from /v1/stream), and syncedAt is the time of that read rather than of a catalog sync. Its question is not translated: with lang, translation is null."
                 }
               }
             }
@@ -12935,7 +12935,7 @@
             }
           },
           "404": {
-            "description": "When the repository has no market for the requested identifier, error.code is NOT_FOUND and error.details is omitted; that absent result is cached until the market cache entry expires, so repeated requests remain 404 during that period.",
+            "description": "When neither the catalog nor a crypto round has a market for the requested identifier, error.code is NOT_FOUND and error.details is omitted. The catalog's absent result is cached until the market cache entry expires, so a market missing from the catalog stays 404 from the catalog during that period; the crypto rounds are looked up again on every request. While crypto rounds are open, an identifier the catalog does not hold is also looked up among the crypto rounds this instance of the service keeps in memory (GET /v1/markets/rounds): the current round, the next 2, and the past 5 of each asset and interval. A round answers 404 once it leaves that window, or when this service could not read its event title, its active flag, or its outcome prices, and each instance keeps its own copy, so one instance can answer 200 and another 404 for the same identifier; do not cache a 404 that follows a 200.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12983,7 +12983,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "When the repository has no market for the requested identifier, error.code is NOT_FOUND and error.details is omitted; that absent result is cached until the market cache entry expires, so repeated requests remain 404 during that period."
+                  "description": "When neither the catalog nor a crypto round has a market for the requested identifier, error.code is NOT_FOUND and error.details is omitted. The catalog's absent result is cached until the market cache entry expires, so a market missing from the catalog stays 404 from the catalog during that period; the crypto rounds are looked up again on every request. While crypto rounds are open, an identifier the catalog does not hold is also looked up among the crypto rounds this instance of the service keeps in memory (GET /v1/markets/rounds): the current round, the next 2, and the past 5 of each asset and interval. A round answers 404 once it leaves that window, or when this service could not read its event title, its active flag, or its outcome prices, and each instance keeps its own copy, so one instance can answer 200 and another 404 for the same identifier; do not cache a 404 that follows a 200."
                 }
               }
             }
@@ -13438,7 +13438,7 @@
             }
           },
           "404": {
-            "description": "When the repository has no market for the requested identifier, error.code is NOT_FOUND.",
+            "description": "When neither the catalog nor a crypto round has a market for the requested identifier, error.code is NOT_FOUND. While crypto rounds are open, an identifier the catalog does not hold is also looked up among the crypto rounds this instance of the service keeps in memory (GET /v1/markets/rounds): the current round, the next 2, and the past 5 of each asset and interval. A round answers 404 once it leaves that window, or when this service could not read its event title, its active flag, or its outcome prices, and each instance keeps its own copy, so one instance can answer 200 and another 404 for the same identifier; do not cache a 404 that follows a 200.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13486,7 +13486,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "When the repository has no market for the requested identifier, error.code is NOT_FOUND."
+                  "description": "When neither the catalog nor a crypto round has a market for the requested identifier, error.code is NOT_FOUND. While crypto rounds are open, an identifier the catalog does not hold is also looked up among the crypto rounds this instance of the service keeps in memory (GET /v1/markets/rounds): the current round, the next 2, and the past 5 of each asset and interval. A round answers 404 once it leaves that window, or when this service could not read its event title, its active flag, or its outcome prices, and each instance keeps its own copy, so one instance can answer 200 and another 404 for the same identifier; do not cache a 404 that follows a 200."
                 }
               }
             }
@@ -13879,7 +13879,7 @@
             }
           },
           "404": {
-            "description": "When the repository has no market for the requested identifier, error.code is NOT_FOUND.",
+            "description": "When neither the catalog nor a crypto round has a market for the requested identifier, error.code is NOT_FOUND. While crypto rounds are open, an identifier the catalog does not hold is also looked up among the crypto rounds this instance of the service keeps in memory (GET /v1/markets/rounds): the current round, the next 2, and the past 5 of each asset and interval. A round answers 404 once it leaves that window, or when this service could not read its event title, its active flag, or its outcome prices, and each instance keeps its own copy, so one instance can answer 200 and another 404 for the same identifier; do not cache a 404 that follows a 200.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13927,7 +13927,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "When the repository has no market for the requested identifier, error.code is NOT_FOUND."
+                  "description": "When neither the catalog nor a crypto round has a market for the requested identifier, error.code is NOT_FOUND. While crypto rounds are open, an identifier the catalog does not hold is also looked up among the crypto rounds this instance of the service keeps in memory (GET /v1/markets/rounds): the current round, the next 2, and the past 5 of each asset and interval. A round answers 404 once it leaves that window, or when this service could not read its event title, its active flag, or its outcome prices, and each instance keeps its own copy, so one instance can answer 200 and another 404 for the same identifier; do not cache a 404 that follows a 200."
                 }
               }
             }
@@ -13987,7 +13987,7 @@
             }
           },
           "502": {
-            "description": "error.code is UPSTREAM_UNAVAILABLE and no trades are returned. error.details.reason is data_api_rate_limited or data_api_unavailable when the trade source fails, with Retry-After when the source's rate-limit error supplies one; it is trades_market_ids_missing when the catalog does not yet hold the identifiers the source is asked with (the market's condition id, or any outcome token id). A market stored before this route existed gets its condition id at the next catalog sync that lists it; a market the catalog no longer lists, or whose condition id the source does not supply in the expected form, keeps this answer. trades_market_ids_missing is not an answer that the market has no trades.",
+            "description": "error.code is UPSTREAM_UNAVAILABLE and no trades are returned. error.details.reason is data_api_rate_limited or data_api_unavailable when the trade source fails, with Retry-After when the source's rate-limit error supplies one; it is trades_market_ids_missing when this service does not hold the identifiers the source is asked with (the market's condition id, or any outcome token id): for a catalog market, the catalog does not yet hold them; for a crypto round's market, the round as last read from Polymarket did not carry a condition id in the expected form. A market stored before this route existed gets its condition id at the next catalog sync that lists it; a market the catalog no longer lists, or whose condition id the source does not supply in the expected form, keeps this answer. trades_market_ids_missing is not an answer that the market has no trades.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14035,7 +14035,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "error.code is UPSTREAM_UNAVAILABLE and no trades are returned. error.details.reason is data_api_rate_limited or data_api_unavailable when the trade source fails, with Retry-After when the source's rate-limit error supplies one; it is trades_market_ids_missing when the catalog does not yet hold the identifiers the source is asked with (the market's condition id, or any outcome token id). A market stored before this route existed gets its condition id at the next catalog sync that lists it; a market the catalog no longer lists, or whose condition id the source does not supply in the expected form, keeps this answer. trades_market_ids_missing is not an answer that the market has no trades."
+                  "description": "error.code is UPSTREAM_UNAVAILABLE and no trades are returned. error.details.reason is data_api_rate_limited or data_api_unavailable when the trade source fails, with Retry-After when the source's rate-limit error supplies one; it is trades_market_ids_missing when this service does not hold the identifiers the source is asked with (the market's condition id, or any outcome token id): for a catalog market, the catalog does not yet hold them; for a crypto round's market, the round as last read from Polymarket did not carry a condition id in the expected form. A market stored before this route existed gets its condition id at the next catalog sync that lists it; a market the catalog no longer lists, or whose condition id the source does not supply in the expected form, keeps this answer. trades_market_ids_missing is not an answer that the market has no trades."
                 }
               }
             }
@@ -14369,7 +14369,7 @@
             }
           },
           "404": {
-            "description": "error.code is NOT_FOUND. With error.details.reason price_history_not_open, price history is not open on this deployment: that answer comes before the query and the identifier are checked or anything is looked up, carries no Retry-After, and retrying does not change it, so stop asking until the deployment changes. It is counted against the API key's rate limits like any other request. Without error.details, the repository has no market for the requested identifier; on this path a 404 without error.details can also come from a deployment that does not have the route yet, so do not cache it.",
+            "description": "error.code is NOT_FOUND. With error.details.reason price_history_not_open, price history is not open on this deployment: that answer comes before the query and the identifier are checked or anything is looked up, carries no Retry-After, and retrying does not change it, so stop asking until the deployment changes. It is counted against the API key's rate limits like any other request. Without error.details, neither the catalog nor a crypto round has a market for the requested identifier; on this path a 404 without error.details can also come from a deployment that does not have the route yet, so do not cache it. While crypto rounds are open, an identifier the catalog does not hold is also looked up among the crypto rounds this instance of the service keeps in memory (GET /v1/markets/rounds): the current round, the next 2, and the past 5 of each asset and interval. A round answers 404 once it leaves that window, or when this service could not read its event title, its active flag, or its outcome prices, and each instance keeps its own copy, so one instance can answer 200 and another 404 for the same identifier; do not cache a 404 that follows a 200.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14417,7 +14417,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "error.code is NOT_FOUND. With error.details.reason price_history_not_open, price history is not open on this deployment: that answer comes before the query and the identifier are checked or anything is looked up, carries no Retry-After, and retrying does not change it, so stop asking until the deployment changes. It is counted against the API key's rate limits like any other request. Without error.details, the repository has no market for the requested identifier; on this path a 404 without error.details can also come from a deployment that does not have the route yet, so do not cache it."
+                  "description": "error.code is NOT_FOUND. With error.details.reason price_history_not_open, price history is not open on this deployment: that answer comes before the query and the identifier are checked or anything is looked up, carries no Retry-After, and retrying does not change it, so stop asking until the deployment changes. It is counted against the API key's rate limits like any other request. Without error.details, neither the catalog nor a crypto round has a market for the requested identifier; on this path a 404 without error.details can also come from a deployment that does not have the route yet, so do not cache it. While crypto rounds are open, an identifier the catalog does not hold is also looked up among the crypto rounds this instance of the service keeps in memory (GET /v1/markets/rounds): the current round, the next 2, and the past 5 of each asset and interval. A round answers 404 once it leaves that window, or when this service could not read its event title, its active flag, or its outcome prices, and each instance keeps its own copy, so one instance can answer 200 and another 404 for the same identifier; do not cache a 404 that follows a 200."
                 }
               }
             }
@@ -14819,7 +14819,7 @@
             }
           },
           "404": {
-            "description": "The requested market is not in the catalog or is not available from Gamma; error.code is NOT_FOUND.",
+            "description": "The requested market is neither in the catalog nor a crypto round, or is not available from Gamma; error.code is NOT_FOUND. While crypto rounds are open, an identifier the catalog does not hold is also looked up among the crypto rounds this instance of the service keeps in memory (GET /v1/markets/rounds): the current round, the next 2, and the past 5 of each asset and interval. A round answers 404 once it leaves that window, or when this service could not read its event title, its active flag, or its outcome prices, and each instance keeps its own copy, so one instance can answer 200 and another 404 for the same identifier; do not cache a 404 that follows a 200.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14867,7 +14867,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "The requested market is not in the catalog or is not available from Gamma; error.code is NOT_FOUND."
+                  "description": "The requested market is neither in the catalog nor a crypto round, or is not available from Gamma; error.code is NOT_FOUND. While crypto rounds are open, an identifier the catalog does not hold is also looked up among the crypto rounds this instance of the service keeps in memory (GET /v1/markets/rounds): the current round, the next 2, and the past 5 of each asset and interval. A round answers 404 once it leaves that window, or when this service could not read its event title, its active flag, or its outcome prices, and each instance keeps its own copy, so one instance can answer 200 and another 404 for the same identifier; do not cache a 404 that follows a 200."
                 }
               }
             }
@@ -14976,6 +14976,794 @@
                   ],
                   "additionalProperties": false,
                   "description": "Gamma fee schedule failures produce error.details.reason fee_schedule_absent, fee_schedule_schema_invalid, fee_schedule_value_invalid, gamma_rate_limited, or gamma_unavailable. Retry-After is returned when supplied by Gamma."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/markets/rounds": {
+      "get": {
+        "summary": "List crypto rounds",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z0-9]{1,10}$"
+            },
+            "in": "query",
+            "name": "asset",
+            "required": false,
+            "description": "One asset, in upper case, such as BTC: 1 to 10 letters or digits. Without it every asset this deployment carries is returned. A value of another form, a repeated asset, or an asset this deployment does not carry is VALIDATION_FAILED."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "5m"
+              ]
+            },
+            "in": "query",
+            "name": "interval",
+            "required": false,
+            "description": "The length of the rounds; 5m (five minutes) is the only value. Without it every interval is returned. The value is matched exactly and case-sensitive: any other value, or a repeated interval, is VALIDATION_FAILED. An asset and interval that together select no pair this deployment carries are VALIDATION_FAILED too."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns the recurring short-window crypto Up or Down rounds this deployment carries, one entry per asset and interval: the current round, up to 2 next rounds, soonest first, and up to 5 past rounds, newest first. A round is one market with two outcome tokens, and eventStartTime and endDate are its window. These markets are not in GET /v1/markets: subscribe to outcomes[].tokenId on /v1/stream for prices, trades, and resolution. This service reads the rounds from Polymarket on its own schedule, never because of a request, and each instance of the service keeps its own copy, so fetchedAt says when a pair was last read and next and past can be shorter than their limits, for example right after a start. targetPrice is usually null while a round is live and is filled around or after its end; a non-null targetPrice with targetPriceSource polymarket, and a non-null winningOutcome, are final, so do not overwrite them with a null from a later response. targetPriceSource polybolt_twap is reserved and not returned yet. state unavailable means the pair's current round has not been read yet; when every requested pair is unavailable the answer is a 502 instead.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "asset": {
+                            "type": "string",
+                            "description": "The asset of these rounds, such as BTC."
+                          },
+                          "interval": {
+                            "type": "string",
+                            "enum": [
+                              "5m"
+                            ],
+                            "description": "The length of the rounds."
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "ok",
+                              "unavailable"
+                            ],
+                            "description": "unavailable means this service has not yet read this pair's current round from Polymarket, for example right after it started; current is then null."
+                          },
+                          "fetchedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "When this service last read a round of this pair from Polymarket, as an ISO 8601 timestamp; null when it has not read one yet."
+                          },
+                          "current": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "marketId": {
+                                    "type": "string",
+                                    "description": "The round's Polymarket market ID."
+                                  },
+                                  "eventId": {
+                                    "type": "string",
+                                    "description": "The round's Polymarket event ID."
+                                  },
+                                  "slug": {
+                                    "type": "string",
+                                    "description": "The round's Polymarket event slug. It names one round and does not change."
+                                  },
+                                  "eventStartTime": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                    "description": "The start of the round's window, as an ISO 8601 UTC timestamp. It is the same instant as eventStartTime on a market."
+                                  },
+                                  "endDate": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                    "description": "The end of the round's window, as an ISO 8601 UTC timestamp, the length of the interval after eventStartTime."
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "upcoming",
+                                      "live",
+                                      "ended",
+                                      "resolved"
+                                    ],
+                                    "description": "upcoming before eventStartTime, live from eventStartTime up to endDate, then ended until Polymarket settles the round and resolved once it has. upcoming, live, and ended are computed from the two times by this service's clock when it answers; resolved goes with a non-null winningOutcome."
+                                  },
+                                  "targetPrice": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "The price the round resolves against, as Polymarket publishes it, in US dollars as a plain decimal string with no exponent, kept exactly as published: this service never computes, estimates, or rounds it. It is usually null while the round is live and is filled around or after its end. Null means it is not known: not published yet (always so before the round starts), not published within 20 minutes of the end, or published as something other than a positive decimal; the response does not say which. Once non-null with targetPriceSource polymarket it is final: a later response, possibly from another instance of this service, can still carry null for a short while, so do not overwrite a value you have seen with a later null. Parse it as a decimal, not as a floating-point number."
+                                  },
+                                  "targetPriceSource": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "polymarket",
+                                          "polybolt_twap"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Where targetPrice came from; null exactly when targetPrice is null. polymarket is the value Polymarket published for the round. polybolt_twap is reserved for a later live estimate and is not returned yet."
+                                  },
+                                  "outcomes": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "outcome": {
+                                          "type": "string",
+                                          "description": "The outcome label as Polymarket writes it, such as Up or Down."
+                                        },
+                                        "tokenId": {
+                                          "type": "string",
+                                          "description": "The outcome's CTF token ID as a decimal string: subscribe to it on /v1/stream for prices, trades, and resolution."
+                                        }
+                                      },
+                                      "required": [
+                                        "outcome",
+                                        "tokenId"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "The round's two outcomes, each with the token of the same position in Polymarket's lists."
+                                  },
+                                  "winningOutcome": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "The outcome Polymarket settled the round on, one of outcomes[].outcome; null until then, and null also when the result was not read within 20 minutes of the end. Once non-null it is final, like targetPrice: do not overwrite it with a later null."
+                                  }
+                                },
+                                "required": [
+                                  "marketId",
+                                  "eventId",
+                                  "slug",
+                                  "eventStartTime",
+                                  "endDate",
+                                  "status",
+                                  "targetPrice",
+                                  "targetPriceSource",
+                                  "outcomes",
+                                  "winningOutcome"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The round whose window contains the time of the answer; null while state is unavailable."
+                          },
+                          "next": {
+                            "maxItems": 2,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "marketId": {
+                                  "type": "string",
+                                  "description": "The round's Polymarket market ID."
+                                },
+                                "eventId": {
+                                  "type": "string",
+                                  "description": "The round's Polymarket event ID."
+                                },
+                                "slug": {
+                                  "type": "string",
+                                  "description": "The round's Polymarket event slug. It names one round and does not change."
+                                },
+                                "eventStartTime": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                  "description": "The start of the round's window, as an ISO 8601 UTC timestamp. It is the same instant as eventStartTime on a market."
+                                },
+                                "endDate": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                  "description": "The end of the round's window, as an ISO 8601 UTC timestamp, the length of the interval after eventStartTime."
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "upcoming",
+                                    "live",
+                                    "ended",
+                                    "resolved"
+                                  ],
+                                  "description": "upcoming before eventStartTime, live from eventStartTime up to endDate, then ended until Polymarket settles the round and resolved once it has. upcoming, live, and ended are computed from the two times by this service's clock when it answers; resolved goes with a non-null winningOutcome."
+                                },
+                                "targetPrice": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The price the round resolves against, as Polymarket publishes it, in US dollars as a plain decimal string with no exponent, kept exactly as published: this service never computes, estimates, or rounds it. It is usually null while the round is live and is filled around or after its end. Null means it is not known: not published yet (always so before the round starts), not published within 20 minutes of the end, or published as something other than a positive decimal; the response does not say which. Once non-null with targetPriceSource polymarket it is final: a later response, possibly from another instance of this service, can still carry null for a short while, so do not overwrite a value you have seen with a later null. Parse it as a decimal, not as a floating-point number."
+                                },
+                                "targetPriceSource": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "polymarket",
+                                        "polybolt_twap"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Where targetPrice came from; null exactly when targetPrice is null. polymarket is the value Polymarket published for the round. polybolt_twap is reserved for a later live estimate and is not returned yet."
+                                },
+                                "outcomes": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "outcome": {
+                                        "type": "string",
+                                        "description": "The outcome label as Polymarket writes it, such as Up or Down."
+                                      },
+                                      "tokenId": {
+                                        "type": "string",
+                                        "description": "The outcome's CTF token ID as a decimal string: subscribe to it on /v1/stream for prices, trades, and resolution."
+                                      }
+                                    },
+                                    "required": [
+                                      "outcome",
+                                      "tokenId"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "The round's two outcomes, each with the token of the same position in Polymarket's lists."
+                                },
+                                "winningOutcome": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The outcome Polymarket settled the round on, one of outcomes[].outcome; null until then, and null also when the result was not read within 20 minutes of the end. Once non-null it is final, like targetPrice: do not overwrite it with a later null."
+                                }
+                              },
+                              "required": [
+                                "marketId",
+                                "eventId",
+                                "slug",
+                                "eventStartTime",
+                                "endDate",
+                                "status",
+                                "targetPrice",
+                                "targetPriceSource",
+                                "outcomes",
+                                "winningOutcome"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "Up to 2 rounds that start after current, soonest first. Only rounds this service has already read are listed, so the list can be shorter."
+                          },
+                          "past": {
+                            "maxItems": 5,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "marketId": {
+                                  "type": "string",
+                                  "description": "The round's Polymarket market ID."
+                                },
+                                "eventId": {
+                                  "type": "string",
+                                  "description": "The round's Polymarket event ID."
+                                },
+                                "slug": {
+                                  "type": "string",
+                                  "description": "The round's Polymarket event slug. It names one round and does not change."
+                                },
+                                "eventStartTime": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                  "description": "The start of the round's window, as an ISO 8601 UTC timestamp. It is the same instant as eventStartTime on a market."
+                                },
+                                "endDate": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                  "description": "The end of the round's window, as an ISO 8601 UTC timestamp, the length of the interval after eventStartTime."
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "upcoming",
+                                    "live",
+                                    "ended",
+                                    "resolved"
+                                  ],
+                                  "description": "upcoming before eventStartTime, live from eventStartTime up to endDate, then ended until Polymarket settles the round and resolved once it has. upcoming, live, and ended are computed from the two times by this service's clock when it answers; resolved goes with a non-null winningOutcome."
+                                },
+                                "targetPrice": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The price the round resolves against, as Polymarket publishes it, in US dollars as a plain decimal string with no exponent, kept exactly as published: this service never computes, estimates, or rounds it. It is usually null while the round is live and is filled around or after its end. Null means it is not known: not published yet (always so before the round starts), not published within 20 minutes of the end, or published as something other than a positive decimal; the response does not say which. Once non-null with targetPriceSource polymarket it is final: a later response, possibly from another instance of this service, can still carry null for a short while, so do not overwrite a value you have seen with a later null. Parse it as a decimal, not as a floating-point number."
+                                },
+                                "targetPriceSource": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "polymarket",
+                                        "polybolt_twap"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Where targetPrice came from; null exactly when targetPrice is null. polymarket is the value Polymarket published for the round. polybolt_twap is reserved for a later live estimate and is not returned yet."
+                                },
+                                "outcomes": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "outcome": {
+                                        "type": "string",
+                                        "description": "The outcome label as Polymarket writes it, such as Up or Down."
+                                      },
+                                      "tokenId": {
+                                        "type": "string",
+                                        "description": "The outcome's CTF token ID as a decimal string: subscribe to it on /v1/stream for prices, trades, and resolution."
+                                      }
+                                    },
+                                    "required": [
+                                      "outcome",
+                                      "tokenId"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "The round's two outcomes, each with the token of the same position in Polymarket's lists."
+                                },
+                                "winningOutcome": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The outcome Polymarket settled the round on, one of outcomes[].outcome; null until then, and null also when the result was not read within 20 minutes of the end. Once non-null it is final, like targetPrice: do not overwrite it with a later null."
+                                }
+                              },
+                              "required": [
+                                "marketId",
+                                "eventId",
+                                "slug",
+                                "eventStartTime",
+                                "endDate",
+                                "status",
+                                "targetPrice",
+                                "targetPriceSource",
+                                "outcomes",
+                                "winningOutcome"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "Up to 5 rounds that ended before current started, newest first. Only rounds this service has already read are listed, so the list can be shorter."
+                          }
+                        },
+                        "required": [
+                          "asset",
+                          "interval",
+                          "state",
+                          "fetchedAt",
+                          "current",
+                          "next",
+                          "past"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "One entry per selected asset and interval, in the order this deployment lists them."
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Returns the recurring short-window crypto Up or Down rounds this deployment carries, one entry per asset and interval: the current round, up to 2 next rounds, soonest first, and up to 5 past rounds, newest first. A round is one market with two outcome tokens, and eventStartTime and endDate are its window. These markets are not in GET /v1/markets: subscribe to outcomes[].tokenId on /v1/stream for prices, trades, and resolution. This service reads the rounds from Polymarket on its own schedule, never because of a request, and each instance of the service keeps its own copy, so fetchedAt says when a pair was last read and next and past can be shorter than their limits, for example right after a start. targetPrice is usually null while a round is live and is filled around or after its end; a non-null targetPrice with targetPriceSource polymarket, and a non-null winningOutcome, are final, so do not overwrite them with a null from a later response. targetPriceSource polybolt_twap is reserved and not returned yet. state unavailable means the pair's current round has not been read yet; when every requested pair is unavailable the answer is a 502 instead."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "While crypto rounds are open, an asset that is not 1 to 10 upper-case letters or digits, an interval other than 5m (matched exactly and case-sensitive), a repeated asset or interval, or an asset and interval that select no pair this deployment carries produce error.code VALIDATION_FAILED with error.details omitted. While they are not open, each of these is answered with the 404 rounds_not_open instead.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "While crypto rounds are open, an asset that is not 1 to 10 upper-case letters or digits, an interval other than 5m (matched exactly and case-sensitive), a repeated asset or interval, or an asset and interval that select no pair this deployment carries produce error.code VALIDATION_FAILED with error.details omitted. While they are not open, each of these is answered with the 404 rounds_not_open instead."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/markets through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/markets through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "error.code is NOT_FOUND. With error.details.reason rounds_not_open, crypto rounds are not open on this deployment: that answer comes before the query is checked or anything is read, carries no Retry-After, and retrying does not change it, so stop asking until the deployment changes. It is counted against the API key's per-minute limit like any other request. A 404 without error.details comes from an instance of the service that does not have this route yet and read rounds as a market identifier; do not cache it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is NOT_FOUND. With error.details.reason rounds_not_open, crypto rounds are not open on this deployment: that answer comes before the query is checked or anything is read, carries no Retry-After, and retrying does not change it, so stop asking until the deployment changes. It is counted against the API key's per-minute limit like any other request. A 404 without error.details comes from an instance of the service that does not have this route yet and read rounds as a market identifier; do not cache it."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "error.code is UPSTREAM_UNAVAILABLE and error.details.reason is gamma_unavailable: this service has not yet read the current round of any requested pair from Polymarket, for example right after it started or while Polymarket cannot be reached, and no pair is returned (when only some pairs are unread, the answer is 200 with their state unavailable). No Retry-After is sent. The service reads on its own schedule, so retrying does not cause a read; try again after a few seconds.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is UPSTREAM_UNAVAILABLE and error.details.reason is gamma_unavailable: this service has not yet read the current round of any requested pair from Polymarket, for example right after it started or while Polymarket cannot be reached, and no pair is returned (when only some pairs are unread, the answer is 200 with their state unavailable). No Retry-After is sent. The service reads on its own schedule, so retrying does not cause a read; try again after a few seconds."
                 }
               }
             }

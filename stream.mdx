@@ -203,11 +203,56 @@ A `perpsUnsubscribed` frame lists the instruments that `unsubscribePerps` let go
 
 When Perps market data is not open on this deployment, `subscribePerps` is answered with an `error` frame whose `code` is `NOT_FOUND` and whose `details.reason` is `perps_not_open`, and `unsubscribePerps` is answered with a `perpsUnsubscribed` frame with an empty `instrumentIds`. While a new version of the service is being rolled out, an instance that predates these operations answers both with `VALIDATION_FAILED`; send `subscribePerps` again after every reconnect.
 
+## Crypto round frames
+
+The recurring crypto Up or Down rounds of `GET /v1/markets/rounds` (see **Crypto rounds** on the API reference home page) can be followed on the same connection:
+
+```json
+{"op":"subscribeRounds","pairs":[{"asset":"BTC","interval":"5m"},{"asset":"SOL","interval":"5m"}]}
+```
+
+```json
+{"op":"unsubscribeRounds","pairs":[{"asset":"SOL","interval":"5m"}]}
+```
+
+`subscribeRounds` and `unsubscribeRounds` each require from **1** through **8** `pairs`. Each pair has exactly the keys `asset` (1 to 10 upper-case letters or digits, such as `BTC`) and `interval` (`5m` is the only value); a pair of another form refuses the whole frame with `VALIDATION_FAILED`. A pair this deployment does not carry also refuses the whole frame with `VALIDATION_FAILED`, for `unsubscribeRounds` as well as `subscribeRounds`, and nothing in that frame is subscribed or unsubscribed. A pair listed twice counts once. A connection holds at most **8** pairs at a time: a `subscribeRounds` that would hold more is refused with an `error` frame whose `code` is `RATE_LIMITED` and whose `details` carry `reason` `rounds_subscription_limit`, `currentSubscriptions`, and `requestedSubscriptions`. Tokens, Perps instruments, and round pairs are counted separately: none counts against another's limit.
+
+The reply to `subscribeRounds` is a `roundsSubscribed` frame:
+
+```json
+{"type":"roundsSubscribed","pairs":[{"asset":"BTC","interval":"5m"}],"snapshot":[{"asset":"BTC","interval":"5m","state":"ok","fetchedAt":"2026-10-02T10:12:03.000Z","current":{"marketId":"516710","eventId":"903193","slug":"btc-updown-5m-1790935800","eventStartTime":"2026-10-02T10:10:00.000Z","endDate":"2026-10-02T10:15:00.000Z","status":"live","targetPrice":null,"targetPriceSource":null,"outcomes":[{"outcome":"Up","tokenId":"71453-example"},{"outcome":"Down","tokenId":"71454-example"}],"winningOutcome":null},"next":[],"past":[]}]}
+```
+
+- `pairs`: the pairs this frame added. A pair the connection already holds is not listed again.
+- `snapshot`: for each pair in `pairs`, the element `GET /v1/markets/rounds` returns for it, with the same keys and meanings. If the service could not yet evaluate a pair, the pair is listed in `pairs` without an element in `snapshot`; every round of that pair then arrives as a `roundUpdate` frame once an evaluation succeeds.
+
+Later frames:
+
+```json
+{"type":"roundUpdate","asset":"BTC","interval":"5m","round":{"marketId":"516710","eventId":"903193","slug":"btc-updown-5m-1790935800","eventStartTime":"2026-10-02T10:10:00.000Z","endDate":"2026-10-02T10:15:00.000Z","status":"ended","targetPrice":"118420.15","targetPriceSource":"polymarket","outcomes":[{"outcome":"Up","tokenId":"71453-example"},{"outcome":"Down","tokenId":"71454-example"}],"winningOutcome":null},"ts":1790936103000}
+```
+
+```json
+{"type":"roundsUnsubscribed","pairs":[{"asset":"SOL","interval":"5m"}]}
+```
+
+A `roundUpdate` frame carries one round of a held pair, in the shape of a round of the REST list, whenever any of its keys changed: a new round appears, its `status` moves (`upcoming`, `live`, and `ended` change at the window's boundaries without any read from Polymarket), it gets its `targetPrice`, or it gets its `winningOutcome`. Replace the round with the same `marketId`. The service evaluates the held pairs every **1000 ms**, so a change reaches you within about a second of the service knowing it; a target price or result is known only after Polymarket publishes it and the service reads it, which can be minutes after the round ends. When several rounds change at once, they arrive oldest first. `ts` is the time of that evaluation in epoch milliseconds. No frame announces a round leaving the list, and the pair's `state` and `fetchedAt` are not sent again: keep the newest **5** ended rounds yourself, and read the REST list when you need the pair's own keys. The `targetPrice` and `winningOutcome` rules of the REST list apply: a non-null value with `targetPriceSource` `polymarket`, and a non-null `winningOutcome`, are final, so do not overwrite them with a later `null`, which a reconnect to another instance of the service can still carry for a short while.
+
+`roundUpdate` frames follow the buffer rule of `price` frames and count toward the same close, and a skipped frame is not sent again. After a reconnect, or if you suspect you missed one, send `unsubscribeRounds` and then `subscribeRounds` for the pair to receive a fresh `snapshot`.
+
+A `roundsUnsubscribed` frame lists the pairs that `unsubscribeRounds` let go of; a carried pair the connection did not hold is left out.
+
+These frames carry no prices, trades, or settlement. For those, send `subscribe` with a round's `outcomes[].tokenId`, adding `"trades":true` for `trade` frames, and subscribe to the tokens of a `next` round before it starts so there is no gap when it becomes `current`.
+
+When crypto rounds are not open on this deployment, a well-formed `subscribeRounds` is answered with an `error` frame whose `code` is `NOT_FOUND` and whose `details.reason` is `rounds_not_open`, whichever pairs it names, and `unsubscribeRounds` is answered with a `roundsUnsubscribed` frame with an empty `pairs`. While a new version of the service is being rolled out, an instance that predates these operations answers both with `VALIDATION_FAILED`; send `subscribeRounds` again after every reconnect.
+
 ## Disconnections
 
 The service closes with **4029** when a connection limit is exceeded or when the client exceeds the frame-rate limit. It closes with **1011** when it rejects a connection, including a duplicate connection ID. It closes with **1001** during server shutdown or after the heartbeat timeout. It closes with **4008** when a client's `bufferedAmount` exceeds **1048576** bytes for **100** consecutive delivery attempts. This indicates a slow consumer; catch up on reads or reduce subscriptions before reconnecting.
 
 ## Changes
+
+2026-10-06: Crypto rounds: the `subscribeRounds` and `unsubscribeRounds` operations and the `roundsSubscribed`, `roundUpdate`, and `roundsUnsubscribed` frames (see **Crypto round frames**). Token and Perps operations and frames did not change: a connection that does not send the new operations receives exactly the frames it received before.
 
 2026-10-06: Perps live prices and trades: the `subscribePerps` and `unsubscribePerps` operations and the `perpsSubscribed`, `perpsUnsubscribed`, `perpsPrice`, `perpsTrade`, and `perpsFeed` frames (see **Perps frames**). Token operations and frames did not change: a connection that does not send the new operations receives exactly the frames it received before.
 
