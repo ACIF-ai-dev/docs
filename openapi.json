@@ -16194,7 +16194,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns every listed Perps instrument together with its current prices, so one call renders a market list. Perps instruments are a separate family from /v1/markets: prices are amounts of the instrument's quoteAsset, not 0-to-1 probabilities, and instrumentId is not a marketId. The list is complete and not paginated. The data is a snapshot this service refreshes on a short period and shares between callers; fetchedAt says when the prices were read, and ticker.ts is the time of each price. Prices older than this service's freshness ceiling are answered with 502 instead of being served; instrument fields such as status, and openPrice24h with change24h, are refreshed on a longer period and can be older than fetchedAt. Instruments that upstream hides, or whose category this deployment does not allow, are absent. Query keys other than category are ignored.",
+            "description": "Returns every listed Perps instrument together with its current prices, so one call renders a market list. Perps instruments are a separate family from /v1/markets: prices are amounts of the instrument's quoteAsset, not 0-to-1 probabilities, and instrumentId is not a marketId. The list is complete and not paginated. The data is a snapshot this service refreshes on a short period and shares between callers; fetchedAt says when the prices were read, and ticker.ts is the time of each price. Prices older than this service's freshness ceiling are answered with 502 instead of being served; instrument fields such as status, and openPrice24h with change24h and volume24hNotional, are refreshed on a longer period and can be older than fetchedAt. Instruments that upstream hides, or whose category this deployment does not allow, are absent. Query keys other than category are ignored.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16204,7 +16204,7 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                      "description": "When this service read the data upstream (ISO 8601). It is not the request time, and it stays the same on cache hits. On the instrument routes it is the read time of the prices; instrument fields and the 24-hour open are refreshed on a longer period and can be older."
+                      "description": "When this service read the data upstream (ISO 8601). It is not the request time, and it stays the same on cache hits. On the instrument routes it is the read time of the prices; instrument fields, the 24-hour open, and the 24-hour volume are refreshed on a longer period and can be older."
                     },
                     "instruments": {
                       "type": "array",
@@ -16365,6 +16365,28 @@
                                     "minimum": -9007199254740991,
                                     "maximum": 9007199254740991,
                                     "description": "The upstream timestamp of these prices, epoch milliseconds. This, not fetchedAt, is the time of the price itself."
+                                  },
+                                  "volume24hNotional": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Approximate trading volume over the last 24 hours, in units of the instrument's quoteAsset: the sum over the provider's 24-hour candles of each candle's volume times (high + low + close) / 3, rounded to at most two decimal places, as a plain decimal string. A positive value below 0.005 is reported as 0.01, so 0 means the provider reported none. null when the 24-hour statistics could not be read or are missing or malformed for this instrument (for example a repeated candle, more than 1,440 candles, or a candle with volume but no price), or when the candles' volumes differ from the provider's own 24-hour volume by more than 1%; null is unknown, not zero. It is refreshed with openPrice24h, on the longer period."
+                                  },
+                                  "openInterestNotional": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "The provider's open interest valued at markPrice, in units of the instrument's quoteAsset, rounded to at most two decimal places, as a plain decimal string. It is read with the prices and has the same ts. A positive value below 0.005 is reported as 0.01, so 0 means the provider reported none. null when no usable open interest was reported or markPrice is zero; null is unknown, not zero."
                                   }
                                 },
                                 "required": [
@@ -16375,7 +16397,9 @@
                                   "change24h",
                                   "fundingRate",
                                   "nextFundingTs",
-                                  "ts"
+                                  "ts",
+                                  "volume24hNotional",
+                                  "openInterestNotional"
                                 ],
                                 "additionalProperties": false
                               },
@@ -16412,7 +16436,7 @@
                     "instruments"
                   ],
                   "additionalProperties": false,
-                  "description": "Returns every listed Perps instrument together with its current prices, so one call renders a market list. Perps instruments are a separate family from /v1/markets: prices are amounts of the instrument's quoteAsset, not 0-to-1 probabilities, and instrumentId is not a marketId. The list is complete and not paginated. The data is a snapshot this service refreshes on a short period and shares between callers; fetchedAt says when the prices were read, and ticker.ts is the time of each price. Prices older than this service's freshness ceiling are answered with 502 instead of being served; instrument fields such as status, and openPrice24h with change24h, are refreshed on a longer period and can be older than fetchedAt. Instruments that upstream hides, or whose category this deployment does not allow, are absent. Query keys other than category are ignored."
+                  "description": "Returns every listed Perps instrument together with its current prices, so one call renders a market list. Perps instruments are a separate family from /v1/markets: prices are amounts of the instrument's quoteAsset, not 0-to-1 probabilities, and instrumentId is not a marketId. The list is complete and not paginated. The data is a snapshot this service refreshes on a short period and shares between callers; fetchedAt says when the prices were read, and ticker.ts is the time of each price. Prices older than this service's freshness ceiling are answered with 502 instead of being served; instrument fields such as status, and openPrice24h with change24h and volume24hNotional, are refreshed on a longer period and can be older than fetchedAt. Instruments that upstream hides, or whose category this deployment does not allow, are absent. Query keys other than category are ignored."
                 }
               }
             }
@@ -16785,7 +16809,7 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                      "description": "When this service read the data upstream (ISO 8601). It is not the request time, and it stays the same on cache hits. On the instrument routes it is the read time of the prices; instrument fields and the 24-hour open are refreshed on a longer period and can be older."
+                      "description": "When this service read the data upstream (ISO 8601). It is not the request time, and it stays the same on cache hits. On the instrument routes it is the read time of the prices; instrument fields, the 24-hour open, and the 24-hour volume are refreshed on a longer period and can be older."
                     },
                     "instrumentId": {
                       "type": "string",
@@ -16941,6 +16965,28 @@
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991,
                               "description": "The upstream timestamp of these prices, epoch milliseconds. This, not fetchedAt, is the time of the price itself."
+                            },
+                            "volume24hNotional": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Approximate trading volume over the last 24 hours, in units of the instrument's quoteAsset: the sum over the provider's 24-hour candles of each candle's volume times (high + low + close) / 3, rounded to at most two decimal places, as a plain decimal string. A positive value below 0.005 is reported as 0.01, so 0 means the provider reported none. null when the 24-hour statistics could not be read or are missing or malformed for this instrument (for example a repeated candle, more than 1,440 candles, or a candle with volume but no price), or when the candles' volumes differ from the provider's own 24-hour volume by more than 1%; null is unknown, not zero. It is refreshed with openPrice24h, on the longer period."
+                            },
+                            "openInterestNotional": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "The provider's open interest valued at markPrice, in units of the instrument's quoteAsset, rounded to at most two decimal places, as a plain decimal string. It is read with the prices and has the same ts. A positive value below 0.005 is reported as 0.01, so 0 means the provider reported none. null when no usable open interest was reported or markPrice is zero; null is unknown, not zero."
                             }
                           },
                           "required": [
@@ -16951,7 +16997,9 @@
                             "change24h",
                             "fundingRate",
                             "nextFundingTs",
-                            "ts"
+                            "ts",
+                            "volume24hNotional",
+                            "openInterestNotional"
                           ],
                           "additionalProperties": false
                         },
@@ -17383,7 +17431,7 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                      "description": "When this service read the data upstream (ISO 8601). It is not the request time, and it stays the same on cache hits. On the instrument routes it is the read time of the prices; instrument fields and the 24-hour open are refreshed on a longer period and can be older."
+                      "description": "When this service read the data upstream (ISO 8601). It is not the request time, and it stays the same on cache hits. On the instrument routes it is the read time of the prices; instrument fields, the 24-hour open, and the 24-hour volume are refreshed on a longer period and can be older."
                     },
                     "sequence": {
                       "type": "integer",
@@ -17859,7 +17907,7 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                      "description": "When this service read the data upstream (ISO 8601). It is not the request time, and it stays the same on cache hits. On the instrument routes it is the read time of the prices; instrument fields and the 24-hour open are refreshed on a longer period and can be older."
+                      "description": "When this service read the data upstream (ISO 8601). It is not the request time, and it stays the same on cache hits. On the instrument routes it is the read time of the prices; instrument fields, the 24-hour open, and the 24-hour volume are refreshed on a longer period and can be older."
                     },
                     "candles": {
                       "type": "array",

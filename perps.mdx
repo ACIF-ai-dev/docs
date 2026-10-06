@@ -53,7 +53,7 @@ Every 404 these routes produce carries a reason; a 404 without one did not reach
 
 ## Prices are decimal strings in the quote asset
 
-Every price, rate and amount is a plain decimal string: no exponent notation, and the precision the provider sent, trailing zeros included (`"118633.0"`). Prices are in units of the instrument's `quoteAsset`. Compare and compute with a decimal library, not with floating point.
+Every price, rate and amount is a plain decimal string: no exponent notation, and the precision the provider sent, trailing zeros included (`"118633.0"`). The two notional amounts this service computes, `volume24hNotional` and `openInterestNotional`, are the exception: they are rounded to at most two decimal places, without trailing zeros (`"60799412.5"`). Prices are in units of the instrument's `quoteAsset`. Compare and compute with a decimal library, not with floating point.
 
 ## List instruments
 
@@ -92,7 +92,9 @@ curl "https://api.tobuilder.app/v1/perps/instruments?category=crypto" \
         "change24h": "0.017938",
         "fundingRate": "0.00000625",
         "nextFundingTs": 1790938800000,
-        "ts": 1790936099600
+        "ts": 1790936099600,
+        "volume24hNotional": "1210345678.12",
+        "openInterestNotional": "60799412.5"
       }
     }
   ]
@@ -108,6 +110,9 @@ The values above illustrate the shape; they are not market observations.
 - `ticker` is `null` when that instrument's prices could not be read, or when the provider's own timestamp for them (`ticker.ts`) was already older than the price ceiling (15 seconds by default) at the moment this service read them; the rest of the list still stands.
 - `logo` is always an object; `logo.light` and `logo.dark` are each a path or `null`. See [Logos](#logos).
 - `change24h` is `(lastPrice − openPrice24h) / openPrice24h` rounded to six decimal places, as a ratio: `"0.018"` means +1.8%. It uses `lastPrice`, not `markPrice`, and is `null` whenever `openPrice24h` is `null`.
+- `volume24hNotional` is an **approximation** of the instrument's trading volume over the last 24 hours, in units of its `quoteAsset`. This service adds up the provider's 24-hour candles — each candle's volume times its typical price `(high + low + close) / 3` — and rounds the sum once, to at most two decimal places. Each candle's trades are valued at one typical price, so the result can be off by as much as each candle's volume times its high-to-low range, and by roughly a further 1% where the candles and the provider's own 24-hour volume do not count exactly the same trades. A positive value below 0.005 is reported as `0.01`, so `0` always means the provider reported no volume. It is `null` when the 24-hour statistics could not be read or are missing or malformed for that instrument (for example a repeated candle, more than 1,440 candles, or a candle with volume but no price), or when the candles' volumes differ from the provider's own 24-hour volume by more than 1% — `null` means unknown, never zero.
+- `openInterestNotional` is the provider's open interest for the instrument valued at `markPrice` (open interest × `markPrice`), in units of its `quoteAsset`, rounded to at most two decimal places. It is read with the prices and has the same `ts`. A positive value below 0.005 is reported as `0.01`, so `0` always means the provider reported zero open interest. It is `null` when the provider did not report a usable open interest or `markPrice` is zero — `null` means unknown, never zero.
+- Both keys are always present in a `ticker` that is not `null`. They are plain decimal strings; abbreviate them for display yourself.
 - `nextFundingTs` and `ts` are epoch **milliseconds**. `fetchedAt` is an ISO 8601 string.
 - `fundingRate`, `riskTiers[].lowerBound` and the candle `ts` are passed through as the provider gives them; this API adds no interpretation of its own to them.
 
@@ -120,8 +125,8 @@ The list and the single-instrument route are served from a snapshot shared by al
 
 Two ceilings apply, and `fetchedAt` speaks for the first one only:
 
-- **Prices** (`markPrice`, `indexPrice`, `lastPrice`, `fundingRate`, `nextFundingTs`, `ts`) read more than 15 seconds ago by default are not served. The route answers 502 instead.
-- **Instrument fields** — including `status` — and **`openPrice24h` with `change24h`** are refreshed on a longer period (60 seconds by default) and are served for up to 5 minutes by default when the provider cannot be read. They can therefore be older than `fetchedAt`. If `openPrice24h` cannot be read at all, it and `change24h` are `null` and the prices still stand.
+- **Prices** (`markPrice`, `indexPrice`, `lastPrice`, `fundingRate`, `nextFundingTs`, `ts`) and **`openInterestNotional`** read more than 15 seconds ago by default are not served. The route answers 502 instead.
+- **Instrument fields** — including `status` — and **`openPrice24h` with `change24h` and `volume24hNotional`** are refreshed on a longer period (60 seconds by default) and are served for up to 5 minutes by default when the provider cannot be read. They can therefore be older than `fetchedAt`. If the 24-hour statistics cannot be read at all, `openPrice24h`, `change24h` and `volume24hNotional` are `null` and the prices still stand.
 
 The order book and candles are cached for a short time (2 seconds and 15 seconds by default), and their `fetchedAt` keeps the provider read time on a cache hit.
 
