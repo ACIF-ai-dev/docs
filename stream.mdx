@@ -224,7 +224,7 @@ The reply to `subscribeRounds` is a `roundsSubscribed` frame:
 ```
 
 - `pairs`: the pairs this frame added. A pair the connection already holds is not listed again.
-- `snapshot`: for each pair in `pairs`, the element `GET /v1/markets/rounds` returns for it, with the same keys and meanings. If the service could not yet evaluate a pair, the pair is listed in `pairs` without an element in `snapshot`; every round of that pair then arrives as a `roundUpdate` frame once an evaluation succeeds.
+- `snapshot`: for each pair in `pairs`, the element `GET /v1/markets/rounds` returns for it, with the same keys; `targetPrice` can differ from the REST list from a round's start until Polymarket publishes its value (see below). If the service could not yet evaluate a pair, the pair is listed in `pairs` without an element in `snapshot`; every round of that pair then arrives as a `roundUpdate` frame once an evaluation succeeds.
 
 Later frames:
 
@@ -236,21 +236,63 @@ Later frames:
 {"type":"roundsUnsubscribed","pairs":[{"asset":"SOL","interval":"5m"}]}
 ```
 
-A `roundUpdate` frame carries one round of a held pair, in the shape of a round of the REST list, whenever any of its keys changed: a new round appears, its `status` moves (`upcoming`, `live`, and `ended` change at the window's boundaries without any read from Polymarket), it gets its `targetPrice`, or it gets its `winningOutcome`. Replace the round with the same `marketId`. The service evaluates the held pairs every **1000 ms**, so a change reaches you within about a second of the service knowing it; a target price or result is known only after Polymarket publishes it and the service reads it, which can be minutes after the round ends. When several rounds change at once, they arrive oldest first. `ts` is the time of that evaluation in epoch milliseconds. No frame announces a round leaving the list, and the pair's `state` and `fetchedAt` are not sent again: keep the newest **5** ended rounds yourself, and read the REST list when you need the pair's own keys. The `targetPrice` and `winningOutcome` rules of the REST list apply: a non-null value with `targetPriceSource` `polymarket`, and a non-null `winningOutcome`, are final, so do not overwrite them with a later `null`, which a reconnect to another instance of the service can still carry for a short while.
+A `roundUpdate` frame carries one round of a held pair, with the same keys as a round of the REST list, whenever any of its keys changed: a new round appears, its `status` moves (`upcoming`, `live`, and `ended` change at the window's boundaries without any read from Polymarket), it gets its `targetPrice`, its `targetPrice` is replaced, or it gets its `winningOutcome`. Replace the round with the same `marketId`. The service evaluates the held pairs every **1000 ms**, so a change reaches you within about a second of the service knowing it; a `polymarket` target price or result is known only after Polymarket publishes it and the service reads it, which can be minutes after the round ends. When several rounds change at once, they arrive oldest first. `ts` is the time of that evaluation in epoch milliseconds. No frame announces a round leaving the list, and the pair's `state` and `fetchedAt` are not sent again: keep the newest **5** ended rounds yourself, and read the REST list when you need the pair's own keys. From a round's start this stream can carry `targetPriceSource` `polybolt_twap` when the deployment enables it: the first reference price (see **Reference price frames**) this instance received that was stamped at or after the round's start and less than **2000 ms** after it, excluding a value the source marks as carried forward. A later-arriving point with an earlier stamp does not replace it. It is an estimate that Polymarket's own value (`polymarket`) replaces when published (one more `roundUpdate`). If no such point reached this instance (it was not connected, or it restarted during the round), the target stays `null` until Polymarket publishes. `GET /v1/markets/rounds` never returns `polybolt_twap`. Keep values by this precedence across reconnects to instances that may be behind or ahead: `polymarket` is final and never replaced; `polybolt_twap` replaces `null` and is replaced by `polymarket` or by a `polybolt_twap` in a later frame (only another instance can send a different value); `null` never replaces a value you have seen. A non-null `winningOutcome` is also final.
 
 `roundUpdate` frames follow the buffer rule of `price` frames and count toward the same close, and a skipped frame is not sent again. After a reconnect, or if you suspect you missed one, send `unsubscribeRounds` and then `subscribeRounds` for the pair to receive a fresh `snapshot`.
 
 A `roundsUnsubscribed` frame lists the pairs that `unsubscribeRounds` let go of; a carried pair the connection did not hold is left out.
 
-These frames carry no prices, trades, or settlement. For those, send `subscribe` with a round's `outcomes[].tokenId`, adding `"trades":true` for `trade` frames, and subscribe to the tokens of a `next` round before it starts so there is no gap when it becomes `current`.
+These frames carry no prices, trades, or settlement. For the underlying price see **Reference price frames**; for token prices and trades, send `subscribe` with a round's `outcomes[].tokenId`, adding `"trades":true` for `trade` frames, and subscribe to the tokens of a `next` round before it starts so there is no gap when it becomes `current`.
 
 When crypto rounds are not open on this deployment, a well-formed `subscribeRounds` is answered with an `error` frame whose `code` is `NOT_FOUND` and whose `details.reason` is `rounds_not_open`, whichever pairs it names, and `unsubscribeRounds` is answered with a `roundsUnsubscribed` frame with an empty `pairs`. While a new version of the service is being rolled out, an instance that predates these operations answers both with `VALIDATION_FAILED`; send `subscribeRounds` again after every reconnect.
+
+## Reference price frames
+
+The underlying price that crypto Up or Down rounds resolve on — Chainlink's 60-second time-weighted average price as Polymarket relays it — can be followed for assets this deployment carries:
+
+```json
+{"op":"subscribeReference","assets":["BTC"]}
+```
+
+```json
+{"op":"unsubscribeReference","assets":["BTC"]}
+```
+
+Each frame takes from **1** through **4** `assets` (1 to 10 upper-case letters or digits). An asset this deployment does not carry refuses the whole frame with `VALIDATION_FAILED`, for `unsubscribeReference` as well as `subscribeReference`, and nothing in that frame is subscribed or unsubscribed. A listed-twice asset counts once. A connection holds at most **4** assets: a `subscribeReference` that would hold more is refused with an `error` frame whose `code` is `RATE_LIMITED` and whose `details` carry `reason` `reference_subscription_limit`, `currentSubscriptions`, and `requestedSubscriptions`. Tokens, Perps instruments, round pairs and reference assets are counted separately.
+
+The reply to `subscribeReference` is `referenceSubscribed`:
+
+```json
+{"type":"referenceSubscribed","assets":["BTC"],"snapshot":[{"asset":"BTC","basis":"chainlink_twap_60s","points":[{"price":"118420.1","ts":1790935814000},{"price":"118420.153274","ts":1790935815000}]}],"feed":"live"}
+```
+
+For each newly held asset, `snapshot[].points` contains every point this instance holds since the start of that asset's current live round (the earliest, if rounds of several intervals are live), oldest first; with no live round for that asset, it contains every point held. Points are kept for at most the last **300** seconds by default. The snapshot may be shorter, even empty, right after a round starts or the service (re)starts: points are held in memory only, and past points are not fetched. An already-held asset is not listed again in `assets` and has no `snapshot` element; if every asset is already held the reply is `{"type":"referenceSubscribed","assets":[],"snapshot":[],"feed":"live"}` when the feed is live.
+
+Later frames:
+
+```json
+{"type":"referencePrice","asset":"BTC","basis":"chainlink_twap_60s","price":"118420.153274","ts":1790935815000}
+```
+
+```json
+{"type":"referenceFeed","state":"interrupted","ts":1790935820000}
+```
+
+```json
+{"type":"referenceUnsubscribed","assets":["BTC"]}
+```
+
+`referenceUnsubscribed.assets` lists only assets the connection let go of. `basis` is a closed word, today only `chainlink_twap_60s`. `price` is a plain decimal string kept as the source sends it; parse it as a decimal, not a float. `ts` is the source time of the value in epoch milliseconds and only increases per asset on one connection: an older point is not sent live. Expect about one point per second per asset. `referenceFeed` (`live` or `interrupted`, with `ts`) is sent only when the upstream state changes and only to connections holding at least one reference asset. Points missed during an interruption are not sent later (though they may appear in a later `referenceSubscribed` if still held). Show a live indicator from `feed` and `referenceFeed`, not from the arrival of frames. `referencePrice` follows the buffer rule of `price` frames and counts toward the same **4008** close; a skipped point is not sent again. These prices are for display; Polymarket settles a round, not these frames.
+
+When reference prices are not open on this deployment, `subscribeReference` gets an `error` with `code` `NOT_FOUND` and `details.reason` `reference_not_open`; `unsubscribeReference` gets `referenceUnsubscribed` with empty `assets`. During rollout an older instance answers both operations with `VALIDATION_FAILED`; send `subscribeReference` again after every reconnect.
 
 ## Disconnections
 
 The service closes with **4029** when a connection limit is exceeded or when the client exceeds the frame-rate limit. It closes with **1011** when it rejects a connection, including a duplicate connection ID. It closes with **1001** during server shutdown or after the heartbeat timeout. It closes with **4008** when a client's `bufferedAmount` exceeds **1048576** bytes for **100** consecutive delivery attempts. This indicates a slow consumer; catch up on reads or reduce subscriptions before reconnecting.
 
 ## Changes
+
+2026-10-07: Reference prices: `subscribeReference` and `unsubscribeReference` operations and `referenceSubscribed`, `referencePrice`, `referenceFeed`, and `referenceUnsubscribed` frames. Round frames can now carry `targetPriceSource` `polybolt_twap` from a round's start until Polymarket publishes its value (stream only; REST unchanged). Token, Perps and round operations and frame keys did not change: a connection that does not send the new operations receives frames with the same keys as before.
 
 2026-10-06: Crypto rounds: the `subscribeRounds` and `unsubscribeRounds` operations and the `roundsSubscribed`, `roundUpdate`, and `roundsUnsubscribed` frames (see **Crypto round frames**). Token and Perps operations and frames did not change: a connection that does not send the new operations receives exactly the frames it received before.
 
