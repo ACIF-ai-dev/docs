@@ -564,6 +564,32 @@ curl -X POST https://api.tobuilder.app/v1/orders/market \
 
 Prices, sizes, amounts, and `tokenId` are strings in both directions, and they stay strings. A token id can be dozens of decimal digits; converting it to a `number` loses precision, just as it does for real-money values.
 
+## Deposit assets
+
+`GET /v1/deposit/assets` requires a builder API key. Each asset includes an always-present `logo` object; its token and chain entries are independently nullable:
+
+```json
+{
+  "chainId": "137",
+  "chainName": "Polygon",
+  "chainType": "evm",
+  "token": { "name": "Tether USD", "symbol": "USDT", "address": "0x9417669fBF23357D2774e9D421307bd5eA1006d2", "decimals": 6 },
+  "minCheckoutUsd": "2",
+  "logo": {
+    "token": "/public/deposit/logos/usdt?v=cddba428a0298448",
+    "chain": null
+  }
+}
+```
+
+### Deposit asset logos
+
+Append either non-null path to this API's origin and use it as an image source. `GET /public/deposit/logos/{logoId}` serves SVG without an API key; do not insert its bytes as markup. Show your own placeholder for `null` or an image error. An unknown ID answers 404 with `deposit_logo_not_found`; the per-client limit answers 429 with `Retry-After` (300 requests a minute by default).
+
+A `logoId` longer than 100 characters is refused by the router with 414 before this route runs — only request the paths the asset list gives you.
+
+The response includes an `ETag` and `Cache-Control: public, max-age=86400`; matching `If-None-Match` returns 304. The `v` query value changes when the image changes and has no other meaning. If your page has a CSP `img-src`, allow this API's origin there (for example `img-src 'self' https://api.tobuilder.app`).
+
 ## When a call fails
 
 Every error response uses one envelope:

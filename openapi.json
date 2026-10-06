@@ -5515,7 +5515,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The cached Bridge-supported deposit assets, optionally filtered by chainId, with each asset's address family and the cache fetch timestamp.",
+            "description": "The cached Bridge-supported deposit assets, optionally filtered by chainId, with each asset's address family, token and chain logo paths (or null), and the cache fetch timestamp.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5577,6 +5577,39 @@
                               }
                             ],
                             "description": "Address family for this chain. Matches the key in the deposit addresses response (evm, svm, tron, btc). null when the server does not recognise the chain; do not send funds to a guessed address family."
+                          },
+                          "logo": {
+                            "type": "object",
+                            "properties": {
+                              "token": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Token logo. A path on this API's origin, not under /v1, such as /public/deposit/logos/usdt?v=cddba428a0298448: append it to the origin and use it as an image source. It needs no API key. The image is SVG. The v value changes when the logo changes and has no other meaning. null when this service has no logo for this token or chain; show your own placeholder."
+                              },
+                              "chain": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Chain logo. A path on this API's origin, not under /v1, such as /public/deposit/logos/usdt?v=cddba428a0298448: append it to the origin and use it as an image source. It needs no API key. The image is SVG. The v value changes when the logo changes and has no other meaning. null when this service has no logo for this token or chain; show your own placeholder."
+                              }
+                            },
+                            "required": [
+                              "token",
+                              "chain"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Deposit asset logos served by this API. The object is always present; each value is null on its own."
                           }
                         },
                         "required": [
@@ -5584,7 +5617,8 @@
                           "chainName",
                           "token",
                           "minCheckoutUsd",
-                          "chainType"
+                          "chainType",
+                          "logo"
                         ],
                         "additionalProperties": false
                       }
@@ -5604,7 +5638,7 @@
                     "fetchedAt"
                   ],
                   "additionalProperties": false,
-                  "description": "The cached Bridge-supported deposit assets, optionally filtered by chainId, with each asset's address family and the cache fetch timestamp."
+                  "description": "The cached Bridge-supported deposit assets, optionally filtered by chainId, with each asset's address family, token and chain logo paths (or null), and the cache fetch timestamp."
                 }
               }
             }
