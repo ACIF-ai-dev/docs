@@ -12500,7 +12500,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns one market with its outcomes and syncedAt, possibly from cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price, tokenId, and oneHourPriceChange stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. Without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered. A crypto round's market (see the 404 response) is built from the round as this service last read it from Polymarket: question and event.title are the round's event title, eventStartTime and endDate are the round's window, each outcomes[].price is the price Polymarket listed for that outcome at that read, a snapshot that can be minutes old while the round is live (read live prices from /v1/stream), and syncedAt is the time of that read rather than of a catalog sync. Its question is not translated: with lang, translation is null.",
+            "description": "Returns one market with its outcomes and syncedAt, possibly from cache. It has the keys of a GET /v1/markets item plus rules, the market's rules text and settlement source link, which this route and each market of GET /v1/events/{eventId} carry and GET /v1/markets does not. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price, tokenId, and oneHourPriceChange stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. Without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. rules.translation follows the same rule for rules.description, independently of translation. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered. A crypto round's market (see the 404 response) is built from the round as this service last read it from Polymarket: question and event.title are the round's event title, eventStartTime and endDate are the round's window, each outcomes[].price is the price Polymarket listed for that outcome at that read, a snapshot that can be minutes old while the round is live (read live prices from /v1/stream), and syncedAt is the time of that read rather than of a catalog sync. Its question is not translated: with lang, translation is null. Its rules fields are null.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12779,6 +12779,67 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "rules": {
+                      "type": "object",
+                      "properties": {
+                        "description": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The Gamma market field description: the market's rules as Gamma wrote them, in English, whole (never a summary). Plain text: do not render it as HTML or markdown. Line breaks are \\n, and one or more of them separate paragraphs; before it is stored, line ends are turned into \\n and control characters other than \\n and tab, and the bidirectional embedding, override, and isolate characters (U+202A to U+202E and U+2066 to U+2069), are removed. Null when Gamma sends none or an empty text, when the text is longer than 10,000 UTF-16 code units (it is never cut), or when the market was last stored before this field existed. Always null on a crypto round's market, which only GET /v1/markets/{marketId} serves."
+                        },
+                        "resolutionSource": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The Gamma market field resolutionSource: a link to the source the market settles against, passed through exactly as received as an absolute https URL of at most 2,048 characters. Use it only as a link. Null when Gamma sends none or an empty value, when the value is not such a URL, or when the market was last stored before this field existed; many markets have none. Always null on a crypto round's market, which only GET /v1/markets/{marketId} serves."
+                        },
+                        "translation": {
+                          "description": "Absent without lang. With lang, a machine translation of description into that language, or null when no translation of the current description is stored in that language, whether or not the question has a translation. Plain text, like description.",
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "lang": {
+                                  "type": "string"
+                                },
+                                "description": {
+                                  "type": "string"
+                                },
+                                "disclaimer": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "lang",
+                                "description",
+                                "disclaimer"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "description",
+                        "resolutionSource"
+                      ],
+                      "additionalProperties": false,
+                      "description": "The market's rules as Gamma publishes them: its rules text and the link to its settlement source. Present on every 200 of GET /v1/markets/{marketId} and on each market of GET /v1/events/{eventId}; GET /v1/markets does not serve it."
                     }
                   },
                   "required": [
@@ -12798,10 +12859,11 @@
                     "icon",
                     "image",
                     "volume24h",
-                    "eventStartTime"
+                    "eventStartTime",
+                    "rules"
                   ],
                   "additionalProperties": false,
-                  "description": "Returns one market with its outcomes and syncedAt, possibly from cache. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price, tokenId, and oneHourPriceChange stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. Without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered. A crypto round's market (see the 404 response) is built from the round as this service last read it from Polymarket: question and event.title are the round's event title, eventStartTime and endDate are the round's window, each outcomes[].price is the price Polymarket listed for that outcome at that read, a snapshot that can be minutes old while the round is live (read live prices from /v1/stream), and syncedAt is the time of that read rather than of a catalog sync. Its question is not translated: with lang, translation is null."
+                  "description": "Returns one market with its outcomes and syncedAt, possibly from cache. It has the keys of a GET /v1/markets item plus rules, the market's rules text and settlement source link, which this route and each market of GET /v1/events/{eventId} carry and GET /v1/markets does not. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price, tokenId, and oneHourPriceChange stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. Without lang translation is absent, while lang yields a translation or null when it is missing or the source question changed. rules.translation follows the same rule for rules.description, independently of translation. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered. A crypto round's market (see the 404 response) is built from the round as this service last read it from Polymarket: question and event.title are the round's event title, eventStartTime and endDate are the round's window, each outcomes[].price is the price Polymarket listed for that outcome at that read, a snapshot that can be minutes old while the round is live (read live prices from /v1/stream), and syncedAt is the time of that read rather than of a catalog sync. Its question is not translated: with lang, translation is null. Its rules fields are null."
                 }
               }
             }
@@ -16307,6 +16369,758 @@
                   ],
                   "additionalProperties": false,
                   "description": "error.code is UPSTREAM_UNAVAILABLE and no series is returned: the price history of every series failed to be read, and an older value is not served instead (when only some fail, the answer is 200 with those series unavailable). error.details.reason is clob_rate_limited when Polymarket limited this service's calls, with Retry-After from 1 to 60 seconds saying when calls resume, and clob_unavailable for any other failure; a failed read is answered the same way for a few seconds without asking Polymarket again. When the series failed differently, clob_rate_limited is returned. Do not retry immediately."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/events/{eventId}": {
+      "get": {
+        "summary": "Get an event",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "lang",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "in": "path",
+            "name": "eventId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns one event and the markets of it that this service's catalog lists, possibly from cache. Listed markets only: the catalog keeps markets above a lifetime volume threshold, and a market of the event it does not list is not included here, although GET /v1/markets/{marketId} can still return it by its identifier. The markets are ordered by marketId, at most 200; truncated is true when the event has more listed markets than that, and those past the first 200 are not returned. Each market has the keys of GET /v1/markets/{marketId}, rules included, with the same meaning. event.endDate is the latest endDate among the returned markets: when the event ends, as far as this service knows. lang applies to each market as on GET /v1/markets/{marketId}: it localizes outcomes[].outcome labels and adds translation and rules.translation, each a translation or null. Crypto round markets are not served here.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "event": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "The event's identifier as requested: the event.id of its markets."
+                        },
+                        "slug": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The event's slug as stored with its markets: that of the first market by marketId that has one. Null when none of them has one."
+                        },
+                        "title": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The event's title as stored with its markets: that of the first market by marketId that has one. Null when none of them has one."
+                        },
+                        "endDate": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "When the event ends: the latest endDate among the markets returned, as an ISO 8601 UTC timestamp. Null when none of them has an endDate."
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "slug",
+                        "title",
+                        "endDate"
+                      ],
+                      "additionalProperties": false,
+                      "description": "The event, as its listed markets describe it."
+                    },
+                    "markets": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "marketId": {
+                            "type": "string"
+                          },
+                          "question": {
+                            "type": "string"
+                          },
+                          "category": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Copied from the Gamma market field category. Gamma responses measured on 2026-09-26 did not include that field on markets or events, so this value and the category query filter cannot be relied on to classify markets; use event, tags, sportsMarketType, and gameStartTime instead. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves."
+                          },
+                          "active": {
+                            "type": "boolean"
+                          },
+                          "endDate": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "outcomes": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "outcome": {
+                                  "type": "string"
+                                },
+                                "price": {
+                                  "type": "string"
+                                },
+                                "tokenId": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "oneHourPriceChange": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The Gamma market field oneHourPriceChange, the price change over the last hour as Gamma computes it, passed through as a signed decimal string from -1 to 1 with no exponent; the service does not recompute it. Gamma reports one value per market, so only the first element of outcomes carries it; the second element is always null and is never derived from the first. In the samples this service has kept, the value follows the first outcome's price as a difference on the same 0 to 1 scale as price; the service has not measured Gamma's definition beyond those samples. It is the value read at syncedAt, which follows the catalog sync interval, not a live figure. Null on the first element means the change is unknown, not zero: Gamma sent none, sent a value that is not a number from -1 to 1 or whose decimal form is longer than 64 characters, or the market was last stored before this field existed or by an older version of the service. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves. Parse it as a decimal, not as a floating-point number."
+                                }
+                              },
+                              "required": [
+                                "outcome",
+                                "price",
+                                "tokenId",
+                                "oneHourPriceChange"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "syncedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                          },
+                          "event": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "slug": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "title": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "slug",
+                                  "title"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The first entry of the Gamma market field events (id, slug, title), or null when Gamma lists no event or the market was stored before this field existed. On a crypto round's market, which only GET /v1/markets/{marketId} serves, it is the round's event."
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "slug": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "label": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "slug",
+                                "label"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "The slug and label of each entry in the Gamma market field tags, requested with include_tag. An empty array means no tag list was received: Gamma may send none for the market, and the upstream SDK reports a missing list and an empty list the same way, so an empty array does not prove the market has no tags. It is always empty on a crypto round's market, which only GET /v1/markets/{marketId} serves, because this service does not read a round's tags."
+                          },
+                          "sportsMarketType": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The Gamma market field sportsMarketType, such as moneyline; null for markets that are not game markets."
+                          },
+                          "gameStartTime": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The Gamma market field gameStartTime, the scheduled start of the game, as an ISO 8601 timestamp; null for markets without a game."
+                          },
+                          "line": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The Gamma market field line, the handicap or total a spread or totals market is priced against; null when Gamma sends none, as for moneyline markets. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves."
+                          },
+                          "groupItemTitle": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The Gamma market field groupItemTitle, which names this market within its event, for example a team or a draw in a three-way soccer result; null when Gamma sends none. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves."
+                          },
+                          "icon": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The Gamma market field icon, passed through as an opaque absolute https URL. Null when Gamma sends none, when the value is not an https URL on a host the catalog accepts, or when the market was last stored before this field existed. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves. Use it only as an image source, exactly as received; do not build URLs from its host, which may change."
+                          },
+                          "image": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The Gamma market field image, passed through as an opaque absolute https URL; it may be the same URL as icon. Null when Gamma sends none, when the value is not an https URL on a host the catalog accepts, or when the market was last stored before this field existed. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves. Use it only as an image source, exactly as received; do not build URLs from its host, which may change."
+                          },
+                          "volume24h": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The Gamma market field volume24hr, the market's trading volume over the last 24 hours, as a non-negative decimal string with no exponent and no sign, in the unit Gamma reports it in. It is the value read at syncedAt, not a live figure. Null means the volume is unknown, not zero: Gamma sent none, sent a value that is not a non-negative number or whose decimal form is longer than 64 characters, or the market was last stored before this field existed. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves. Parse it as a decimal, not as a floating-point number."
+                          },
+                          "eventStartTime": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The Gamma market field eventStartTime, as an ISO 8601 UTC timestamp. It is the value read at syncedAt, copied from that one field: a separate field from gameStartTime and endDate, never filled from them or from any other field. Null means the value is unknown: Gamma sent none, sent a value this service does not read as a timestamp with a time zone, or the market was last stored before this field existed. On a crypto round's market, which only GET /v1/markets/{marketId} serves, it is the start of the round's window, never null: this service keeps a round only when at least one of that field and the event's start time is present and every one present equals the start its slug names."
+                          },
+                          "translation": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "lang": {
+                                    "type": "string"
+                                  },
+                                  "question": {
+                                    "type": "string"
+                                  },
+                                  "disclaimer": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "lang",
+                                  "question",
+                                  "disclaimer"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "rules": {
+                            "type": "object",
+                            "properties": {
+                              "description": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "The Gamma market field description: the market's rules as Gamma wrote them, in English, whole (never a summary). Plain text: do not render it as HTML or markdown. Line breaks are \\n, and one or more of them separate paragraphs; before it is stored, line ends are turned into \\n and control characters other than \\n and tab, and the bidirectional embedding, override, and isolate characters (U+202A to U+202E and U+2066 to U+2069), are removed. Null when Gamma sends none or an empty text, when the text is longer than 10,000 UTF-16 code units (it is never cut), or when the market was last stored before this field existed. Always null on a crypto round's market, which only GET /v1/markets/{marketId} serves."
+                              },
+                              "resolutionSource": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "The Gamma market field resolutionSource: a link to the source the market settles against, passed through exactly as received as an absolute https URL of at most 2,048 characters. Use it only as a link. Null when Gamma sends none or an empty value, when the value is not such a URL, or when the market was last stored before this field existed; many markets have none. Always null on a crypto round's market, which only GET /v1/markets/{marketId} serves."
+                              },
+                              "translation": {
+                                "description": "Absent without lang. With lang, a machine translation of description into that language, or null when no translation of the current description is stored in that language, whether or not the question has a translation. Plain text, like description.",
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "lang": {
+                                        "type": "string"
+                                      },
+                                      "description": {
+                                        "type": "string"
+                                      },
+                                      "disclaimer": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "lang",
+                                      "description",
+                                      "disclaimer"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "description",
+                              "resolutionSource"
+                            ],
+                            "additionalProperties": false,
+                            "description": "The market's rules as Gamma publishes them: its rules text and the link to its settlement source. Present on every 200 of GET /v1/markets/{marketId} and on each market of GET /v1/events/{eventId}; GET /v1/markets does not serve it."
+                          }
+                        },
+                        "required": [
+                          "marketId",
+                          "question",
+                          "category",
+                          "active",
+                          "endDate",
+                          "outcomes",
+                          "syncedAt",
+                          "event",
+                          "tags",
+                          "sportsMarketType",
+                          "gameStartTime",
+                          "line",
+                          "groupItemTitle",
+                          "icon",
+                          "image",
+                          "volume24h",
+                          "eventStartTime",
+                          "rules"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "The markets of the event that this service's catalog lists, ordered by marketId (compared as text), at most 200. Each has the keys of GET /v1/markets/{marketId}, rules included."
+                    },
+                    "truncated": {
+                      "type": "boolean",
+                      "description": "True when the catalog lists more than 200 markets of this event, so that markets holds only the first 200 by marketId; false when markets holds them all."
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "markets",
+                    "truncated"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Returns one event and the markets of it that this service's catalog lists, possibly from cache. Listed markets only: the catalog keeps markets above a lifetime volume threshold, and a market of the event it does not list is not included here, although GET /v1/markets/{marketId} can still return it by its identifier. The markets are ordered by marketId, at most 200; truncated is true when the event has more listed markets than that, and those past the first 200 are not returned. Each market has the keys of GET /v1/markets/{marketId}, rules included, with the same meaning. event.endDate is the latest endDate among the returned markets: when the event ends, as far as this service knows. lang applies to each market as on GET /v1/markets/{marketId}: it localizes outcomes[].outcome labels and adds translation and rules.translation, each a translation or null. Crypto round markets are not served here."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An eventId holding anything other than letters, digits, hyphens, and underscores, or an invalid lang, produces error.code VALIDATION_FAILED with error.details omitted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "An eventId holding anything other than letters, digits, hyphens, and underscores, or an invalid lang, produces error.code VALIDATION_FAILED with error.details omitted."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/events through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/events through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "error.code is NOT_FOUND and error.details is omitted when the catalog lists no market of this event. That answer is cached until the market cache entry expires, so the event stays 404 during that period. On this path a 404 can also come from a deployment that does not have the route yet, so do not cache it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is NOT_FOUND and error.details is omitted when the catalog lists no market of this event. That answer is cached until the market cache entry expires, so the event stays 404 during that period. On this path a 404 can also come from a deployment that does not have the route yet, so do not cache it."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
                 }
               }
             }

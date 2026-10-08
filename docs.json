@@ -51,7 +51,7 @@
           },
           {
             "group": "Events",
-            "pages": ["GET /v1/events/{eventId}/price-history"]
+            "pages": ["GET /v1/events/{eventId}", "GET /v1/events/{eventId}/price-history"]
           },
           {
             "group": "Sports",
