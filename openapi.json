@@ -6295,7 +6295,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The authenticated user's recorded Bridge transfer list, with source and destination token details, transfer status, hashes, and timestamps. fromTokenAddress and toTokenAddress are stored from the upstream Bridge response and can differ in case from token.address in GET /v1/deposit/assets; compare EVM hexadecimal addresses case-insensitively.",
+            "description": "The authenticated user's recorded Bridge transfer list, with source and destination token details, transfer status, hashes, and timestamps. The list leaves out the Bridge's hand-over of a converted deposit, so such a deposit is normally one entry: once a transfer that changes chain or token is credited, the first same-chain, same-token transfer of the delivered token recorded for the same deposit address within ten minutes after it is read as that hand-over. It is not listed, and it gets no deposit.credited event unless it was credited before its source transfer was. A deposit sent directly in that token to that address inside those ten minutes cannot be told apart from the hand-over and can be the transfer left out; the hand-over, when recorded after it, is then listed and credited as a transfer of its own. fromTokenAddress and toTokenAddress are stored from the upstream Bridge response and can differ in case from token.address in GET /v1/deposit/assets; compare EVM hexadecimal addresses case-insensitively.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6366,7 +6366,7 @@
                     "transfers"
                   ],
                   "additionalProperties": false,
-                  "description": "The authenticated user's recorded Bridge transfer list, with source and destination token details, transfer status, hashes, and timestamps. fromTokenAddress and toTokenAddress are stored from the upstream Bridge response and can differ in case from token.address in GET /v1/deposit/assets; compare EVM hexadecimal addresses case-insensitively."
+                  "description": "The authenticated user's recorded Bridge transfer list, with source and destination token details, transfer status, hashes, and timestamps. The list leaves out the Bridge's hand-over of a converted deposit, so such a deposit is normally one entry: once a transfer that changes chain or token is credited, the first same-chain, same-token transfer of the delivered token recorded for the same deposit address within ten minutes after it is read as that hand-over. It is not listed, and it gets no deposit.credited event unless it was credited before its source transfer was. A deposit sent directly in that token to that address inside those ten minutes cannot be told apart from the hand-over and can be the transfer left out; the hand-over, when recorded after it, is then listed and credited as a transfer of its own. fromTokenAddress and toTokenAddress are stored from the upstream Bridge response and can differ in case from token.address in GET /v1/deposit/assets; compare EVM hexadecimal addresses case-insensitively."
                 }
               }
             }
