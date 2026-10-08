@@ -680,6 +680,15 @@ A suspended account answers **403** with `error.details.reason` set to `subbuild
 
 `GET /v1/users/portfolio-value` is a different quantity — a mark-to-market valuation, not a balance. Its field is named `portfolioValueUsdc`; that spelling is the published contract and is reproduced here verbatim, but what it carries is a valuation figure. A `null` there means the upstream returned no value for that wallet. It is **not zero**, and rendering it as 0 misstates the account.
 
+## Profit and loss
+
+Two reads give an end user's PnL — realized plus unrealized PnL on their prediction-market wallet; deposits and withdrawals are not PnL. Amounts are decimal strings in US dollars; keep them strings and use a decimal library, as with collateral.
+
+- `GET /v1/users/pnl/today?dayStart=<epoch seconds>` — the change since the start of the user's day. **"Today" is the day on the user's device**: send `dayStart` as the epoch seconds of midnight in the device's own time zone (it must lie between 26 hours before and 5 minutes after the time of the request). The answer echoes the `dayStart` it used.
+- `GET /v1/users/pnl/series?range=1D|1W|1M|1Y|ALL` — cumulative PnL points for a chart, oldest first, with the change over the range. `1D` starts at `dayStart`, which it requires; the other ranges do not use it.
+
+When the wallet has no PnL point at or before `dayStart` — its history starts later that day, or it has none yet — the start of the day counts as **0**. When the total is unavailable but the realized part is known, the realized part is still returned next to a `null` total. A `null` amount is **not zero**: `unavailableReason` says why, and a `null` point in a series is a gap in the chart. Polymarket publishes PnL points on an hourly grid, so the newest value can be up to about an hour behind the request; `asOf` says when it was taken. `parts` lists the sources the total adds up — only `prediction` today; a `perps` part will be added later, and the total stays the sum of the listed parts.
+
 ## Explore the docs
 
 Use **API reference** for operation parameters, authentication requirements, and responses. **SDK guide** covers the TypeScript client for the same operations, and **Webhooks** explains what you need in place to receive event deliveries.

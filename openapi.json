@@ -1889,6 +1889,1165 @@
         }
       }
     },
+    "/v1/users/pnl/today": {
+      "get": {
+        "summary": "Get today's PnL for a user",
+        "description": "Returns the authenticated user's PnL for today: the change since dayStart, the midnight the app sends from the user's device. PnL is realized plus unrealized PnL on the user's prediction-market wallet (deposits and withdrawals are not PnL). When the wallet has no PnL point at or before dayStart, the start of the day counts as 0. When the total is unavailable but the realized part is known, realizedUsdc is still returned. A null amount is not zero. Polymarket publishes PnL points on an hourly grid, so the newest value can be up to about an hour behind the time of the request; asOf says when it was taken. parts lists the sources the total adds up; a perps part will be added later.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "dayStart",
+            "required": true,
+            "description": "The start of the user's day — midnight on the user's device — in epoch seconds. Required. It must lie between 26 hours before and 5 minutes after the time of the request."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": [],
+            "endUserToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Today's PnL since dayStart: the total, and per part its realized and unrealized split and freshness. A null amount is not zero.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "dayStart": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "The dayStart this answer used, in epoch seconds, as sent."
+                    },
+                    "asOf": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The oldest asOf among the parts, ISO 8601. Polymarket publishes PnL points on an hourly grid, so the newest value can be up to about an hour behind the time of the request; asOf says when it was taken. Null when no part has a PnL point yet."
+                    },
+                    "pnlUsdc": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Today's PnL across the parts listed in parts, a decimal string in US dollars: the sum of their pnlUsdc. Null when any part is unavailable. Null is not zero: the value is unavailable and unavailableReason says why — do not render null as 0."
+                    },
+                    "unavailableReason": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "value_unavailable",
+                            "baseline_unavailable"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Why pnlUsdc is null; null when it has a value. value_unavailable: Polymarket did not provide the PnL value (its mark was unavailable) at the start or the end of the day. baseline_unavailable: the PnL value at the start of the day could not be read."
+                    },
+                    "parts": {
+                      "type": "object",
+                      "properties": {
+                        "prediction": {
+                          "type": "object",
+                          "properties": {
+                            "walletAddress": {
+                              "type": "string",
+                              "description": "The user's Polymarket Deposit Wallet address, the only address this PnL is read for."
+                            },
+                            "measure": {
+                              "type": "string",
+                              "enum": [
+                                "positionPnl"
+                              ],
+                              "description": "What the amounts measure. positionPnl is realized plus unrealized PnL on the wallet's positions; deposits, withdrawals and incentive income are not part of it."
+                            },
+                            "pnlUsdc": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "The change of positionPnl since dayStart, a decimal string in US dollars (realizedUsdc + unrealizedUsdc). When the wallet has no PnL point at or before dayStart (its history starts later, or it has none), the start of the day counts as 0. Null is not zero: the value is unavailable and unavailableReason says why — do not render null as 0."
+                            },
+                            "realizedUsdc": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "The realized part of pnlUsdc, a decimal string in US dollars. It is returned whenever both of its values are known, also when pnlUsdc is null; null means it is unavailable, not zero."
+                            },
+                            "unrealizedUsdc": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "The unrealized (mark-to-market) part of pnlUsdc, a decimal string in US dollars. Null means it is unavailable, not zero."
+                            },
+                            "unavailableReason": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "value_unavailable",
+                                    "baseline_unavailable"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Why pnlUsdc is null; null when it has a value. value_unavailable: Polymarket did not provide the PnL value (its mark was unavailable) at the start or the end of the day. baseline_unavailable: the PnL value at the start of the day could not be read."
+                            },
+                            "asOf": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "ISO 8601 time of the newest PnL point used. Polymarket publishes PnL points on an hourly grid, so the newest value can be up to about an hour behind the time of the request; asOf says when it was taken. Null when the wallet has no PnL point yet."
+                            },
+                            "dataLagSeconds": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "How old Polymarket's PnL data is, in seconds, as Polymarket reports it (the age of its status snapshot plus the time since its PnL engine last advanced). Null means unknown, not zero."
+                            }
+                          },
+                          "required": [
+                            "walletAddress",
+                            "measure",
+                            "pnlUsdc",
+                            "realizedUsdc",
+                            "unrealizedUsdc",
+                            "unavailableReason",
+                            "asOf",
+                            "dataLagSeconds"
+                          ],
+                          "additionalProperties": false,
+                          "description": "The prediction-market part. Everything inside a part is true of that source only."
+                        }
+                      },
+                      "required": [
+                        "prediction"
+                      ],
+                      "additionalProperties": false,
+                      "description": "The sources pnlUsdc adds up. Only prediction today; a perps part will be added later, and pnlUsdc stays the sum of the listed parts."
+                    }
+                  },
+                  "required": [
+                    "dayStart",
+                    "asOf",
+                    "pnlUsdc",
+                    "unavailableReason",
+                    "parts"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Today's PnL since dayStart: the total, and per part its realized and unrealized split and freshness. A null amount is not zero."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid PnL input. error.code is VALIDATION_FAILED. error.details.reason is pnl_day_start_required when dayStart is missing where it is required, pnl_day_start_invalid when dayStart is not an integer number of epoch seconds between 26 hours before and 5 minutes after the time of the request (or is repeated), or pnl_range_invalid when range is missing, repeated, or not one of 1D, 1W, 1M, 1Y and ALL. These checks run after the wallet lookup, so a user without a wallet gets 409 first. Retrying the same request produces the same result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Invalid PnL input. error.code is VALIDATION_FAILED. error.details.reason is pnl_day_start_required when dayStart is missing where it is required, pnl_day_start_invalid when dayStart is not an integer number of epoch seconds between 26 hours before and 5 minutes after the time of the request (or is repeated), or pnl_range_invalid when range is missing, repeated, or not one of 1D, 1W, 1M, 1Y and ALL. These checks run after the wallet lookup, so a user without a wallet gets 409 first. Retrying the same request produces the same result."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The end user's Polymarket Deposit Wallet is not yet provisioned (error.details.reason: wallet_not_provisioned). Complete POST /v1/onboarding, then retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The end user's Polymarket Deposit Wallet is not yet provisioned (error.details.reason: wallet_not_provisioned). Complete POST /v1/onboarding, then retry."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "A server-side PnL failure occurred and error.code is INTERNAL. error.details.reason is one of pnl_reader_unavailable, pnl_unclassified, pnl_wallet_address_malformed (the wallet address stored for the user is malformed; no upstream call is made), or positions_users_repository_unavailable. Retrying may return the same result. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A server-side PnL failure occurred and error.code is INTERNAL. error.details.reason is one of pnl_reader_unavailable, pnl_unclassified, pnl_wallet_address_malformed (the wallet address stored for the user is malformed; no upstream call is made), or positions_users_repository_unavailable. Retrying may return the same result. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Polymarket PnL upstream failure; error.code is UPSTREAM_UNAVAILABLE and no value is returned. error.details.reason is pnl_rate_limited when Polymarket limited this service's calls, or pnl_unavailable for any other failure. Either may carry Retry-After (1 to 3600 seconds) when Polymarket sent one; consumers must not assume it is present. Retrying later may succeed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Polymarket PnL upstream failure; error.code is UPSTREAM_UNAVAILABLE and no value is returned. error.details.reason is pnl_rate_limited when Polymarket limited this service's calls, or pnl_unavailable for any other failure. Either may carry Retry-After (1 to 3600 seconds) when Polymarket sent one; consumers must not assume it is present. Retrying later may succeed."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users/pnl/series": {
+      "get": {
+        "summary": "Get the PnL series for a user",
+        "description": "Returns the authenticated user's cumulative PnL points for a chart range. PnL is realized plus unrealized PnL on the user's prediction-market wallet. The points are Polymarket's cumulative values, not rebased to the start of the range; a null point is a gap, not zero. 1D starts at dayStart, the midnight the app sends from the user's device. Polymarket publishes PnL points on an hourly grid, so the newest value can be up to about an hour behind the time of the request; asOf says when it was taken. parts lists the sources each point adds up; a perps part will be added later.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1D",
+                "1W",
+                "1M",
+                "1Y",
+                "ALL"
+              ]
+            },
+            "in": "query",
+            "name": "range",
+            "required": true,
+            "description": "1D: since dayStart on hourly points · 1W: the last week, every 3 hours · 1M: the last month, daily · 1Y: the last 365 days, daily · ALL: the whole history, daily."
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "dayStart",
+            "required": false,
+            "description": "The start of the user's day — midnight on the user's device — in epoch seconds. Required for range 1D. For the other ranges it is optional, checked by the same rule when sent, and not used. It must lie between 26 hours before and 5 minutes after the time of the request."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": [],
+            "endUserToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cumulative PnL points for the range, oldest first, with the change over the range. A null amount is not zero.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "range": {
+                      "type": "string",
+                      "enum": [
+                        "1D",
+                        "1W",
+                        "1M",
+                        "1Y",
+                        "ALL"
+                      ],
+                      "description": "The range this answer covers."
+                    },
+                    "dayStart": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The dayStart the 1D range used, in epoch seconds, as sent. Null for the other ranges."
+                    },
+                    "asOf": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "ISO 8601 time of the newest point. Polymarket publishes PnL points on an hourly grid, so the newest value can be up to about an hour behind the time of the request; asOf says when it was taken. Null when there is no point."
+                    },
+                    "changeUsdc": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The last non-null point's pnlUsdc minus the first non-null point's, a decimal string in US dollars; null points at either end are skipped. \"0\" when there is no point or only one non-null point. Null when there are points but none has a value — not zero. For 1D this can differ from GET /v1/users/pnl/today, which is the source of today's PnL."
+                    },
+                    "parts": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "prediction"
+                        ]
+                      },
+                      "description": "The parts every point's pnlUsdc adds up. Only prediction today; perps will be added later, and each point's pnlUsdc stays the sum of the listed parts."
+                    },
+                    "points": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "ts": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Epoch milliseconds of the point. The source reports whole seconds, so the last three digits are 000."
+                          },
+                          "pnlUsdc": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Cumulative PnL at ts across the parts listed in the series' parts (the sum of their pnlUsdc), a decimal string in US dollars. Null is a gap — the value is unavailable at that point — not zero."
+                          },
+                          "parts": {
+                            "type": "object",
+                            "properties": {
+                              "prediction": {
+                                "type": "object",
+                                "properties": {
+                                  "pnlUsdc": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Cumulative positionPnl (realized plus unrealized) of the prediction wallet at ts, a decimal string in US dollars. Null is a gap, not zero."
+                                  }
+                                },
+                                "required": [
+                                  "pnlUsdc"
+                                ],
+                                "additionalProperties": false,
+                                "description": "The prediction-market part of this point."
+                              }
+                            },
+                            "required": [
+                              "prediction"
+                            ],
+                            "additionalProperties": false,
+                            "description": "This point's value per part."
+                          }
+                        },
+                        "required": [
+                          "ts",
+                          "pnlUsdc",
+                          "parts"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "Cumulative PnL points, oldest first."
+                    }
+                  },
+                  "required": [
+                    "range",
+                    "dayStart",
+                    "asOf",
+                    "changeUsdc",
+                    "parts",
+                    "points"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Cumulative PnL points for the range, oldest first, with the change over the range. A null amount is not zero."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid PnL input. error.code is VALIDATION_FAILED. error.details.reason is pnl_day_start_required when dayStart is missing where it is required, pnl_day_start_invalid when dayStart is not an integer number of epoch seconds between 26 hours before and 5 minutes after the time of the request (or is repeated), or pnl_range_invalid when range is missing, repeated, or not one of 1D, 1W, 1M, 1Y and ALL. These checks run after the wallet lookup, so a user without a wallet gets 409 first. Retrying the same request produces the same result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Invalid PnL input. error.code is VALIDATION_FAILED. error.details.reason is pnl_day_start_required when dayStart is missing where it is required, pnl_day_start_invalid when dayStart is not an integer number of epoch seconds between 26 hours before and 5 minutes after the time of the request (or is repeated), or pnl_range_invalid when range is missing, repeated, or not one of 1D, 1W, 1M, 1Y and ALL. These checks run after the wallet lookup, so a user without a wallet gets 409 first. Retrying the same request produces the same result."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). /v1/users requires bot-link scope or higher. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The end user's Polymarket Deposit Wallet is not yet provisioned (error.details.reason: wallet_not_provisioned). Complete POST /v1/onboarding, then retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The end user's Polymarket Deposit Wallet is not yet provisioned (error.details.reason: wallet_not_provisioned). Complete POST /v1/onboarding, then retry."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "A server-side PnL failure occurred and error.code is INTERNAL. error.details.reason is one of pnl_reader_unavailable, pnl_unclassified, pnl_wallet_address_malformed (the wallet address stored for the user is malformed; no upstream call is made), or positions_users_repository_unavailable. Retrying may return the same result. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A server-side PnL failure occurred and error.code is INTERNAL. error.details.reason is one of pnl_reader_unavailable, pnl_unclassified, pnl_wallet_address_malformed (the wallet address stored for the user is malformed; no upstream call is made), or positions_users_repository_unavailable. Retrying may return the same result. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Polymarket PnL upstream failure; error.code is UPSTREAM_UNAVAILABLE and no value is returned. error.details.reason is pnl_rate_limited when Polymarket limited this service's calls, or pnl_unavailable for any other failure. Either may carry Retry-After (1 to 3600 seconds) when Polymarket sent one; consumers must not assume it is present. Retrying later may succeed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Polymarket PnL upstream failure; error.code is UPSTREAM_UNAVAILABLE and no value is returned. error.details.reason is pnl_rate_limited when Polymarket limited this service's calls, or pnl_unavailable for any other failure. Either may carry Retry-After (1 to 3600 seconds) when Polymarket sent one; consumers must not assume it is present. Retrying later may succeed."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/users/wallet": {
       "get": {
         "summary": "Get the deposit wallet address for a user",

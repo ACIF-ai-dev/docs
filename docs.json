@@ -42,7 +42,9 @@
               "GET /v1/users/wallet",
               "GET /v1/users/collateral-balance",
               "GET /v1/users/portfolio-value",
-              "GET /v1/users/positions"
+              "GET /v1/users/positions",
+              "GET /v1/users/pnl/today",
+              "GET /v1/users/pnl/series"
             ]
           },
           {

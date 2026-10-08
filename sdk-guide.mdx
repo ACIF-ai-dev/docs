@@ -164,3 +164,5 @@ No status code triggers an automatic retry, and nothing is polled in the backgro
 `user.collateralBalance()` returns `collateralBalanceBaseUnits`, an integer string in the collateral token's base units, preserved exactly as the upstream venue reports it. The collateral token is **pUSD**. The client does not divide, round, or convert it — use a decimal library for display rather than `Number(...)`, which loses precision on large balances.
 
 `user.portfolioValue()` is a mark-to-market valuation instead, published under the contract field name `portfolioValueUsdc`; a `null` there means the upstream gave no value for that wallet, which is not the same as zero.
+
+`user.pnlToday({ dayStart })` and `user.pnlSeries({ range, dayStart })` return PnL — realized plus unrealized — as decimal strings; `dayStart` is the device's midnight in epoch seconds. A `null` amount there is unavailable, not zero. The API reference home page explains what "today" means and when the start of the day counts as 0.
