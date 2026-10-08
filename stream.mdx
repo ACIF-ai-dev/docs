@@ -51,6 +51,18 @@ Client frames use `op` as their discriminator, not `type`:
 
 `subscribe` and `unsubscribe` each require from **1** through **200** token IDs. Each token ID is a string from **1** through **128** characters. A WebSocket frame can be at most **65536** bytes (**64 KiB**).
 
+A token's order book is held with operations of its own (see **Order book frames**):
+
+```json
+{"op":"subscribeBook","tokenIds":["token-id"]}
+```
+
+```json
+{"op":"unsubscribeBook","tokenIds":["token-id"]}
+```
+
+`subscribeBook` and `unsubscribeBook` each require from **1** through **4** `tokenIds`, each a token ID string of the length above. A frame with more, with none, or with a value that is not such a string is refused with `VALIDATION_FAILED`. The two operations have no other key: one sent with them, such as `depth` or `trades`, is ignored, and a `book` key on `subscribe` opens no order book.
+
 The service accepts at most **120** client frames in each **1000 ms** window. It sends a WebSocket heartbeat every **30000 ms** and closes a connection that has not answered within **90000 ms**.
 
 ## Receive frames
@@ -103,7 +115,7 @@ The `subscribed` frame includes a snapshot for each newly subscribed token with 
 
 Resolved tokens are omitted from snapshots; obtain their resolution status and final price from REST.
 
-`new_market` does not produce a frame. This is a token-level subscription service: tokens belonging to a newly created market have, by definition, not been subscribed by any client, so there is no token-level recipient to route the event to. The service does not send upstream `book`, `price_change`, or `tick_size_change` events; an upstream `book` only supplies a missing first price, as described above. An upstream `last_trade_price` becomes a `trade` frame only for connections that opted in, as described below.
+`new_market` does not produce a frame. This is a token-level subscription service: tokens belonging to a newly created market have, by definition, not been subscribed by any client, so there is no token-level recipient to route the event to. The service does not forward upstream `book`, `price_change`, or `tick_size_change` events as they are; for a `subscribe` holding, an upstream `book` only supplies a missing first price, as described above. The order book itself is sent in a shape of its own to connections that ask for it with `subscribeBook` (see **Order book frames**). An upstream `last_trade_price` becomes a `trade` frame only for connections that opted in, as described below.
 
 ## Trade frames
 
@@ -133,6 +145,82 @@ A connection receives at most **50** `trade` frames in each **1000 ms** window; 
 To show recent trades, read `GET /v1/markets/{marketId}/trades` when the view opens and subscribe with `"trades":true` before or right after that read, then add each `trade` frame to the top. The REST read and the stream can contain the same trade. With no trade ID or transaction hash in either, complete de-duplication is not guaranteed; dropping a frame whose `tokenId`, `side`, `price`, `size`, and `ts` all match an element already shown removes most repeats but can also drop a distinct trade with identical values.
 
 While a new version of the service is being rolled out, an instance that predates the flag ignores `"trades":true` without an error: a connection that lands on it gets the usual `subscribed` frame and no `trade` frame. Keep the REST read as the source of recent trades, and send `subscribe` with `"trades":true` again after every reconnect.
+
+## Order book frames
+
+The order book of an outcome token can be held on the same connection with `subscribeBook` and let go of with `unsubscribeBook` (see **Send frames**). The token ID is the `tokenId` of a market outcome, as for `subscribe`; a Perps instrument's order book is read from `GET /v1/perps/instruments/{instrumentId}/book`. Holding a token's order book and holding its prices are two separate holdings: a `subscribeBook` holding receives the frames of this section and no `price`, `trade`, or `resolved` frame, and a `subscribe` holding receives no `book` frame. Send both operations for a token to receive both.
+
+A connection holds at most **4** order books at a time. They are counted apart from the tokens of `subscribe`: neither counts against the other's limit. A token listed twice, or one whose book the connection already holds, counts once. A token ID is not checked against any market when the frame arrives: any string of the accepted length is held and counted. A `subscribeBook` that would hold more books than the limit is refused with this `error` frame, and nothing in that frame is held:
+
+```json
+{"type":"error","code":"RATE_LIMITED","message":"Book subscription limit exceeded.","details":{"reason":"book_subscription_limit","currentSubscriptions":4,"requestedSubscriptions":1}}
+```
+
+`currentSubscriptions` is the number of books the connection holds, and `requestedSubscriptions` is the number of IDs in the refused frame.
+
+The reply to `subscribeBook` is a `bookSubscribed` frame:
+
+```json
+{"type":"bookSubscribed","tokenIds":["token-id"],"snapshot":[{"tokenId":"token-id","bids":[{"price":"0.10","size":"250","cumulative":"250"}],"asks":[{"price":"0.12","size":"75.5","cumulative":"75.5"}],"ts":1790000000400}],"feed":"live"}
+```
+
+- `tokenIds`: the tokens whose book this frame newly holds. A token the connection already held is not listed again and gets no `snapshot` element again; when every listed token was already held, `tokenIds` and `snapshot` are both empty.
+- `snapshot`: for each token in `tokenIds` whose book the service has at that moment, that book in the shape of a `book` frame without `type`. A token without one is left out, and its book arrives as its first `book` frame.
+- `feed`: `"live"` or `"interrupted"`, the connection's order book word described below. It covers every book the connection holds, not only the newly held ones.
+
+Later frames:
+
+```json
+{"type":"book","tokenId":"token-id","bids":[{"price":"0.10","size":"250","cumulative":"250"},{"price":"0.09","size":"1000","cumulative":"1250"}],"asks":[{"price":"0.12","size":"75.5","cumulative":"75.5"}],"ts":1790000000650}
+```
+
+```json
+{"type":"bookFeed","state":"interrupted","ts":1790000001000}
+```
+
+```json
+{"type":"bookUnsubscribed","tokenIds":["token-id"]}
+```
+
+A `book` frame is the whole top of one token's order book, never a change to apply: replace what you show for that `tokenId` with it, and do not append. Besides `type`, it has these keys and no others:
+
+- `tokenId`: the outcome token the book belongs to.
+- `bids`, `asks`: at most **10** levels per side, best first: bids descending by price, asks ascending. Levels beyond that are not sent. A side can be empty, and a book with both sides empty is sent as it is (`"bids":[],"asks":[]`), in a `snapshot` and as a `book` frame.
+- Each level has `price`, `size` (shares), and `cumulative`, all decimal **strings**. `price` and `size` are kept as the source sends them, so trailing zeros (`"0.50"`, `"250.0"`) or a missing leading zero (`".4"`) can appear: parse them as decimals, and do not compare them as text. `cumulative` is the sum of `size` from the best level of that side through this one, as a plain decimal with no exponent and no trailing zeros.
+- `ts`: epoch milliseconds, the time of the latest event the service applied to that book: the source's timestamp when it carries one, otherwise the service receive time. It is not guaranteed to increase from one frame to the next.
+
+The service sends at most one `book` frame per token every **250 ms**, the coalescing window of `price` frames. The frame carries the top as it stands at the end of that window, and it is sent only when that top changed, in the `price` or `size` text of a level: a change below the levels a frame carries, or one undone within the window, sends nothing. A `book` frame can still equal the book you already have, right after `bookSubscribed` when a change was waiting in its window, or after an interruption (see below). Replacing makes that harmless.
+
+`book` frames follow the buffer rule of `price` frames and count toward the same **4008** close (see **Disconnections**). A frame skipped that way is not sent again; the token's next `book` frame arrives when its top changes again. A `subscribeBook` that arrives while the connection is over that buffer threshold is answered with its true `tokenIds` and `feed` and an empty `snapshot`, and that snapshot is not sent later either. After you have caught up on reads, send `unsubscribeBook` and then `subscribeBook` for the tokens to receive a fresh `snapshot`.
+
+A `bookUnsubscribed` frame lists the tokens whose book `unsubscribeBook` let go of; a token whose book the connection did not hold is left out, so the list can be empty.
+
+`bookSubscribed.feed` and `bookFeed.state` are one word for the connection, about the order books it holds:
+
+| Word | Meaning | What to do |
+|---|---|---|
+| `"interrupted"` | The service cannot vouch for at least one book the connection holds: that book became unknown to the service, and no fresh `book` frame for it has gone out since. | A book you show can be stale. The frame does not name the token, so the safe reading is every book you hold. A `book` frame that arrives after it is current for its token. |
+| `"live"` | For every book the connection holds, the service has a book and has sent it out since that book last became unknown. | What you show is current, within the two limits described below: a `book` frame skipped for a connection over the buffer threshold, and a gap the word does not report. |
+
+`bookFeed` is sent only when the connection's word changes, and only to a connection that holds at least one order book. `bookSubscribed.feed` is the word right after the subscribe, and no `bookFeed` frame repeats it. `"live"` is sent after the fresh `book` frame has gone out, never before it; a connection over the buffer threshold is the one case in which the word arrives without that frame (see below). `ts` is the service time of the change in epoch milliseconds. Show a live indicator from `feed` and `bookFeed`, not from the arrival of `book` frames: a quiet book sends none.
+
+A book becomes unknown to the service in three cases:
+
+- **It is first held.** The service keeps a token's order book only while some connection holds it with `subscribeBook`; holding the token's prices with `subscribe` does not keep it. The first connection to hold a token's book is therefore always answered with no `snapshot` element for that token and `feed` `"interrupted"`, then receives the token's `book` frame, then `bookFeed` `"live"` once every book it holds has been sent. A connection that subscribes while the book is kept receives it in `snapshot`.
+- **The service's own reading of that token's book ended or had to be started again.** This is a failure, not a routine event. Each connection holding that token's book whose word was `"live"` receives `bookFeed` `"interrupted"`; the fresh `book` frame follows, then `bookFeed` `"live"` once every book the connection holds has been sent again.
+- **The service can no longer vouch for the levels it keeps.** It cannot tell that they are the token's true top levels, or an update of that book reached it in a form it could not read. This is rare, and the frames are the same as in the previous case.
+
+Nothing another connection does makes a book unknown. No `subscribe` or `unsubscribe`, and no `subscribeBook` or `unsubscribeBook`, by any connection and for any token, interrupts a book you hold. Holding one more book on your own connection does not interrupt the ones it already holds either: a `bookSubscribed` with `feed` `"interrupted"` on a connection that was `"live"` is about the newly held books, and the `book` frames of the others keep arriving meanwhile.
+
+The first `book` frame of a newly kept book arrives when the source next sends that token's book. No time bound is promised for it, and on a quiet market it can take long. Until then, and for as long as a held token ID names no order book at all, the word stays `"interrupted"` for the whole connection while the other books it holds keep being sent: show each token for which you have a `snapshot` element or a `book` frame, and treat a token with neither as not loaded yet. The word reports the three cases above. It is not a promise that every delay or gap between the source and the service is reported, so do not read `"live"` as proof that a book that has stopped changing is unchanged at the source.
+
+When `unsubscribeBook` lets go of the only book that kept the word at `"interrupted"` and the connection still holds others, `bookFeed` `"live"` is sent before `bookUnsubscribed`. Letting go of the last book sends no `bookFeed`. `bookFeed` is sent whatever the connection's buffer holds, while a `book` frame is skipped over the buffer threshold: a connection that is not reading fast enough can receive `"live"` without the fresh `book` frame, and the catch-up step above applies.
+
+A token's `price` frames and its `book` frames are produced separately. No order between them is promised, and neither is agreement at an instant between `bestBid` and `bestAsk` of a `price` frame and the best levels of a `book` frame.
+
+`GET /v1/markets/{marketId}/book` (see **Read the order book** on the API reference home page) did not change and remains the way to read an order book once; its levels carry `price` and `size` without `cumulative`. Read it for an initial value when a `snapshot` is empty.
+
+Order book holdings belong to one connection. After every reconnect send `subscribeBook` again and replace your books with the new `snapshot`. While a new version of the service is being rolled out, an instance that predates these operations answers both with `VALIDATION_FAILED`.
 
 ## Perps frames
 
@@ -343,6 +431,8 @@ Spot never decides a round. A round's `targetPrice`, its `polybolt_twap` estimat
 The service closes with **4029** when a connection limit is exceeded or when the client exceeds the frame-rate limit. It closes with **1011** when it rejects a connection, including a duplicate connection ID. It closes with **1001** during server shutdown or after the heartbeat timeout. It closes with **4008** when a client's `bufferedAmount` exceeds **1048576** bytes for **100** consecutive delivery attempts. This indicates a slow consumer; catch up on reads or reduce subscriptions before reconnecting.
 
 ## Changes
+
+2026-10-09: Order books: the `subscribeBook` and `unsubscribeBook` operations and the `bookSubscribed`, `book`, `bookFeed`, and `bookUnsubscribed` frames (see **Order book frames**), with a per-connection limit of their own. `GET /v1/markets/{marketId}/book` did not change. Token, Perps, round and reference operations and frames did not change: a connection that does not send the new operations receives exactly the frames it received before.
 
 2026-10-08: Reference prices: `subscribeReference` accepts an optional `bases` key, and a second series, `chainlink_spot` (Chainlink's latest price, for display), can be held beside `chainlink_twap_60s` (see **Reference spot basis**). `referencePrice.ts` is ordered per asset and `basis`. A connection that does not send `bases` receives exactly the frames it received before, with the same keys and the same `basis`. Round targets and results did not change and never use the spot series.
 

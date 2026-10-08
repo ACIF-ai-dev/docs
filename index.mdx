@@ -322,6 +322,8 @@ Bids and asks are returned best first: bids are sorted descending by price, whil
 
 The `/v1/markets` response returns `outcomes[].price` as a snapshot; this route returns the order book.
 
+This route reads an order book once. To keep one on screen, hold the outcome's `tokenId` on `/v1/stream` with `subscribeBook` rather than polling this route; see **Order book frames** in the [Stream guide](stream).
+
 ## Read recent trades
 
 ```bash
