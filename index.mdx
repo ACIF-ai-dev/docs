@@ -31,13 +31,15 @@ A key's scope decides which route prefixes it may call. Scopes are cumulative �
 |---|---|---|
 | `bot-read` | `/v1/markets`, `/v1/me`, `/v1/sports`, `/v1/perps/instruments`, `/v1/events` | reading market data and checking the key itself |
 | `bot-link` | `/v1/users`, `/v1/onboarding`, `/v1/webhooks/endpoints` | linking your users, onboarding their wallets, and registering or rotating webhook endpoints |
-| `trade` | `/v1/deposit`, `/v1/orders`, `/v1/withdrawals`, `/v1/webhooks/deliveries`, `/v1/stream` | deposits, order flow, withdrawals, webhook delivery operations, and the streaming surface |
+| `trade` | `/v1/deposit`, `/v1/orders`, `/v1/withdrawals`, `/v1/webhooks/deliveries`, `/v1/stream`, `/v1/perps/account` | deposits, order flow, withdrawals, webhook delivery operations, the streaming surface, and Perps accounts |
 
 Calling a route outside the key's scope returns **403**, with `error.details.reason` set to `api_key_scope_insufficient`. The check runs on the route prefix before the handler, so the same request with the same key always gets the same answer — use a key issued with the scope you need. Issue the narrowest scope that covers the job: a read-only bot does not need a key that can move money.
 
 The streaming surface behind `/v1/stream` is documented in the [Stream guide](stream); the operations documented in this reference are the HTTP ones.
 
 The `/v1/perps/instruments` routes are market-data reads for perpetual instruments, documented in the [Perps market data guide](perps). A deployment where that data is not open answers them with 404 and `error.details.reason` set to `perps_not_open`.
+
+The `/v1/perps/account` routes open and read an end user's Perps account. They are a separate surface with a separate gate: they need a `trade` key and the end user's token, and while Perps accounts are not open for the caller they answer 404 with `error.details.reason` set to `perps_accounts_not_open`. See [Perps accounts](perps#perps-accounts).
 
 The webhook routes under `/v1/webhooks` are split across two rungs: `bot-link` opens `/v1/webhooks/endpoints`, and `trade` adds the rest, including `/v1/webhooks/deliveries`.
 
@@ -49,7 +51,7 @@ Like issuance, rotation returns the new plaintext key exactly once. If it is los
 
 ## Get an end-user token
 
-User-facing operations under `/v1/users/*`, `/v1/deposit/*`, and `/v1/withdrawals/*` need the builder key plus an `x-end-user-token` header. The header value is that end user's Privy access token.
+User-facing operations under `/v1/users/*`, `/v1/deposit/*`, `/v1/withdrawals/*`, and `/v1/perps/account` need the builder key plus an `x-end-user-token` header. The header value is that end user's Privy access token.
 
 Your frontend obtains the token by signing the user in through the single Privy app that tobuilder provides for this integration; your tobuilder administrator gives you the app id. Before login, send every frontend origin — including a development origin such as `http://localhost:<port>` — to your tobuilder administrator so it can be registered in Privy's allowed origins. Login fails for an unregistered origin; that is registration state, not a bug. Send the origin again when the domain changes.
 

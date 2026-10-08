@@ -65,7 +65,9 @@
               "GET /v1/perps/instruments",
               "GET /v1/perps/instruments/{instrumentId}",
               "GET /v1/perps/instruments/{instrumentId}/book",
-              "GET /v1/perps/instruments/{instrumentId}/candles"
+              "GET /v1/perps/instruments/{instrumentId}/candles",
+              "POST /v1/perps/account",
+              "GET /v1/perps/account"
             ]
           },
           {

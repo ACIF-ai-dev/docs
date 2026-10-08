@@ -1,6 +1,6 @@
 ---
-title: "Perps market data"
-description: "Read Perps instruments, prices, order books and candles"
+title: "Perps"
+description: "Read Perps instruments, prices, order books and candles, and open and read a Perps account"
 ---
 
 ## What these routes are
@@ -237,3 +237,121 @@ All four routes use the standard error envelope. Branch on `error.code` and, whe
 The API key rate limit described on the API reference home page applies to these routes as to any other; a 429 from that limit carries no `perps_capacity` reason. On a `perps_capacity` response the `RateLimit-*` headers still describe your key's limit, and `Retry-After` describes the Perps budget. That budget is shared by every caller of the deployment. One builder account can spend only part of it on order books and candles, so `perps_capacity` can also mean that your account's part is spent while other accounts are still served; `Retry-After` is the wait that applies to you in both cases.
 
 An instrument the provider hides, or one whose category the deployment does not allow, is answered exactly like one that does not exist.
+
+## Perps accounts
+
+Two routes under `/v1/perps/account` open and read an end user's Perps account. They are not market data, and nothing above on this page applies to them: they need a `trade`-scope API key **and** the end user's token in `x-end-user-token`, and they have a gate of their own.
+
+| Route | Does |
+|---|---|
+| `POST /v1/perps/account` | records the end user's acceptance of the Perps terms and opens their account |
+| `GET /v1/perps/account` | returns the account and its status |
+
+### Open an account
+
+Show the end user the Perps terms. When they accept, send the version of the terms they accepted:
+
+```bash
+curl -X POST "https://api.tobuilder.app/v1/perps/account" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY" \
+  -H "x-end-user-token: $END_USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"termsVersion":"<the version you were given>"}'
+```
+
+```json
+{
+  "account": {
+    "status": "opening",
+    "termsVersion": "<the version you were given>",
+    "consentedAt": "2026-10-08T07:00:00.000Z",
+    "openedAt": null
+  }
+}
+```
+
+The values above illustrate the shape.
+
+- The first call answers **201**. A repeated call answers **200** with the stored account and opens nothing: the call is idempotent per end user and takes no idempotency key.
+- The request carries **no address and no signature**. The account belongs to the wallet this service already holds for the end user, and the end user signs nothing. Any other key in the body is ignored.
+- `termsVersion` must be the one version the deployment accepts; your tobuilder administrator gives it to you together with the terms text. Any other string is 400 with `perps_terms_version_unknown`.
+- Opening is **asynchronous**. The answer is `status: "opening"`; a background job prepares the account. Read `GET /v1/perps/account` until the status changes. Each read counts against the key's per-minute limit and the `trade` hourly budget like any other request, so poll every few seconds rather than in a tight loop.
+- The end user's wallet has to exist first: complete `POST /v1/onboarding` for them, or both routes answer 409 with `wallet_not_provisioned`.
+
+### Read the account
+
+```bash
+curl "https://api.tobuilder.app/v1/perps/account" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY" \
+  -H "x-end-user-token: $END_USER_TOKEN"
+```
+
+```json
+{
+  "account": {
+    "status": "open",
+    "termsVersion": "<the version you were given>",
+    "consentedAt": "2026-10-08T07:00:00.000Z",
+    "openedAt": "2026-10-08T07:00:12.000Z"
+  }
+}
+```
+
+The values above illustrate the shape. It is the same `account` object the open call returns. `consentedAt` and `openedAt` are ISO 8601 strings; `openedAt` is `null` while `status` is `opening`.
+
+`status` is an **open set** of strings, not a closed list. Treat every value other than `open` — including one you do not recognise — as an account that cannot trade.
+
+| `status` | Meaning |
+|---|---|
+| `opening` | the account record exists and is being prepared — read again |
+| `open` | the account is ready |
+| `credentials_lapsed` | the account was opened, and this service holds no valid access to it at the moment |
+| `close_only` | the account exists while opening accounts and taking new exposure are closed for your builder account; reading it stays possible |
+| `paused` | new exposure is suspended for this account |
+| `reconciling` | new exposure is blocked while the account's records are being checked |
+
+### When Perps accounts are not open
+
+Whether Perps accounts are open is a setting of the deployment, and it can be open for some builder accounts and not for others. While they are not open for you, both routes answer an authenticated request the same way:
+
+```json
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Perps accounts are not open.",
+    "requestId": "req-1",
+    "details": { "reason": "perps_accounts_not_open" }
+  }
+}
+```
+
+The status is **404** and there is no `Retry-After` header. The answer is the same whether Perps accounts are closed on the whole deployment or only for your builder account, and waiting or retrying does not change it. Treat `perps_accounts_not_open` as "this feature is off here" and hide the feature.
+
+Authentication and scope are checked first, so a missing or invalid key or token still gets 401, and a key below `trade` scope still gets 403.
+
+`perps_accounts_not_open` and `perps_not_open` are **two different gates**. Either can be open while the other is closed:
+
+| `error.details.reason` | Routes | Meaning |
+|---|---|---|
+| `perps_not_open` | `/v1/perps/instruments` and the logo route | Perps market data is off on this deployment |
+| `perps_accounts_not_open` | `/v1/perps/account` | Perps accounts are off for the caller |
+
+An end user who already has an account is not locked out when accounts are closed for your builder account afterwards: `GET /v1/perps/account` keeps answering, with `status` `close_only`, and `POST /v1/perps/account` answers 403 with `perps_trading_paused`.
+
+### Account errors
+
+Both routes use the standard error envelope. 401 and 429 are the same as on every other end-user route of this API.
+
+| HTTP | `error.code` | `error.details.reason` | Route | When |
+|---:|---|---|---|---|
+| 400 | `VALIDATION_FAILED` | — | `POST` | the body is not a JSON object, or `termsVersion` is not a string |
+| 400 | `VALIDATION_FAILED` | `perps_terms_version_unknown` | `POST` | `termsVersion` is not the version the deployment accepts |
+| 403 | `FORBIDDEN` | `api_key_scope_insufficient` | both | the API key is below `trade` scope |
+| 403 | `FORBIDDEN` | `perps_trading_paused` | `POST` | the end user has an account, and opening accounts is closed for your builder account |
+| 404 | `NOT_FOUND` | `perps_accounts_not_open` | both | Perps accounts are not open for the caller |
+| 404 | `NOT_FOUND` | `perps_account_not_found` | `GET` | Perps accounts are open and this end user has not opened one — show the terms and call `POST` |
+| 409 | `CONFLICT` | `wallet_not_provisioned` | both | the end user's wallet is not provisioned — complete `POST /v1/onboarding`, then retry |
+| 409 | `CONFLICT` | `perps_account_address_taken` | `POST` | the account could not be created for this end user; retrying gives the same answer |
+| 502 | `UPSTREAM_UNAVAILABLE` | `perps_unavailable` | `POST` | a service the open call depends on was unavailable; no account was opened, and retrying may succeed |
+
+On the account routes `perps_unavailable` is about opening the account. It does not mean the market-data provider could not be read, which is what the same reason means on the routes above.
