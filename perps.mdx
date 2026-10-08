@@ -275,7 +275,7 @@ The values above illustrate the shape.
 - The first call answers **201**. A repeated call answers **200** with the stored account and opens nothing: the call is idempotent per end user and takes no idempotency key.
 - The request carries **no address and no signature**. The account belongs to the wallet this service already holds for the end user, and the end user signs nothing. Any other key in the body is ignored.
 - `termsVersion` must be the one version the deployment accepts; your tobuilder administrator gives it to you together with the terms text. Any other string is 400 with `perps_terms_version_unknown`.
-- Opening is **asynchronous**. The answer is `status: "opening"`; a background job prepares the account. Read `GET /v1/perps/account` until the status changes. Each read counts against the key's per-minute limit and the `trade` hourly budget like any other request, so poll every few seconds rather than in a tight loop.
+- Opening is **asynchronous**. The answer is `status: "opening"`; a background job prepares the account. Read `GET /v1/perps/account` until the status changes. This read is outside a `trade` key's hourly budget: it is not counted against it and is not rejected when it is exhausted. Each read still counts against the key's per-minute limit, so poll every few seconds rather than in a tight loop. `POST /v1/perps/account` counts against both (see **Rate limits** on the API reference home page).
 - The end user's wallet has to exist first: complete `POST /v1/onboarding` for them, or both routes answer 409 with `wallet_not_provisioned`.
 
 ### Read the account
