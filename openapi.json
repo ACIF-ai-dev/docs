@@ -5576,7 +5576,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The user's issued deposit addresses and issuance time; GET returns addresses: null when none exist and extends the polling watch window when addresses exist.",
+            "description": "The user's issued deposit addresses and issuance time; GET returns addresses: null when none exist for the user's current wallet, also when addresses issued for a wallet that is no longer the user's are stored, and extends the polling watch window when addresses exist. POST can return different addresses than an earlier call did: when the stored addresses were issued for a wallet that is no longer the user's, it issues and returns addresses for the current wallet.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5631,7 +5631,7 @@
                     "issuedAt"
                   ],
                   "additionalProperties": false,
-                  "description": "The user's issued deposit addresses and issuance time; GET returns addresses: null when none exist and extends the polling watch window when addresses exist."
+                  "description": "The user's issued deposit addresses and issuance time; GET returns addresses: null when none exist for the user's current wallet, also when addresses issued for a wallet that is no longer the user's are stored, and extends the polling watch window when addresses exist. POST can return different addresses than an earlier call did: when the stored addresses were issued for a wallet that is no longer the user's, it issues and returns addresses for the current wallet."
                 }
               }
             }
@@ -5984,7 +5984,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The user's issued deposit addresses and issuance time; GET returns addresses: null when none exist and extends the polling watch window when addresses exist.",
+            "description": "The user's issued deposit addresses and issuance time; GET returns addresses: null when none exist for the user's current wallet, also when addresses issued for a wallet that is no longer the user's are stored, and extends the polling watch window when addresses exist. POST can return different addresses than an earlier call did: when the stored addresses were issued for a wallet that is no longer the user's, it issues and returns addresses for the current wallet.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6039,7 +6039,7 @@
                     "issuedAt"
                   ],
                   "additionalProperties": false,
-                  "description": "The user's issued deposit addresses and issuance time; GET returns addresses: null when none exist and extends the polling watch window when addresses exist."
+                  "description": "The user's issued deposit addresses and issuance time; GET returns addresses: null when none exist for the user's current wallet, also when addresses issued for a wallet that is no longer the user's are stored, and extends the polling watch window when addresses exist. POST can return different addresses than an earlier call did: when the stored addresses were issued for a wallet that is no longer the user's, it issues and returns addresses for the current wallet."
                 }
               }
             }
@@ -6295,7 +6295,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The authenticated user's recorded Bridge transfer list, with source and destination token details, transfer status, hashes, and timestamps. The list leaves out the Bridge's hand-over of a converted deposit, so such a deposit is normally one entry: once a transfer that changes chain or token is credited, the first same-chain, same-token transfer of the delivered token recorded for the same deposit address within ten minutes after it is read as that hand-over. It is not listed, and it gets no deposit.credited event unless it was credited before its source transfer was. A deposit sent directly in that token to that address inside those ten minutes cannot be told apart from the hand-over and can be the transfer left out; the hand-over, when recorded after it, is then listed and credited as a transfer of its own. fromTokenAddress and toTokenAddress are stored from the upstream Bridge response and can differ in case from token.address in GET /v1/deposit/assets; compare EVM hexadecimal addresses case-insensitively.",
+            "description": "The authenticated user's recorded Bridge transfer list, with source and destination token details, transfer status, hashes, and timestamps. The list leaves out the Bridge's hand-over of a converted deposit, so such a deposit is normally one entry: once a transfer that changes chain or token is credited, the first same-chain, same-token transfer of the delivered token recorded for the same deposit address within ten minutes after it is read as that hand-over. It is not listed, and it gets no deposit.credited event unless it was credited before its source transfer was. A deposit sent directly in that token to that address inside those ten minutes cannot be told apart from the hand-over and can be the transfer left out; the hand-over, when recorded after it, is then listed and credited as a transfer of its own. A deposit.credited event is sent only for a transfer whose deposit address delivers to the user's current wallet. When the address was issued for a different wallet, or the two cannot be compared, the transfer is held: it is listed here with the Bridge's status, it gets no deposit.credited event, and it is credited the next time the address is polled after the wallet the address was issued for is the user's current wallet. fromTokenAddress and toTokenAddress are stored from the upstream Bridge response and can differ in case from token.address in GET /v1/deposit/assets; compare EVM hexadecimal addresses case-insensitively.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6366,7 +6366,7 @@
                     "transfers"
                   ],
                   "additionalProperties": false,
-                  "description": "The authenticated user's recorded Bridge transfer list, with source and destination token details, transfer status, hashes, and timestamps. The list leaves out the Bridge's hand-over of a converted deposit, so such a deposit is normally one entry: once a transfer that changes chain or token is credited, the first same-chain, same-token transfer of the delivered token recorded for the same deposit address within ten minutes after it is read as that hand-over. It is not listed, and it gets no deposit.credited event unless it was credited before its source transfer was. A deposit sent directly in that token to that address inside those ten minutes cannot be told apart from the hand-over and can be the transfer left out; the hand-over, when recorded after it, is then listed and credited as a transfer of its own. fromTokenAddress and toTokenAddress are stored from the upstream Bridge response and can differ in case from token.address in GET /v1/deposit/assets; compare EVM hexadecimal addresses case-insensitively."
+                  "description": "The authenticated user's recorded Bridge transfer list, with source and destination token details, transfer status, hashes, and timestamps. The list leaves out the Bridge's hand-over of a converted deposit, so such a deposit is normally one entry: once a transfer that changes chain or token is credited, the first same-chain, same-token transfer of the delivered token recorded for the same deposit address within ten minutes after it is read as that hand-over. It is not listed, and it gets no deposit.credited event unless it was credited before its source transfer was. A deposit sent directly in that token to that address inside those ten minutes cannot be told apart from the hand-over and can be the transfer left out; the hand-over, when recorded after it, is then listed and credited as a transfer of its own. A deposit.credited event is sent only for a transfer whose deposit address delivers to the user's current wallet. When the address was issued for a different wallet, or the two cannot be compared, the transfer is held: it is listed here with the Bridge's status, it gets no deposit.credited event, and it is credited the next time the address is polled after the wallet the address was issued for is the user's current wallet. fromTokenAddress and toTokenAddress are stored from the upstream Bridge response and can differ in case from token.address in GET /v1/deposit/assets; compare EVM hexadecimal addresses case-insensitively."
                 }
               }
             }
