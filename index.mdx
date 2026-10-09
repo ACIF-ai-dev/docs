@@ -228,7 +228,7 @@ The example is abridged to the market's `rules`.
 - **`resolutionSource` is a link.** When it is not `null`, it is an absolute `https` URL of the source the market settles against; use it only as a link. Many markets have none, so expect `null` often and show nothing in its place.
 - **`rules.translation`.** With `lang`, `rules` also carries `translation`: a translation of `description` into that language, or `null` when none of the current text is stored. When it is `null`, show `description`. It does not depend on the question's `translation`.
 
-`GET /v1/events/{eventId}` returns one event and the markets of it that the catalog lists, each with the keys of `GET /v1/markets/{marketId}`, `rules` included. `eventId` is the `event.id` of a market; use this read for an event screen that shows all of its choices.
+`GET /v1/events/{eventId}` returns one event and the markets of it that the service serves, each with the keys of `GET /v1/markets/{marketId}`, `rules` included, and the event's other expiries. `eventId` is the `event.id` of a market; use this read for an event screen that shows all of its choices.
 
 ```bash
 curl "https://api.tobuilder.app/v1/events/903193" \
@@ -246,15 +246,24 @@ curl "https://api.tobuilder.app/v1/events/903193" \
   "markets": [
     { "marketId": "0x9a1c-example", "groupItemTitle": "25 bps decrease", "rules": { "description": "…", "resolutionSource": null } }
   ],
-  "truncated": false
+  "truncated": false,
+  "expiries": {
+    "group": { "id": "35", "slug": "fomc", "recurrence": "monthly" },
+    "items": [
+      { "eventId": "606422", "slug": "fed-decision-in-october", "title": "Fed Decision in October?", "endDate": "2026-10-29T03:59:00.000Z", "marketId": null, "current": false },
+      { "eventId": "903193", "slug": "fed-decision-in-december", "title": "Fed decision in December?", "endDate": "2026-12-10T04:59:00.000Z", "marketId": null, "current": true }
+    ],
+    "truncated": false
+  }
 }
 ```
 
-- **Listed markets only.** A market of the event that `GET /v1/markets` leaves out is not here either, although `GET /v1/markets/{marketId}` can still return it by its `marketId`.
-- **Order and size.** The markets are ordered by `marketId`, at most 200. `truncated` is `true` when the event has more listed markets than that; those past the first 200 are not returned.
+- **Listed markets, and expiries taken in.** The markets are those the catalog lists and, when the event is one expiry in a weekly or monthly group of events the catalog lists a market of, the event's other open markets, which `GET /v1/markets` does not list. A market of the event that is neither is not here, although `GET /v1/markets/{marketId}` can still return it by its `marketId`.
+- **Order and size.** The markets are ordered by `marketId`, at most 200. `truncated` is `true` when the event has more of these markets than that; those past the first 200 are not returned.
 - **The event object.** `slug` and `title` are those stored with the event's markets, and `endDate` is the latest `endDate` among the markets returned: when the event ends, as far as the service knows. Each is `null` when no market has one.
+- **Expiry chips.** `expiries.items` lists the open expiries of the same question, the requested event among them with `current: true`, at most 12, ordered by `endDate` (the end date Polymarket gives each event, which can differ from `event.endDate`). Each `eventId` opens on this read. `marketId` is set only when that event has one open market; otherwise open the event. `group` is `null`, and `items` holds the event alone, when the event is in no weekly or monthly group, and `expiries.truncated` is `true` when there are more expiries than `items` holds.
 - **`lang`** applies to each market as on `GET /v1/markets/{marketId}`.
-- **Not found.** An event with no listed market is a 404 `NOT_FOUND`.
+- **Not found.** An event of which the service serves no market is a 404 `NOT_FOUND`.
 - **Rate limits.** This read is outside a `trade` key's hourly budget, like the single-market read; the per-minute limit still applies. The event's price history is counted against both (see **Rate limits**).
 
 ## Read the order book

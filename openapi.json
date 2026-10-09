@@ -17575,7 +17575,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns one event and the markets of it that this service's catalog lists, possibly from cache. Listed markets only: the catalog keeps markets above a lifetime volume threshold, and a market of the event it does not list is not included here, although GET /v1/markets/{marketId} can still return it by its identifier. The markets are ordered by marketId, at most 200; truncated is true when the event has more listed markets than that, and those past the first 200 are not returned. Each market has the keys of GET /v1/markets/{marketId}, rules included, with the same meaning. event.endDate is the latest endDate among the returned markets: when the event ends, as far as this service knows. lang applies to each market as on GET /v1/markets/{marketId}: it localizes outcomes[].outcome labels and adds translation and rules.translation, each a translation or null. Crypto round markets are not served here.",
+            "description": "Returns one event and the markets of it that this service serves, possibly from cache. Those are the markets its catalog lists (the catalog keeps markets above a lifetime volume threshold) and, when the event is in a weekly or monthly group of which the catalog lists a market, the event's other open markets, taken in so that every expiry in expiries opens here; GET /v1/markets does not list those. A market of the event that is neither is not included here, although GET /v1/markets/{marketId} can still return it by its identifier. The markets are ordered by marketId, at most 200; truncated is true when the event has more such markets than that, and those past the first 200 are not returned. expiries holds the open expiries of the question this event asks, for chips that switch between them: each item's eventId opens on this route. Each market has the keys of GET /v1/markets/{marketId}, rules included, with the same meaning. event.endDate is the latest endDate among the returned markets: when the event ends, as far as this service knows. lang applies to each market as on GET /v1/markets/{marketId}: it localizes outcomes[].outcome labels and adds translation and rules.translation, each a translation or null. Crypto round markets are not served here.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17631,7 +17631,7 @@
                         "endDate"
                       ],
                       "additionalProperties": false,
-                      "description": "The event, as its listed markets describe it."
+                      "description": "The event, as its returned markets describe it."
                     },
                     "markets": {
                       "type": "array",
@@ -17996,20 +17996,141 @@
                         ],
                         "additionalProperties": false
                       },
-                      "description": "The markets of the event that this service's catalog lists, ordered by marketId (compared as text), at most 200. Each has the keys of GET /v1/markets/{marketId}, rules included."
+                      "description": "The markets of the event that this service serves: those its catalog lists and, when the event is in a weekly or monthly group of which the catalog lists a market, the event's open markets taken in for its expiries. Ordered by marketId (compared as text), at most 200. Each has the keys of GET /v1/markets/{marketId}, rules included."
                     },
                     "truncated": {
                       "type": "boolean",
-                      "description": "True when the catalog lists more than 200 markets of this event, so that markets holds only the first 200 by marketId; false when markets holds them all."
+                      "description": "True when this service serves more than 200 markets of this event, so that markets holds only the first 200 by marketId; false when markets holds them all."
+                    },
+                    "expiries": {
+                      "type": "object",
+                      "properties": {
+                        "group": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "description": "Polymarket's identifier of the group of expiries."
+                                },
+                                "slug": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Polymarket's slug of the group. Null when it sent none."
+                                },
+                                "recurrence": {
+                                  "type": "string",
+                                  "description": "How often Polymarket opens an expiry in this group: weekly or monthly. Groups of any other recurrence get no chips, and the list of accepted values may grow."
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "slug",
+                                "recurrence"
+                              ],
+                              "additionalProperties": false,
+                              "description": "The group of events that ask the same question at different expiries (what Polymarket calls a series)."
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The group the expiries share, or null when the event is in no group this service draws chips for (in no group, in more than one, in a group that is not weekly or monthly, or a sports game). With null, items holds the event alone."
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "eventId": {
+                                "type": "string",
+                                "description": "The event of this expiry: GET /v1/events/{eventId} serves it with its markets."
+                              },
+                              "slug": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "The event's slug as stored. Null when it has none."
+                              },
+                              "title": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "The event's title as stored, in English. Null when it has none."
+                              },
+                              "endDate": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                "description": "When this expiry ends: the end date Polymarket gives the event, as an ISO 8601 UTC timestamp. It can differ from event.endDate of the same event, which is the latest endDate among its markets."
+                              },
+                              "marketId": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "The market to open for this expiry when the event has exactly one open market; null when it has several, so that a chip never opens a different choice. Open the event instead."
+                              },
+                              "current": {
+                                "type": "boolean",
+                                "description": "True on the requested event's own item, false on the others."
+                              }
+                            },
+                            "required": [
+                              "eventId",
+                              "slug",
+                              "title",
+                              "endDate",
+                              "marketId",
+                              "current"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "The event and the other open expiries of the same question in its group, ordered by endDate then eventId, at most 12; the requested event is always among them, with current true. Expiries that have ended are left out, except the requested event. Empty only when the event's end date is not known."
+                        },
+                        "truncated": {
+                          "type": "boolean",
+                          "description": "True when the group has more open expiries than items holds (more than 12, or more than this service read); false when items holds them all."
+                        }
+                      },
+                      "required": [
+                        "group",
+                        "items",
+                        "truncated"
+                      ],
+                      "additionalProperties": false,
+                      "description": "The open expiries of the question this event asks, for chips that switch between them. Always present on this response."
                     }
                   },
                   "required": [
                     "event",
                     "markets",
-                    "truncated"
+                    "truncated",
+                    "expiries"
                   ],
                   "additionalProperties": false,
-                  "description": "Returns one event and the markets of it that this service's catalog lists, possibly from cache. Listed markets only: the catalog keeps markets above a lifetime volume threshold, and a market of the event it does not list is not included here, although GET /v1/markets/{marketId} can still return it by its identifier. The markets are ordered by marketId, at most 200; truncated is true when the event has more listed markets than that, and those past the first 200 are not returned. Each market has the keys of GET /v1/markets/{marketId}, rules included, with the same meaning. event.endDate is the latest endDate among the returned markets: when the event ends, as far as this service knows. lang applies to each market as on GET /v1/markets/{marketId}: it localizes outcomes[].outcome labels and adds translation and rules.translation, each a translation or null. Crypto round markets are not served here."
+                  "description": "Returns one event and the markets of it that this service serves, possibly from cache. Those are the markets its catalog lists (the catalog keeps markets above a lifetime volume threshold) and, when the event is in a weekly or monthly group of which the catalog lists a market, the event's other open markets, taken in so that every expiry in expiries opens here; GET /v1/markets does not list those. A market of the event that is neither is not included here, although GET /v1/markets/{marketId} can still return it by its identifier. The markets are ordered by marketId, at most 200; truncated is true when the event has more such markets than that, and those past the first 200 are not returned. expiries holds the open expiries of the question this event asks, for chips that switch between them: each item's eventId opens on this route. Each market has the keys of GET /v1/markets/{marketId}, rules included, with the same meaning. event.endDate is the latest endDate among the returned markets: when the event ends, as far as this service knows. lang applies to each market as on GET /v1/markets/{marketId}: it localizes outcomes[].outcome labels and adds translation and rules.translation, each a translation or null. Crypto round markets are not served here."
                 }
               }
             }
@@ -18177,7 +18298,7 @@
             }
           },
           "404": {
-            "description": "error.code is NOT_FOUND and error.details is omitted when the catalog lists no market of this event. That answer is cached until the market cache entry expires, so the event stays 404 during that period. On this path a 404 can also come from a deployment that does not have the route yet, so do not cache it.",
+            "description": "error.code is NOT_FOUND and error.details is omitted when this service serves no market of this event (see the 200 response). That answer is cached until the market cache entry expires, so the event stays 404 during that period. On this path a 404 can also come from a deployment that does not have the route yet, so do not cache it.",
             "content": {
               "application/json": {
                 "schema": {
@@ -18225,7 +18346,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "error.code is NOT_FOUND and error.details is omitted when the catalog lists no market of this event. That answer is cached until the market cache entry expires, so the event stays 404 during that period. On this path a 404 can also come from a deployment that does not have the route yet, so do not cache it."
+                  "description": "error.code is NOT_FOUND and error.details is omitted when this service serves no market of this event (see the 200 response). That answer is cached until the market cache entry expires, so the event stays 404 during that period. On this path a 404 can also come from a deployment that does not have the route yet, so do not cache it."
                 }
               }
             }
