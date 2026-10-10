@@ -68,6 +68,11 @@
               "GET /v1/perps/instruments/{instrumentId}/candles",
               "POST /v1/perps/account",
               "GET /v1/perps/account",
+              "GET /v1/perps/account/positions",
+              "GET /v1/perps/account/orders",
+              "GET /v1/perps/account/history",
+              "GET /v1/perps/account/pnl",
+              "GET /v1/perps/order-preview",
               "POST /v1/perps/transfers",
               "GET /v1/perps/transfers",
               "GET /v1/perps/transfers/{transferId}"

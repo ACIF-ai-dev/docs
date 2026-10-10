@@ -157,7 +157,7 @@ Requests abort after `timeoutMs`, 60 seconds by default, and surface as a transp
 
 ## The client never retries
 
-No status code triggers an automatic retry, and nothing is polled in the background: one call, one request. The reasons are the ones on the **API reference** home page — the hourly budget counts reads (all but the market list, the single-market read, the crypto round list, the event read, the Perps account read and the two Perps transfer reads) and rejections, a blind retry of an order can duplicate real money, and `Retry-After` is present on some 429 responses and absent on others. `TobuilderApiError.retryAfterSeconds` gives you the header value when there is one, and `undefined` when there is not; the scheduling decision stays yours.
+No status code triggers an automatic retry, and nothing is polled in the background: one call, one request. The reasons are the ones on the **API reference** home page — the hourly budget counts reads (all but the market list, the single-market read, the crypto round list, the event read, the Perps account, positions, orders, history and pnl reads, the Perps order preview and the two Perps transfer reads) and rejections, a blind retry of an order can duplicate real money, and `Retry-After` is present on some 429 responses and absent on others. `TobuilderApiError.retryAfterSeconds` gives you the header value when there is one, and `undefined` when there is not; the scheduling decision stays yours.
 
 ## Collateral is pUSD
 
