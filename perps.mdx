@@ -355,3 +355,100 @@ Both routes use the standard error envelope. 401 and 429 are the same as on ever
 | 502 | `UPSTREAM_UNAVAILABLE` | `perps_unavailable` | `POST` | a service the open call depends on was unavailable; no account was opened, and retrying may succeed |
 
 On the account routes `perps_unavailable` is about opening the account. It does not mean the market-data provider could not be read, which is what the same reason means on the routes above.
+
+## Perps transfers
+
+Three routes under `/v1/perps/transfers` move pUSD between an end user's prediction wallet and their Perps account. Like the account routes they need a `trade`-scope API key **and** the end user's token in `x-end-user-token`, and they sit behind the same gate.
+
+| Route | Does |
+|---|---|
+| `POST /v1/perps/transfers` | records a transfer request |
+| `GET /v1/perps/transfers` | lists the end user's transfers |
+| `GET /v1/perps/transfers/{transferId}` | returns one transfer |
+
+### Request a transfer
+
+`direction` is `to_perps` (prediction wallet → Perps account) or `to_prediction` (Perps account → prediction wallet). `amount` is pUSD in token units, a decimal string above zero with at most six decimals; `to_perps` needs at least 10. The `idempotency-key` header is required and is yours to generate.
+
+```bash
+curl -X POST "https://api.tobuilder.app/v1/perps/transfers" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY" \
+  -H "x-end-user-token: $END_USER_TOKEN" \
+  -H "idempotency-key: $YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"direction":"to_perps","amount":"25"}'
+```
+
+```json
+{
+  "transfer": {
+    "transferId": "<opaque id>",
+    "direction": "to_perps",
+    "amount": "25",
+    "status": "pending",
+    "fundsLocation": null,
+    "fee": null,
+    "receivedAmount": null,
+    "createdAt": "2026-10-10T00:12:03.120Z",
+    "updatedAt": "2026-10-10T00:12:03.120Z"
+  }
+}
+```
+
+The values above illustrate the shape.
+
+- The first request answers **202** once it is recorded. Follow it with `GET /v1/perps/transfers/{transferId}`; nothing is pushed to you.
+- The same `idempotency-key` with the same `direction` and `amount` answers **200** with the stored transfer **as it is now** and records nothing new. The same key with another body answers 409 with `idempotency_key_reused`.
+- Where the money goes is never taken from the request: any other key in the body is ignored.
+- At most one transfer per direction is in progress for an end user at a time.
+- `to_prediction` transfers are limited to 10 per end user per UTC day, and `to_perps` transfers share a daily capacity across this service. Both answer 429 with `Retry-After` set to the seconds until the next UTC midnight.
+
+### The transfer object
+
+| Field | Type | Meaning |
+|---|---|---|
+| `transferId` | string | this service's id of the transfer — treat it as opaque |
+| `direction` | string | `to_perps` or `to_prediction` |
+| `amount` | decimal string | the requested amount, as stored (`"25"` may read back as `"25.000000"`) |
+| `status` | string | `pending`, `credited`, `failed` or `needs_review` — an **open set**: treat a value you do not know as `pending` |
+| `fundsLocation` | string or `null` | only when `status` is `failed`: `prediction`, `perps` or `unknown` |
+| `fee` | decimal string or `null` | `null` until it is known — never read `null` as zero |
+| `receivedAmount` | decimal string or `null` | `null` until it is known |
+| `createdAt`, `updatedAt` | string | ISO 8601, UTC |
+
+`needs_review` means this service cannot tell where the money is; an operator resolves it, and no other transfer in that direction is accepted meanwhile.
+
+### List and read transfers
+
+`GET /v1/perps/transfers` returns `{"transfers": [...], "nextCursor": <string or null>}`: every transfer that is `pending` or `needs_review`, whatever its age, and every other one that changed in the last 30 days, newest first, 20 a page. Pass `nextCursor` back as `?cursor=` for the next page; it is `null` on the last page. A cursor this route did not return answers 400 with `perps_transfer_cursor_invalid`. Transfers seen only upstream are not listed.
+
+`GET /v1/perps/transfers/{transferId}` returns `{"transfer": ...}` at any age. Another end user's transfer answers exactly like one that does not exist: 404 with `perps_transfer_not_found`.
+
+Both reads are outside a `trade` key's hourly budget: they are not counted against it and are not rejected when it is exhausted. Each read still counts against the key's per-minute limit, so poll every few seconds rather than in a tight loop. `POST /v1/perps/transfers` counts against both (see **Rate limits** on the API reference home page).
+
+### When transfer requests are not open
+
+Transfer requests can be closed on a deployment while the account routes are open. Then `POST /v1/perps/transfers` answers 404 with `perps_accounts_not_open`, before the request is read, in both directions; the two reads keep answering.
+
+### Transfer errors
+
+| HTTP | `error.code` | `error.details.reason` | Route | When |
+|---:|---|---|---|---|
+| 400 | `VALIDATION_FAILED` | — | `POST` | the body is not a JSON object, `direction` is not one of the two, or the `idempotency-key` header is missing, blank, over 200 characters or contains a comma |
+| 400 | `VALIDATION_FAILED` | `perps_transfer_amount_invalid` | `POST` | `amount` is not a decimal string above zero with at most six decimals |
+| 400 | `VALIDATION_FAILED` | `perps_transfer_below_minimum` | `POST` | a `to_perps` amount below 10 |
+| 400 | `VALIDATION_FAILED` | `perps_transfer_exceeds_balance` | `POST` | a `to_perps` amount above the prediction wallet balance |
+| 400 | `VALIDATION_FAILED` | `perps_transfer_exceeds_withdrawable` | `POST` | a `to_prediction` amount above what the Perps account can withdraw now |
+| 400 | `VALIDATION_FAILED` | `perps_transfer_cursor_invalid` | `GET` list | `cursor` is not a `nextCursor` this route returned |
+| 403 | `FORBIDDEN` | `api_key_scope_insufficient` | all | the API key is below `trade` scope |
+| 403 | `FORBIDDEN` | `perps_trading_paused` | `POST` | a `to_perps` request while taking new exposure is closed for your builder account; `to_prediction` is not refused for this |
+| 404 | `NOT_FOUND` | `perps_accounts_not_open` | all | Perps accounts are not open for the caller, or (`POST` only) transfer requests are not open |
+| 404 | `NOT_FOUND` | `perps_account_not_found` | all | this end user has not opened a Perps account |
+| 404 | `NOT_FOUND` | `perps_transfer_not_found` | `GET` one | no transfer with this id belongs to the end user |
+| 409 | `CONFLICT` | `idempotency_key_reused` | `POST` | the key was used with another body, or by another end user |
+| 409 | `CONFLICT` | `perps_transfer_in_flight` | `POST` | a transfer in the same direction is still `pending` or `needs_review` |
+| 429 | `RATE_LIMITED` | `perps_transfer_daily_count` | `POST` | the end user's `to_prediction` transfers of the UTC day are used; `Retry-After` is set |
+| 429 | `RATE_LIMITED` | `perps_transfer_capacity` | `POST` | this service's `to_perps` capacity of the UTC day is used; `Retry-After` is set |
+| 502 | `UPSTREAM_UNAVAILABLE` | `perps_unavailable` | `POST` | the balance the request is checked against could not be read; nothing was recorded and no limit was used |
+
+A refused request records nothing and uses no daily limit.

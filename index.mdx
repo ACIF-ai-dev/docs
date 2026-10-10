@@ -31,7 +31,7 @@ A key's scope decides which route prefixes it may call. Scopes are cumulative �
 |---|---|---|
 | `bot-read` | `/v1/markets`, `/v1/me`, `/v1/sports`, `/v1/perps/instruments`, `/v1/events` | reading market data and checking the key itself |
 | `bot-link` | `/v1/users`, `/v1/onboarding`, `/v1/webhooks/endpoints` | linking your users, onboarding their wallets, and registering or rotating webhook endpoints |
-| `trade` | `/v1/deposit`, `/v1/orders`, `/v1/withdrawals`, `/v1/webhooks/deliveries`, `/v1/stream`, `/v1/perps/account` | deposits, order flow, withdrawals, webhook delivery operations, the streaming surface, and Perps accounts |
+| `trade` | `/v1/deposit`, `/v1/orders`, `/v1/withdrawals`, `/v1/webhooks/deliveries`, `/v1/stream`, `/v1/perps/account`, `/v1/perps/transfers` | deposits, order flow, withdrawals, webhook delivery operations, the streaming surface, Perps accounts, and Perps transfers |
 
 Calling a route outside the key's scope returns **403**, with `error.details.reason` set to `api_key_scope_insufficient`. The check runs on the route prefix before the handler, so the same request with the same key always gets the same answer — use a key issued with the scope you need. Issue the narrowest scope that covers the job: a read-only bot does not need a key that can move money.
 
@@ -40,6 +40,8 @@ The streaming surface behind `/v1/stream` is documented in the [Stream guide](st
 The `/v1/perps/instruments` routes are market-data reads for perpetual instruments, documented in the [Perps market data guide](perps). A deployment where that data is not open answers them with 404 and `error.details.reason` set to `perps_not_open`.
 
 The `/v1/perps/account` routes open and read an end user's Perps account. They are a separate surface with a separate gate: they need a `trade` key and the end user's token, and while Perps accounts are not open for the caller they answer 404 with `error.details.reason` set to `perps_accounts_not_open`. See [Perps accounts](perps#perps-accounts).
+
+The `/v1/perps/transfers` routes request a move of pUSD between an end user's prediction wallet and their Perps account, list those requests and read one. They sit behind the same gate as the account routes, with the same `trade` key and end-user token. See [Perps transfers](perps#perps-transfers).
 
 The webhook routes under `/v1/webhooks` are split across two rungs: `bot-link` opens `/v1/webhooks/endpoints`, and `trade` adds the rest, including `/v1/webhooks/deliveries`.
 
@@ -51,7 +53,7 @@ Like issuance, rotation returns the new plaintext key exactly once. If it is los
 
 ## Get an end-user token
 
-User-facing operations under `/v1/users/*`, `/v1/deposit/*`, `/v1/withdrawals/*`, and `/v1/perps/account` need the builder key plus an `x-end-user-token` header. The header value is that end user's Privy access token.
+User-facing operations under `/v1/users/*`, `/v1/deposit/*`, `/v1/withdrawals/*`, `/v1/perps/account`, and `/v1/perps/transfers` need the builder key plus an `x-end-user-token` header. The header value is that end user's Privy access token.
 
 Your frontend obtains the token by signing the user in through the single Privy app that tobuilder provides for this integration; your tobuilder administrator gives you the app id. Before login, send every frontend origin — including a development origin such as `http://localhost:<port>` — to your tobuilder administrator so it can be registered in Privy's allowed origins. Login fails for an unregistered origin; that is registration state, not a bug. Send the origin again when the domain changes.
 
@@ -69,11 +71,11 @@ Operations that act on behalf of one of your end users need a second credential,
 
 ## Rate limits
 
-Three budgets apply, and all of them are fixed windows rather than sliding ones. Stream ticket issuance (`POST /v1/stream/tickets`) is counted only against the third. Five reads, `GET /v1/markets`, `GET /v1/markets/{marketId}`, `GET /v1/markets/rounds`, `GET /v1/events/{eventId}` and `GET /v1/perps/account`, are counted only against the first. Every other request is counted against the first and, when the key is a `trade` key, the second; the two apply independently.
+Three budgets apply, and all of them are fixed windows rather than sliding ones. Stream ticket issuance (`POST /v1/stream/tickets`) is counted only against the third. Seven reads, `GET /v1/markets`, `GET /v1/markets/{marketId}`, `GET /v1/markets/rounds`, `GET /v1/events/{eventId}`, `GET /v1/perps/account`, `GET /v1/perps/transfers` and `GET /v1/perps/transfers/{transferId}`, are counted only against the first. Every other request is counted against the first and, when the key is a `trade` key, the second; the two apply independently.
 
 **Per key, per minute.** Every request except stream ticket issuance is counted against the key's own per-minute limit. `GET /v1/me` reports that limit as `rateLimitPerMinute`. Responses that reach the limiter carry `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset`.
 
-**Per account, per hour, for `trade` keys.** A `trade`-scope key is additionally limited to 600 requests per hour by default, counted per builder account in a window that resets at the top of the hour. Five reads are outside this budget: `GET /v1/markets`, `GET /v1/markets/{marketId}`, `GET /v1/markets/rounds`, `GET /v1/events/{eventId}` and `GET /v1/perps/account` are not counted against it and are not rejected when it is exhausted, so an account whose orders this budget is refusing can still read its market list; the per-minute limit still applies to all five. Nothing else under `/v1/markets`, `/v1/events` or `/v1/perps` is outside it — a market's order book and fee preview, both price histories, the Perps market-data reads and `POST /v1/perps/account` count. Every other request except stream ticket issuance counts against the budget — including the other GET requests, and including the requests that are themselves rejected with 429 by this budget. A tight retry loop therefore spends the budget it is waiting for. Exceeding it returns **429** with `error.details.reason` set to `trade_hourly_limit_exceeded`.
+**Per account, per hour, for `trade` keys.** A `trade`-scope key is additionally limited to 600 requests per hour by default, counted per builder account in a window that resets at the top of the hour. Seven reads are outside this budget: `GET /v1/markets`, `GET /v1/markets/{marketId}`, `GET /v1/markets/rounds`, `GET /v1/events/{eventId}`, `GET /v1/perps/account`, `GET /v1/perps/transfers` and `GET /v1/perps/transfers/{transferId}` are not counted against it and are not rejected when it is exhausted, so an account whose orders this budget is refusing can still read its market list; the per-minute limit still applies to all seven. Nothing else under `/v1/markets`, `/v1/events` or `/v1/perps` is outside it — a market's order book and fee preview, both price histories, the Perps market-data reads, `POST /v1/perps/account` and `POST /v1/perps/transfers` count. Every other request except stream ticket issuance counts against the budget — including the other GET requests, and including the requests that are themselves rejected with 429 by this budget. A tight retry loop therefore spends the budget it is waiting for. Exceeding it returns **429** with `error.details.reason` set to `trade_hourly_limit_exceeded`.
 
 **Stream tickets, per account, per minute.** `POST /v1/stream/tickets` has its own budget of 600 ticket requests per minute by default, shared by every key of the builder account, in a window that resets at the start of each minute. Issuing tickets therefore does not spend the per-minute or hourly budget your orders use. Every ticket request that reaches this budget counts — including requests rejected with 429 and requests the operation then rejects, such as an unknown `userId`. Its responses carry `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset` for this budget. Exceeding it returns **429** with `error.details.reason` set to `stream_ticket_limit_exceeded`.
 
@@ -683,7 +685,7 @@ A suspended account answers **403** with `error.details.reason` set to `subbuild
 
 **Nothing in this API retries for you**, and the SDK does not retry either. Three reasons:
 
-1. **Rate budget.** The hourly budget counts GET requests — all but the five reads named under **Rate limits** — and counts rejected requests, so an automatic retry spends the budget on the failure instead of on your next real call.
+1. **Rate budget.** The hourly budget counts GET requests — all but the seven reads named under **Rate limits** — and counts rejected requests, so an automatic retry spends the budget on the failure instead of on your next real call.
 2. **Money.** `POST /v1/orders` and `POST /v1/orders/market` submit real funds. After a 5xx you do not know whether the submission was stored, so a blind retry can duplicate an order; read `GET /v1/orders` and `GET /v1/orders/fills` back before sending anything again.
 3. **429 is not uniform.** Some 429 responses carry `Retry-After` and some do not, so any single backoff policy baked into a client would be wrong for half of them.
 

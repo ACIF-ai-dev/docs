@@ -23206,6 +23206,1569 @@
         }
       }
     },
+    "/v1/perps/transfers": {
+      "post": {
+        "summary": "Request a Perps transfer",
+        "description": "Requests a transfer of pUSD between the end user's prediction wallet and their Perps account. The answer comes once the request is recorded, with status pending; read GET /v1/perps/transfers/{transferId} to follow it. Nothing is sent and no limit is used when the request is refused. The same idempotency-key with the same direction and amount answers the stored transfer again, as it is now, and records nothing new; a key is never reused for another body. The idempotency-key header is required. It is trimmed before use, and the trimmed value must be 1 to 200 characters and must not contain a comma; the declared schema states only minLength 1. Two keys that differ only in surrounding whitespace are the same key.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "to_perps",
+                      "to_prediction"
+                    ],
+                    "description": "to_perps moves pUSD from the end user's prediction wallet to their Perps account; to_prediction moves it from the Perps account back to the prediction wallet."
+                  },
+                  "amount": {
+                    "type": "string",
+                    "pattern": "^[0-9]+(\\.[0-9]{1,6})?$",
+                    "description": "pUSD in token units, a decimal string above zero with at most six decimals (for example \"25\" or \"12.5\"). to_perps needs at least 10. Other keys in the body are ignored: where the money goes is never taken from the request."
+                  }
+                },
+                "required": [
+                  "direction",
+                  "amount"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": [],
+            "endUserToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "This idempotency-key already names a transfer of this end user with the same direction and amount: that transfer is returned as it is now, and nothing new was recorded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "transfer": {
+                      "type": "object",
+                      "properties": {
+                        "transferId": {
+                          "type": "string",
+                          "description": "This service's identifier of the transfer. Treat it as opaque: it is never an upstream identifier."
+                        },
+                        "direction": {
+                          "type": "string",
+                          "enum": [
+                            "to_perps",
+                            "to_prediction"
+                          ]
+                        },
+                        "amount": {
+                          "type": "string",
+                          "description": "The requested amount, pUSD in token units, as stored: the same value as the request, possibly written with another number of trailing zeros."
+                        },
+                        "status": {
+                          "type": "string",
+                          "description": "One of pending, credited, failed, needs_review. This is an open set: treat a value you do not know as pending. pending means the transfer is in progress (accepted, sent, or waiting to be credited); credited means it completed; failed means the money was confirmed not to have moved; needs_review means this service cannot yet tell where the money is — an operator resolves it, and no other transfer in that direction is accepted meanwhile."
+                        },
+                        "fundsLocation": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Set only when status is failed, else null: prediction (still in the prediction wallet), perps (back in the Perps account), or unknown. An open set."
+                        },
+                        "fee": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "pUSD in token units. Null until the upstream entry of the transfer is known; never assumed to be zero."
+                        },
+                        "receivedAmount": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "pUSD in token units that arrived. Null until it is known."
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                          "description": "When the transfer was requested (ISO 8601, UTC)."
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                          "description": "When the transfer last changed (ISO 8601, UTC)."
+                        }
+                      },
+                      "required": [
+                        "transferId",
+                        "direction",
+                        "amount",
+                        "status",
+                        "fundsLocation",
+                        "fee",
+                        "receivedAmount",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "transfer"
+                  ],
+                  "additionalProperties": false,
+                  "description": "This idempotency-key already names a transfer of this end user with the same direction and amount: that transfer is returned as it is now, and nothing new was recorded."
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "The transfer was recorded by this request, with status pending.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "transfer": {
+                      "type": "object",
+                      "properties": {
+                        "transferId": {
+                          "type": "string",
+                          "description": "This service's identifier of the transfer. Treat it as opaque: it is never an upstream identifier."
+                        },
+                        "direction": {
+                          "type": "string",
+                          "enum": [
+                            "to_perps",
+                            "to_prediction"
+                          ]
+                        },
+                        "amount": {
+                          "type": "string",
+                          "description": "The requested amount, pUSD in token units, as stored: the same value as the request, possibly written with another number of trailing zeros."
+                        },
+                        "status": {
+                          "type": "string",
+                          "description": "One of pending, credited, failed, needs_review. This is an open set: treat a value you do not know as pending. pending means the transfer is in progress (accepted, sent, or waiting to be credited); credited means it completed; failed means the money was confirmed not to have moved; needs_review means this service cannot yet tell where the money is — an operator resolves it, and no other transfer in that direction is accepted meanwhile."
+                        },
+                        "fundsLocation": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Set only when status is failed, else null: prediction (still in the prediction wallet), perps (back in the Perps account), or unknown. An open set."
+                        },
+                        "fee": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "pUSD in token units. Null until the upstream entry of the transfer is known; never assumed to be zero."
+                        },
+                        "receivedAmount": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "pUSD in token units that arrived. Null until it is known."
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                          "description": "When the transfer was requested (ISO 8601, UTC)."
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                          "description": "When the transfer last changed (ISO 8601, UTC)."
+                        }
+                      },
+                      "required": [
+                        "transferId",
+                        "direction",
+                        "amount",
+                        "status",
+                        "fundsLocation",
+                        "fee",
+                        "receivedAmount",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "transfer"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The transfer was recorded by this request, with status pending."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "error.code is VALIDATION_FAILED and nothing was recorded. error.details is omitted when the body is not a JSON object, direction is not one of to_perps and to_prediction, or the idempotency-key header breaks its rules. error.details.reason is perps_transfer_amount_invalid when amount is not a decimal string above zero with at most six decimals; perps_transfer_below_minimum when a to_perps amount is below 10; perps_transfer_exceeds_balance when a to_perps amount is above the end user's prediction wallet balance; perps_transfer_exceeds_withdrawable when a to_prediction amount is above what the Perps account can withdraw now.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is VALIDATION_FAILED and nothing was recorded. error.details is omitted when the body is not a JSON object, direction is not one of to_perps and to_prediction, or the idempotency-key header breaks its rules. error.details.reason is perps_transfer_amount_invalid when amount is not a decimal string above zero with at most six decimals; perps_transfer_below_minimum when a to_perps amount is below 10; perps_transfer_exceeds_balance when a to_perps amount is above the end user's prediction wallet balance; perps_transfer_exceeds_withdrawable when a to_prediction amount is above what the Perps account can withdraw now."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "error.code is FORBIDDEN. error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/perps/transfers routes require trade scope), or subbuilder_suspended when the builder API key's subbuilder is not active. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result. error.details.reason is perps_trading_paused for a to_perps request when taking new exposure is closed for the subbuilder and the end user has a Perps account; to_prediction is not refused for that reason.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is FORBIDDEN. error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/perps/transfers routes require trade scope), or subbuilder_suspended when the builder API key's subbuilder is not active. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result. error.details.reason is perps_trading_paused for a to_perps request when taking new exposure is closed for the subbuilder and the end user has a Perps account; to_prediction is not refused for that reason."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "error.code is NOT_FOUND and nothing was recorded. error.details.reason is perps_account_not_found when Perps accounts are open for the caller and this end user has not opened one. While Perps accounts are not open for the caller, this route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_accounts_not_open; the answer is the same whether Perps accounts are closed on this deployment or closed for the API key's subbuilder, and waiting or retrying does not change it. perps_accounts_not_open is the account gate only: the market-data routes under /v1/perps/instruments have their own (perps_not_open), and either can be open while the other is closed. This operation also answers perps_accounts_not_open, before the request is read, while Perps transfers are not open on this deployment; the two read operations stay available then.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is NOT_FOUND and nothing was recorded. error.details.reason is perps_account_not_found when Perps accounts are open for the caller and this end user has not opened one. While Perps accounts are not open for the caller, this route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_accounts_not_open; the answer is the same whether Perps accounts are closed on this deployment or closed for the API key's subbuilder, and waiting or retrying does not change it. perps_accounts_not_open is the account gate only: the market-data routes under /v1/perps/instruments have their own (perps_not_open), and either can be open while the other is closed. This operation also answers perps_accounts_not_open, before the request is read, while Perps transfers are not open on this deployment; the two read operations stay available then."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "error.code is CONFLICT and nothing new was recorded. error.details.reason is idempotency_key_reused when this idempotency-key was already used with another direction or amount, or by another end user of the subbuilder — send the original body again, or use a new key; perps_transfer_in_flight when a transfer of this end user in the same direction is still pending or needs_review — wait until it ends.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is CONFLICT and nothing new was recorded. error.details.reason is idempotency_key_reused when this idempotency-key was already used with another direction or amount, or by another end user of the subbuilder — send the original body again, or use a new key; perps_transfer_in_flight when a transfer of this end user in the same direction is still pending or needs_review — wait until it ends."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After. This operation also answers 429 with error.details.reason perps_transfer_daily_count when the end user has used today's to_prediction transfers, or perps_transfer_capacity when this service's daily capacity for to_perps transfers is used (to_prediction is not limited by it). Both days are UTC days; both answers carry Retry-After, the whole seconds until the next UTC midnight, and nothing was recorded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After. This operation also answers 429 with error.details.reason perps_transfer_daily_count when the end user has used today's to_prediction transfers, or perps_transfer_capacity when this service's daily capacity for to_perps transfers is used (to_prediction is not limited by it). Both days are UTC days; both answers carry Retry-After, the whole seconds until the next UTC midnight, and nothing was recorded."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "A server-side failure occurred and error.code is INTERNAL. error.details is omitted when transfer storage failed; retrying a request with the same idempotency-key is safe and does not record a second transfer. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A server-side failure occurred and error.code is INTERNAL. error.details is omitted when transfer storage failed; retrying a request with the same idempotency-key is safe and does not record a second transfer. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "error.code is UPSTREAM_UNAVAILABLE with error.details.reason perps_unavailable: the balance the request is checked against could not be read. Nothing was recorded, nothing was sent and no limit was used. Retrying may succeed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is UPSTREAM_UNAVAILABLE with error.details.reason perps_unavailable: the balance the request is checked against could not be read. Nothing was recorded, nothing was sent and no limit was used. Retrying may succeed."
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "List the Perps transfers of a user",
+        "description": "The end user's transfers requested through POST /v1/perps/transfers: every one that is pending or needs_review, whatever its age, and every other one that changed in the last 30 days. Newest first (by createdAt, then transferId), 20 a page; the page size is fixed. Transfers seen only upstream are not listed.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "description": "nextCursor from the previous page, as it was returned. Left out or empty: the first page."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": [],
+            "endUserToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of the end user's transfers, each as it is now; nextCursor is null on the last page.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "transfers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "transferId": {
+                            "type": "string",
+                            "description": "This service's identifier of the transfer. Treat it as opaque: it is never an upstream identifier."
+                          },
+                          "direction": {
+                            "type": "string",
+                            "enum": [
+                              "to_perps",
+                              "to_prediction"
+                            ]
+                          },
+                          "amount": {
+                            "type": "string",
+                            "description": "The requested amount, pUSD in token units, as stored: the same value as the request, possibly written with another number of trailing zeros."
+                          },
+                          "status": {
+                            "type": "string",
+                            "description": "One of pending, credited, failed, needs_review. This is an open set: treat a value you do not know as pending. pending means the transfer is in progress (accepted, sent, or waiting to be credited); credited means it completed; failed means the money was confirmed not to have moved; needs_review means this service cannot yet tell where the money is — an operator resolves it, and no other transfer in that direction is accepted meanwhile."
+                          },
+                          "fundsLocation": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Set only when status is failed, else null: prediction (still in the prediction wallet), perps (back in the Perps account), or unknown. An open set."
+                          },
+                          "fee": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "pUSD in token units. Null until the upstream entry of the transfer is known; never assumed to be zero."
+                          },
+                          "receivedAmount": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "pUSD in token units that arrived. Null until it is known."
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                            "description": "When the transfer was requested (ISO 8601, UTC)."
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                            "description": "When the transfer last changed (ISO 8601, UTC)."
+                          }
+                        },
+                        "required": [
+                          "transferId",
+                          "direction",
+                          "amount",
+                          "status",
+                          "fundsLocation",
+                          "fee",
+                          "receivedAmount",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "nextCursor": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Pass it as cursor to read the next page; null on the last page."
+                    }
+                  },
+                  "required": [
+                    "transfers",
+                    "nextCursor"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A page of the end user's transfers, each as it is now; nextCursor is null on the last page."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "error.code is VALIDATION_FAILED and error.details.reason is perps_transfer_cursor_invalid: cursor is not a nextCursor this operation returned. Start again from the first page.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is VALIDATION_FAILED and error.details.reason is perps_transfer_cursor_invalid: cursor is not a nextCursor this operation returned. Start again from the first page."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "error.code is FORBIDDEN. error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/perps/transfers routes require trade scope), or subbuilder_suspended when the builder API key's subbuilder is not active. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is FORBIDDEN. error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/perps/transfers routes require trade scope), or subbuilder_suspended when the builder API key's subbuilder is not active. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "error.code is NOT_FOUND. error.details.reason is perps_account_not_found when Perps accounts are open for the caller and this end user has not opened one. While Perps accounts are not open for the caller, this route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_accounts_not_open; the answer is the same whether Perps accounts are closed on this deployment or closed for the API key's subbuilder, and waiting or retrying does not change it. perps_accounts_not_open is the account gate only: the market-data routes under /v1/perps/instruments have their own (perps_not_open), and either can be open while the other is closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is NOT_FOUND. error.details.reason is perps_account_not_found when Perps accounts are open for the caller and this end user has not opened one. While Perps accounts are not open for the caller, this route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_accounts_not_open; the answer is the same whether Perps accounts are closed on this deployment or closed for the API key's subbuilder, and waiting or retrying does not change it. perps_accounts_not_open is the account gate only: the market-data routes under /v1/perps/instruments have their own (perps_not_open), and either can be open while the other is closed."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "A server-side failure occurred and error.code is INTERNAL. error.details is omitted when transfer storage failed; retrying a request with the same idempotency-key is safe and does not record a second transfer. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A server-side failure occurred and error.code is INTERNAL. error.details is omitted when transfer storage failed; retrying a request with the same idempotency-key is safe and does not record a second transfer. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/perps/transfers/{transferId}": {
+      "get": {
+        "summary": "Get a Perps transfer of a user",
+        "description": "One transfer of the end user, at any age. Polling this operation reads only this service's record.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "transferId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": [],
+            "endUserToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The end user's transfer as it is now; read it again to follow its status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "transfer": {
+                      "type": "object",
+                      "properties": {
+                        "transferId": {
+                          "type": "string",
+                          "description": "This service's identifier of the transfer. Treat it as opaque: it is never an upstream identifier."
+                        },
+                        "direction": {
+                          "type": "string",
+                          "enum": [
+                            "to_perps",
+                            "to_prediction"
+                          ]
+                        },
+                        "amount": {
+                          "type": "string",
+                          "description": "The requested amount, pUSD in token units, as stored: the same value as the request, possibly written with another number of trailing zeros."
+                        },
+                        "status": {
+                          "type": "string",
+                          "description": "One of pending, credited, failed, needs_review. This is an open set: treat a value you do not know as pending. pending means the transfer is in progress (accepted, sent, or waiting to be credited); credited means it completed; failed means the money was confirmed not to have moved; needs_review means this service cannot yet tell where the money is — an operator resolves it, and no other transfer in that direction is accepted meanwhile."
+                        },
+                        "fundsLocation": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Set only when status is failed, else null: prediction (still in the prediction wallet), perps (back in the Perps account), or unknown. An open set."
+                        },
+                        "fee": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "pUSD in token units. Null until the upstream entry of the transfer is known; never assumed to be zero."
+                        },
+                        "receivedAmount": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "pUSD in token units that arrived. Null until it is known."
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                          "description": "When the transfer was requested (ISO 8601, UTC)."
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                          "description": "When the transfer last changed (ISO 8601, UTC)."
+                        }
+                      },
+                      "required": [
+                        "transferId",
+                        "direction",
+                        "amount",
+                        "status",
+                        "fundsLocation",
+                        "fee",
+                        "receivedAmount",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "transfer"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The end user's transfer as it is now; read it again to follow its status."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "error.code is FORBIDDEN. error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/perps/transfers routes require trade scope), or subbuilder_suspended when the builder API key's subbuilder is not active. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is FORBIDDEN. error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/perps/transfers routes require trade scope), or subbuilder_suspended when the builder API key's subbuilder is not active. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "error.code is NOT_FOUND. error.details.reason is perps_transfer_not_found when no transfer with this transferId belongs to the end user: another user's transfer is answered the same as one that does not exist. error.details.reason is perps_account_not_found when Perps accounts are open for the caller and this end user has not opened one. While Perps accounts are not open for the caller, this route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_accounts_not_open; the answer is the same whether Perps accounts are closed on this deployment or closed for the API key's subbuilder, and waiting or retrying does not change it. perps_accounts_not_open is the account gate only: the market-data routes under /v1/perps/instruments have their own (perps_not_open), and either can be open while the other is closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is NOT_FOUND. error.details.reason is perps_transfer_not_found when no transfer with this transferId belongs to the end user: another user's transfer is answered the same as one that does not exist. error.details.reason is perps_account_not_found when Perps accounts are open for the caller and this end user has not opened one. While Perps accounts are not open for the caller, this route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_accounts_not_open; the answer is the same whether Perps accounts are closed on this deployment or closed for the API key's subbuilder, and waiting or retrying does not change it. perps_accounts_not_open is the account gate only: the market-data routes under /v1/perps/instruments have their own (perps_not_open), and either can be open while the other is closed."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "A server-side failure occurred and error.code is INTERNAL. error.details is omitted when transfer storage failed; retrying a request with the same idempotency-key is safe and does not record a second transfer. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A server-side failure occurred and error.code is INTERNAL. error.details is omitted when transfer storage failed; retrying a request with the same idempotency-key is safe and does not record a second transfer. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/webhooks/deliveries/{deliveryId}/resend": {
       "post": {
         "summary": "Resend a webhook delivery",
