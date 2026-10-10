@@ -666,6 +666,16 @@
                                 "type": "null"
                               }
                             ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "resolved_won",
+                              "resolved_lost",
+                              "redeemed"
+                            ],
+                            "description": "Settlement status this service derives from its own record of resolved markets, matching the winning token to this position's tokenId. open: anything else, including every market this service holds no resolution for; it records resolutions only for the short-window crypto rounds it serves. resolved_won: the market is resolved and this position's token is the winning token. resolved_lost: the market is resolved and this position's token is not the winning token. redeemed: this position's token won and its size is exactly 0; this operation lists only positions of at least 1 token, so it does not return this value. redeemable is passed through from the upstream unchanged and does not depend on status."
                           }
                         },
                         "required": [
@@ -684,7 +694,8 @@
                           "cashPnl",
                           "percentPnl",
                           "redeemable",
-                          "endDate"
+                          "endDate",
+                          "status"
                         ],
                         "additionalProperties": false
                       }
