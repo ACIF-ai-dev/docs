@@ -249,7 +249,7 @@ Two routes under `/v1/perps/account` open and read an end user's Perps account. 
 
 ### Open an account
 
-Show the end user the Perps terms. When they accept, send the version of the terms they accepted:
+A deployment can open Perps accounts automatically; your tobuilder administrator tells you whether yours does. If your deployment opens accounts automatically, you do not need this call: once the end user's wallet is provisioned, the account is created in the background after `POST /v1/users/link` or after onboarding provisions the wallet. Until it is created, `GET /v1/perps/account` answers as it does for an end user without an account (404 with `perps_account_not_found`, or 409 with `wallet_not_provisioned` while the wallet is not provisioned); read it again. Calling `POST /v1/perps/account` anyway is harmless and behaves as described below. Otherwise, show the end user the Perps terms. When they accept, send the version of the terms they accepted:
 
 ```bash
 curl -X POST "https://api.tobuilder.app/v1/perps/account" \
@@ -349,7 +349,7 @@ Both routes use the standard error envelope. 401 and 429 are the same as on ever
 | 403 | `FORBIDDEN` | `api_key_scope_insufficient` | both | the API key is below `trade` scope |
 | 403 | `FORBIDDEN` | `perps_trading_paused` | `POST` | the end user has an account, and opening accounts is closed for your builder account |
 | 404 | `NOT_FOUND` | `perps_accounts_not_open` | both | Perps accounts are not open for the caller |
-| 404 | `NOT_FOUND` | `perps_account_not_found` | `GET` | Perps accounts are open and this end user has not opened one — show the terms and call `POST` |
+| 404 | `NOT_FOUND` | `perps_account_not_found` | `GET` | Perps accounts are open and this end user has no account yet — if your deployment opens accounts automatically, read again later; otherwise show the terms and call `POST` |
 | 409 | `CONFLICT` | `wallet_not_provisioned` | both | the end user's wallet is not provisioned — complete `POST /v1/onboarding`, then retry |
 | 409 | `CONFLICT` | `perps_account_address_taken` | `POST` | the account could not be created for this end user; retrying gives the same answer |
 | 502 | `UPSTREAM_UNAVAILABLE` | `perps_unavailable` | `POST` | a service the open call depends on was unavailable; no account was opened, and retrying may succeed |
