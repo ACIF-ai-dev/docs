@@ -16957,7 +16957,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns the recurring short-window crypto Up or Down rounds this deployment carries, one entry per asset and interval: the current round, up to 2 next rounds, soonest first, and up to 5 past rounds, newest first. A round is one market with two outcome tokens, and eventStartTime and endDate are its window. These markets are not in GET /v1/markets: subscribe to outcomes[].tokenId on /v1/stream for prices, trades, and resolution. This service reads the rounds from Polymarket on its own schedule, never because of a request, and each instance of the service keeps its own copy, so fetchedAt says when a pair was last read and next and past can be shorter than their limits, for example right after a start. targetPrice is usually null while a round is live and is filled around or after its end; a non-null targetPrice with targetPriceSource polymarket, and a non-null winningOutcome, are final, so do not overwrite them with a null from a later response. This endpoint never returns polybolt_twap; /v1/stream can carry it from a round's start until Polymarket publishes its value, so the two can differ. state unavailable means the pair's current round has not been read yet; when every requested pair is unavailable the answer is a 502 instead.",
+            "description": "Returns the recurring short-window crypto Up or Down rounds this deployment carries, one entry per asset and interval: the current round, up to 2 next rounds, soonest first, and up to 5 past rounds, newest first. A round is one market with two outcome tokens, and eventStartTime and endDate are its window. These markets are not in GET /v1/markets: outcomes[].bestAsk and volume are snapshots from the service's last read of the round; subscribe to outcomes[].tokenId on /v1/stream for live prices, trades, and resolution. This service reads the rounds from Polymarket on its own schedule, never because of a request, and each instance of the service keeps its own copy, so fetchedAt says when a pair was last read and next and past can be shorter than their limits, for example right after a start. targetPrice is usually null while a round is live and is filled around or after its end; a non-null targetPrice with targetPriceSource polymarket, and a non-null winningOutcome, are final, so do not overwrite them with a null from a later response. This endpoint never returns polybolt_twap; /v1/stream can carry it from a round's start until Polymarket publishes its value, so the two can differ. state unavailable means the pair's current round has not been read yet; when every requested pair is unavailable the answer is a 502 instead.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17077,11 +17077,23 @@
                                         "tokenId": {
                                           "type": "string",
                                           "description": "The outcome's CTF token ID as a decimal string: subscribe to it on /v1/stream for prices, trades, and resolution."
+                                        },
+                                        "bestAsk": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ],
+                                          "description": "The lowest price at which this outcome can be bought, as a plain decimal string from 0 up to but not including 1. It changes only when the service re-reads the round for its target price or result: about once a minute while a live round lacks a target, not before an upcoming round starts or while a live round's target is known. It can be minutes old and older than fetchedAt; polling the list more often does not refresh it. Null when Polymarket sent no valid price, the market is not trading, or the side of the book it comes from is empty (Polymarket reports an empty ask side as 1 and an empty bid side as 0), and always for ended or resolved rounds (including every past round). The second outcome's ask is 1 minus the market's best bid for the first outcome. Subscribe to the outcome's tokenId on /v1/stream for live prices. Parse as a decimal, not a floating-point number."
                                         }
                                       },
                                       "required": [
                                         "outcome",
-                                        "tokenId"
+                                        "tokenId",
+                                        "bestAsk"
                                       ],
                                       "additionalProperties": false
                                     },
@@ -17097,6 +17109,17 @@
                                       }
                                     ],
                                     "description": "The outcome Polymarket settled the round on, one of outcomes[].outcome; null until then, and null also when the result was not read within 20 minutes of the end. Once non-null it is final, like targetPrice: do not overwrite it with a later null."
+                                  },
+                                  "volume": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "The round market's cumulative traded volume in USDC, as a non-negative plain decimal string from this service's last read of the round. Null when Polymarket sent none or an invalid non-negative decimal. It may have more decimal places than a currency and remains set after the round ends."
                                   }
                                 },
                                 "required": [
@@ -17109,7 +17132,8 @@
                                   "targetPrice",
                                   "targetPriceSource",
                                   "outcomes",
-                                  "winningOutcome"
+                                  "winningOutcome",
+                                  "volume"
                                 ],
                                 "additionalProperties": false
                               },
@@ -17197,11 +17221,23 @@
                                       "tokenId": {
                                         "type": "string",
                                         "description": "The outcome's CTF token ID as a decimal string: subscribe to it on /v1/stream for prices, trades, and resolution."
+                                      },
+                                      "bestAsk": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "The lowest price at which this outcome can be bought, as a plain decimal string from 0 up to but not including 1. It changes only when the service re-reads the round for its target price or result: about once a minute while a live round lacks a target, not before an upcoming round starts or while a live round's target is known. It can be minutes old and older than fetchedAt; polling the list more often does not refresh it. Null when Polymarket sent no valid price, the market is not trading, or the side of the book it comes from is empty (Polymarket reports an empty ask side as 1 and an empty bid side as 0), and always for ended or resolved rounds (including every past round). The second outcome's ask is 1 minus the market's best bid for the first outcome. Subscribe to the outcome's tokenId on /v1/stream for live prices. Parse as a decimal, not a floating-point number."
                                       }
                                     },
                                     "required": [
                                       "outcome",
-                                      "tokenId"
+                                      "tokenId",
+                                      "bestAsk"
                                     ],
                                     "additionalProperties": false
                                   },
@@ -17217,6 +17253,17 @@
                                     }
                                   ],
                                   "description": "The outcome Polymarket settled the round on, one of outcomes[].outcome; null until then, and null also when the result was not read within 20 minutes of the end. Once non-null it is final, like targetPrice: do not overwrite it with a later null."
+                                },
+                                "volume": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The round market's cumulative traded volume in USDC, as a non-negative plain decimal string from this service's last read of the round. Null when Polymarket sent none or an invalid non-negative decimal. It may have more decimal places than a currency and remains set after the round ends."
                                 }
                               },
                               "required": [
@@ -17229,7 +17276,8 @@
                                 "targetPrice",
                                 "targetPriceSource",
                                 "outcomes",
-                                "winningOutcome"
+                                "winningOutcome",
+                                "volume"
                               ],
                               "additionalProperties": false
                             },
@@ -17313,11 +17361,23 @@
                                       "tokenId": {
                                         "type": "string",
                                         "description": "The outcome's CTF token ID as a decimal string: subscribe to it on /v1/stream for prices, trades, and resolution."
+                                      },
+                                      "bestAsk": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "The lowest price at which this outcome can be bought, as a plain decimal string from 0 up to but not including 1. It changes only when the service re-reads the round for its target price or result: about once a minute while a live round lacks a target, not before an upcoming round starts or while a live round's target is known. It can be minutes old and older than fetchedAt; polling the list more often does not refresh it. Null when Polymarket sent no valid price, the market is not trading, or the side of the book it comes from is empty (Polymarket reports an empty ask side as 1 and an empty bid side as 0), and always for ended or resolved rounds (including every past round). The second outcome's ask is 1 minus the market's best bid for the first outcome. Subscribe to the outcome's tokenId on /v1/stream for live prices. Parse as a decimal, not a floating-point number."
                                       }
                                     },
                                     "required": [
                                       "outcome",
-                                      "tokenId"
+                                      "tokenId",
+                                      "bestAsk"
                                     ],
                                     "additionalProperties": false
                                   },
@@ -17333,6 +17393,17 @@
                                     }
                                   ],
                                   "description": "The outcome Polymarket settled the round on, one of outcomes[].outcome; null until then, and null also when the result was not read within 20 minutes of the end. Once non-null it is final, like targetPrice: do not overwrite it with a later null."
+                                },
+                                "volume": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The round market's cumulative traded volume in USDC, as a non-negative plain decimal string from this service's last read of the round. Null when Polymarket sent none or an invalid non-negative decimal. It may have more decimal places than a currency and remains set after the round ends."
                                 }
                               },
                               "required": [
@@ -17345,7 +17416,8 @@
                                 "targetPrice",
                                 "targetPriceSource",
                                 "outcomes",
-                                "winningOutcome"
+                                "winningOutcome",
+                                "volume"
                               ],
                               "additionalProperties": false
                             },
@@ -17370,7 +17442,7 @@
                     "data"
                   ],
                   "additionalProperties": false,
-                  "description": "Returns the recurring short-window crypto Up or Down rounds this deployment carries, one entry per asset and interval: the current round, up to 2 next rounds, soonest first, and up to 5 past rounds, newest first. A round is one market with two outcome tokens, and eventStartTime and endDate are its window. These markets are not in GET /v1/markets: subscribe to outcomes[].tokenId on /v1/stream for prices, trades, and resolution. This service reads the rounds from Polymarket on its own schedule, never because of a request, and each instance of the service keeps its own copy, so fetchedAt says when a pair was last read and next and past can be shorter than their limits, for example right after a start. targetPrice is usually null while a round is live and is filled around or after its end; a non-null targetPrice with targetPriceSource polymarket, and a non-null winningOutcome, are final, so do not overwrite them with a null from a later response. This endpoint never returns polybolt_twap; /v1/stream can carry it from a round's start until Polymarket publishes its value, so the two can differ. state unavailable means the pair's current round has not been read yet; when every requested pair is unavailable the answer is a 502 instead."
+                  "description": "Returns the recurring short-window crypto Up or Down rounds this deployment carries, one entry per asset and interval: the current round, up to 2 next rounds, soonest first, and up to 5 past rounds, newest first. A round is one market with two outcome tokens, and eventStartTime and endDate are its window. These markets are not in GET /v1/markets: outcomes[].bestAsk and volume are snapshots from the service's last read of the round; subscribe to outcomes[].tokenId on /v1/stream for live prices, trades, and resolution. This service reads the rounds from Polymarket on its own schedule, never because of a request, and each instance of the service keeps its own copy, so fetchedAt says when a pair was last read and next and past can be shorter than their limits, for example right after a start. targetPrice is usually null while a round is live and is filled around or after its end; a non-null targetPrice with targetPriceSource polymarket, and a non-null winningOutcome, are final, so do not overwrite them with a null from a later response. This endpoint never returns polybolt_twap; /v1/stream can carry it from a round's start until Polymarket publishes its value, so the two can differ. state unavailable means the pair's current round has not been read yet; when every requested pair is unavailable the answer is a 502 instead."
                 }
               }
             }
