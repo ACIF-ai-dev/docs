@@ -105,7 +105,9 @@
               "POST /v1/withdrawals/quotes",
               "POST /v1/withdrawals",
               "GET /v1/withdrawals",
-              "GET /v1/withdrawals/{withdrawalId}"
+              "GET /v1/withdrawals/{withdrawalId}",
+              "GET /v1/withdrawals/verification",
+              "POST /v1/withdrawals/verification/telegram-link"
             ]
           },
           {
