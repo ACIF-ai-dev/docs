@@ -141,7 +141,10 @@ const marketOrder = await tb.orders.placeMarket(
   },
   { "idempotency-key": marketKey },
 );
+// marketOrder.status: "matched" | "delayed" | "live" (or null on an older record)
 ```
+
+A FOK or FAK order the market killed without a fill rejects with `TobuilderApiError` whose `status` is `409` and `reason` is `order_market_not_filled`; `details.kind` says `fok_killed` or `fak_no_match`, and nothing was placed.
 
 The header name comes from the generated contract types rather than a string you typed: if the contract renames it, the call stops compiling instead of quietly losing idempotency.
 

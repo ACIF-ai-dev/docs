@@ -628,10 +628,19 @@ curl -X POST https://api.tobuilder.app/v1/orders/market \
   "tokenId": "71453-example",
   "side": "BUY",
   "amount": "25.00",
+  "shares": null,
   "maxPrice": "0.55",
-  "createdAt": "2026-09-13T00:00:02.000Z"
+  "minPrice": null,
+  "createdAt": "2026-09-13T00:00:02.000Z",
+  "status": "matched",
+  "makingAmount": "24.99",
+  "takingAmount": "45.43"
 }
 ```
+
+`status`, `makingAmount`, and `takingAmount` are what the market answered when it placed the order: `matched` means it matched at placement (for a FOK or FAK order, the fill), `delayed` means the market queued it behind a matching delay and the fill is not decided yet. The two amounts are the maker and taker sides of what matched at placement, as the market wrote them. A replay with the same idempotency key answers the same three values; they are `null` on an order stored before these fields existed. `GET /v1/orders/fills` stays the record of fills.
+
+When the market kills a FOK or FAK order without a fill, the answer is **409** with `error.details.reason` set to `order_market_not_filled`, `error.details.kind` set to `fok_killed` or `fak_no_match`, and `error.details.submissionState` set to `not_placed`: nothing was filled and nothing rests on the book. To try again, send a new order with a new idempotency key.
 
 `POST /v1/orders` and `POST /v1/orders/market` **share one idempotency namespace**, keyed on your account and the key alone — the route is not part of the key. Sending a key on one route that you already used on the other replays that stored order when the compared fields match, and fails with `order_idempotency_key_conflict` when they do not. In neither case does the order you just wrote reach the market. Never reuse a key across the two routes; the two examples above deliberately use different values.
 
