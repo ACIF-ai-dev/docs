@@ -73,6 +73,9 @@
               "GET /v1/perps/account/history",
               "GET /v1/perps/account/pnl",
               "GET /v1/perps/order-preview",
+              "POST /v1/perps/orders",
+              "GET /v1/perps/orders/{orderId}",
+              "POST /v1/perps/positions/{instrumentId}/close",
               "POST /v1/perps/transfers",
               "GET /v1/perps/transfers",
               "GET /v1/perps/transfers/{transferId}"

@@ -452,3 +452,146 @@ Transfer requests can be closed on a deployment while the account routes are ope
 | 502 | `UPSTREAM_UNAVAILABLE` | `perps_unavailable` | `POST` | the balance the request is checked against could not be read; nothing was recorded and no limit was used |
 
 A refused request records nothing and uses no daily limit.
+
+## Perps orders
+
+Three routes place, read and close Perps positions for an end user. Like the account routes they need a `trade`-scope API key **and** the end user's token in `x-end-user-token`, and they sit behind the same gate.
+
+| Route | Does |
+|---|---|
+| `POST /v1/perps/orders` | places one entry |
+| `GET /v1/perps/orders/{orderId}` | returns one order of the end user, as it is now |
+| `POST /v1/perps/positions/{instrumentId}/close` | closes the end user's whole position on the instrument |
+
+### Place an entry
+
+An entry is immediate-or-cancel: it fills what it can at once, within a limit price this service sets from the mark price, and the rest is cancelled. You send the instrument, the side, the margin and the leverage; the quantity and the limit price are set by this service. The `idempotency-key` header is required and is yours to generate.
+
+```bash
+curl -X POST "https://api.tobuilder.app/v1/perps/orders" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY" \
+  -H "x-end-user-token: $END_USER_TOKEN" \
+  -H "idempotency-key: $YOUR_ORDER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"instrumentId":"3","side":"long","margin":"6","leverage":2}'
+```
+
+```json
+{
+  "order": {
+    "orderId": "<opaque id>",
+    "kind": "entry",
+    "status": "accepted",
+    "statusReason": null,
+    "instrumentId": "3",
+    "side": "long",
+    "requestedMargin": "6",
+    "quantity": "0.00019",
+    "filledQuantity": null,
+    "averagePrice": null,
+    "fee": null,
+    "priceBound": "63630",
+    "leverage": 2,
+    "tpSl": { "takeProfit": null, "stopLoss": null },
+    "createdAt": "2026-10-13T06:00:00.000Z"
+  }
+}
+```
+
+The values above illustrate the shape.
+
+- The request answers when the exchange has acknowledged the order, not when it has filled. **201** with `status` `accepted`: the exchange took it — read the fill with `GET /v1/perps/orders/{orderId}`. **201** with `status` `rejected`: the exchange placed nothing; `statusReason` says why.
+- **202** when the answer does not settle the order yet: `status` `pending` (no answer came from the exchange, or it sent a refusal this service is still confirming — then `statusReason` carries the exchange's word and the order later reads `rejected` with it) or `unknown`. Read the order until its `status` is one of the ends below; nothing is pushed to you.
+- The same `idempotency-key` with the same body answers **200** with the order **as it is now** and places nothing new. The same key with another body answers 409 with `idempotency_key_reused`. A new key is a new order — never resend under a new key an entry whose outcome you do not know.
+- At most one entry per instrument is in progress for an end user at a time: another answers 409 with `perps_order_in_flight`.
+- `takeProfit` and `stopLoss` are optional: `{"triggerPrice": "66000"}`, or `null` / left out for none. This service places them on the whole position **after** the entry's fill is confirmed — never before, and never for an entry that filled nothing. A long's take-profit must be above the order's `priceBound` and its stop-loss below the mark price (the mirror for a short), with no more places than the instrument's price step; otherwise the entry is refused with `perps_tpsl_invalid` and nothing is placed. A trigger that could not be placed reads `failed`, and `GET /v1/perps/account` carries a `tpsl_not_placed` notice for it for 24 hours: the position is then not protected by it, and this service never closes the position because of that.
+
+### The order object
+
+| Field | Type | Meaning |
+|---|---|---|
+| `orderId` | string | this service's id of the order — treat it as opaque; never the exchange's order id. The same value is `orderId` on the history items |
+| `kind` | string | `entry` or `close` — an **open set** |
+| `status` | string | `pending`, `accepted`, `filled`, `partially_filled`, `not_filled`, `rejected` or `unknown` — an **open set**: treat a value you do not know as `pending` |
+| `statusReason` | string or `null` | the exchange's word for a refusal: with `rejected`, why nothing was placed; with `pending`, a refusal being confirmed. Words seen today: `price_outside_bounds`, `insufficient_margin`, `cancel_only_mode` — an **open set** |
+| `side` | string | the side the order was sent with: `long` or `short`. A close is sent on the side opposite the position (`short` closes a long) |
+| `requestedMargin` | decimal string or `null` | the margin asked for (pUSD); `null` for a close |
+| `quantity` | decimal string or `null` | the quantity the order was sent with; for a close, the whole position |
+| `filledQuantity`, `averagePrice`, `fee` | decimal string or `null` | from the order's own fills — `null` until a fill is recorded; never read `null` as zero. `fee` is what the exchange charged, never an estimate from a rate |
+| `priceBound` | decimal string or `null` | the limit price the order was sent with — the worst price it may fill at. Not the order preview's `priceBound`, which is the widest price the exchange accepts |
+| `leverage` | integer or `null` | the leverage asked for; `null` for a close |
+| `tpSl` | object | `takeProfit` and `stopLoss`, each `null` (none asked, or the entry filled nothing), `pending` (asked, not placed yet), `placed` or `failed` (could not be placed — the account read's notice `tpsl_not_placed`; nothing is closed for it) — an **open set** |
+| `createdAt` | string | ISO 8601, UTC |
+
+`filled`, `partially_filled` (an order that filled in part), `not_filled` (nothing filled within the limit price) and `rejected` are ends — for an entry and a close alike. `unknown` means this service cannot tell yet; after an entry, new entries on that instrument wait until it can.
+
+### Read an order
+
+`GET /v1/perps/orders/{orderId}` returns `{"order": ...}`. Another end user's order answers exactly like one that does not exist: 404 with `perps_order_not_found`. Both routes count against a `trade` key's hourly budget and its per-minute limit (see **Rate limits** on the API reference home page), so read an order every second or two, not in a tight loop.
+
+`GET /v1/perps/account/orders` lists the end user's orders whose outcome is not known yet. Its `status` is the word the order object gives the same order: `pending`, `accepted` or `unknown`.
+
+### When new entries are not open
+
+New entries can be closed on a deployment while every read stays open: then `POST /v1/perps/orders` answers 403 with `perps_trading_paused` before the request is read, and nothing is placed. Reads of orders, positions and the account, and the close of a position, are never closed by it.
+
+### Close a position
+
+`POST /v1/perps/positions/{instrumentId}/close` closes the end user's **whole** position on the instrument with one immediate-or-cancel, reduce-only order. The body is `{}`: this service reads the size from the exchange (from its own records when the exchange cannot be read) and sets a limit price from the mark price, as for an entry. The `idempotency-key` header is required, with the same rules.
+
+```bash
+curl -X POST "https://api.tobuilder.app/v1/perps/positions/3/close" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY" \
+  -H "x-end-user-token: $END_USER_TOKEN" \
+  -H "idempotency-key: $YOUR_CLOSE_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+- It answers like an entry, at the exchange's acknowledgement: **201** with an order whose `kind` is `close` and `status` `accepted` (or `rejected`), **202** when the answer does not settle it yet, **200** for the same key again. Read the outcome with `GET /v1/perps/orders/{orderId}` until it reads `filled`, `partially_filled`, `not_filled` or `rejected`, and the position with `GET /v1/perps/account/positions`.
+- When a close ends `not_filled` (nothing filled), this service sends **at most one more** close by itself, shortly after, and only while no entry of the end user on that instrument is in progress: a new order with its own `orderId`, sized from the exchange's position at that moment, with a limit up to 0.9 × the instrument's price bounds from the mark price. It never sends a third. That order is not returned by your request: read `GET /v1/perps/account/positions` to see whether the position is closed. A close that filled in part, or a position still open after that, can be closed again under a **new** key.
+- A close counts toward a `trade` key's hourly budget but is never rejected by it (see **Rate limits** on the API reference home page).
+- A close is not refused because new entries are paused or closed: an end user can always leave a position. It is refused (409 `perps_cancel_only`) while the exchange takes no orders but cancels.
+- A position that one order cannot close whole — below the instrument's minimum notional — is not closed in part: nothing is sent, 400 `perps_min_notional`.
+- No position on the exchange answers 409 `perps_position_not_found`; while an entry of the end user on that instrument is still in progress it answers 409 `perps_order_in_flight` instead (the entry may be about to fill) — close once it has settled.
+
+| HTTP | `error.code` | `error.details.reason` | When |
+|---:|---|---|---|
+| 400 | `VALIDATION_FAILED` | — | the body is not a JSON object, or the `idempotency-key` header is missing or malformed |
+| 400 | `VALIDATION_FAILED` | `perps_min_notional` | the position cannot be closed whole by one order; nothing was sent |
+| 404 | `NOT_FOUND` | `perps_instrument_not_found` | no listed instrument has this `instrumentId` |
+| 409 | `CONFLICT` | `perps_position_not_found` | the exchange shows no position of the end user on this instrument |
+| 409 | `CONFLICT` | `perps_order_in_flight` | the exchange shows none while an entry on this instrument is still in progress |
+| 409 | `CONFLICT` | `perps_cancel_only` | the exchange takes no orders but cancels (maintenance) |
+| 429 | `RATE_LIMITED` | `perps_capacity` | this service's reserve for closing positions is used; `Retry-After` is set when known |
+| 502 | `UPSTREAM_UNAVAILABLE` | `perps_unavailable` | the close could not be sent just now (no fresh mark price, or no size could be read); nothing was sent |
+
+The scope, account, key-reuse and trading-not-ready answers are the same as the entry's (below).
+
+### Order errors
+
+| HTTP | `error.code` | `error.details.reason` | Route | When |
+|---:|---|---|---|---|
+| 400 | `VALIDATION_FAILED` | — | `POST` | the body is not a JSON object, `instrumentId`, `side` or `margin` is missing or malformed, or the `idempotency-key` header is missing, blank, over 200 characters or contains a comma |
+| 400 | `VALIDATION_FAILED` | `perps_leverage_invalid` | `POST` | `leverage` is not a whole number from 1 to 1000, or is above the leverage this order may use |
+| 400 | `VALIDATION_FAILED` | `perps_min_notional` | `POST` | the order is below the instrument's minimum notional |
+| 400 | `VALIDATION_FAILED` | `perps_order_notional_exceeded` | `POST` | margin × leverage is above the per-order cap (`limits.maxOrderNotional` on `GET /v1/perps/account`) |
+| 400 | `VALIDATION_FAILED` | `perps_tpsl_invalid` | `POST` | `takeProfit` or `stopLoss` is not `null` and not `{"triggerPrice": …}`, or its trigger price is on the wrong side of `priceBound` / the mark price, or has more places than the instrument's price step |
+| 403 | `FORBIDDEN` | `api_key_scope_insufficient` | all | the API key is below `trade` scope |
+| 403 | `FORBIDDEN` | `perps_trading_paused` | `POST` | new entries are closed for your builder account or for this order |
+| 403 | `FORBIDDEN` | `perps_terms_outdated` | `POST` | `termsVersion` was sent and is not the current Perps terms version |
+| 404 | `NOT_FOUND` | `perps_accounts_not_open` | all | Perps accounts are not open for the caller |
+| 404 | `NOT_FOUND` | `perps_account_not_found` | all | this end user has not opened a Perps account |
+| 404 | `NOT_FOUND` | `perps_instrument_not_found` | `POST` | no listed instrument has this `instrumentId` |
+| 404 | `NOT_FOUND` | `perps_order_not_found` | `GET` | no order with this id belongs to the end user |
+| 409 | `CONFLICT` | `idempotency_key_reused` | `POST` | the key was used with another body, or by another end user |
+| 409 | `CONFLICT` | `perps_order_in_flight` | `POST` | another entry of the end user on this instrument is still in progress |
+| 409 | `CONFLICT` | `perps_position_exists` | `POST` | a position on this instrument is open |
+| 409 | `CONFLICT` | `perps_leverage_locked` | `POST` | the leverage cannot change on this instrument now |
+| 409 | `CONFLICT` | `perps_cancel_only` | `POST` | the exchange takes no new orders (maintenance — `account.exchangeStatus` is `cancel_only`) |
+| 409 | `CONFLICT` | `perps_trading_not_ready` | `POST` | the end user's Perps account cannot trade yet (just opened, or its trading key is being replaced); retry later |
+| 429 | `RATE_LIMITED` | `perps_capacity` | `POST` | the end user placed too many orders in a short time, or this service's capacity for Perps orders is used; `Retry-After` is set when known |
+| 502 | `UPSTREAM_UNAVAILABLE` | `perps_unavailable` | `POST` | the order could not be placed just now; nothing was sent |
+| 502 | `UPSTREAM_UNAVAILABLE` | `perps_leverage_unverified` | `POST` | the leverage could not be set and checked on the exchange; nothing was placed |
+
+A refused request places nothing.

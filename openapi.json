@@ -23747,7 +23747,7 @@
                         "properties": {
                           "kind": {
                             "type": "string",
-                            "description": "What the notice is about. liquidation_warning: the exchange reports the account as being liquidated. This is an open set: other values can be added; show a value you do not know as a generic notice."
+                            "description": "What the notice is about. liquidation_warning: the exchange reports the account as being liquidated. tpsl_not_placed: a take-profit or stop-loss asked with an order was not placed (that order's tpSl says failed) — told for 24 hours; the position was not closed for it. This is an open set: other values can be added; show a value you do not know as a generic notice."
                           },
                           "instrumentId": {
                             "type": "string",
@@ -23757,7 +23757,7 @@
                             "type": "string",
                             "format": "date-time",
                             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                            "description": "When the exchange reported it (ISO 8601, UTC)."
+                            "description": "When it was reported (ISO 8601, UTC): by the exchange for liquidation_warning, by this service for tpsl_not_placed."
                           }
                         },
                         "required": [
@@ -24877,7 +24877,7 @@
                           },
                           "status": {
                             "type": "string",
-                            "description": "pending, sent or unknown — an order whose outcome is not known yet. This is an open set: other values can be added."
+                            "description": "pending, accepted or unknown — an order whose outcome is not known yet, with the same word GET /v1/perps/orders/{orderId} gives the same order. This is an open set: other values can be added."
                           },
                           "createdAt": {
                             "type": "string",
@@ -26876,6 +26876,2657 @@
                   ],
                   "additionalProperties": false,
                   "description": "error.code is UPSTREAM_UNAVAILABLE. error.details.reason is perps_mark_unavailable when this service holds no mark price for the instrument published within the last two ticker periods, and perps_unavailable when the instrument's terms or the fee schedule could not be read just now. Retrying later may succeed."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/perps/orders": {
+      "post": {
+        "summary": "Place a Perps entry for a user",
+        "description": "Places one immediate-or-cancel Perps entry for the end user and answers when the exchange has acknowledged it — not when it has filled. The order's outcome is read afterwards: poll GET /v1/perps/orders/{orderId}. The idempotency-key header is required. It is trimmed before use, and the trimmed value must be 1 to 200 characters and must not contain a comma; the declared schema states only minLength 1. A request sent again with the same idempotency-key and the same body places nothing new and returns the order as it is now.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "instrumentId": {
+                    "type": "string",
+                    "description": "The Perps instrument to enter."
+                  },
+                  "side": {
+                    "type": "string",
+                    "description": "long or short."
+                  },
+                  "margin": {
+                    "type": "string",
+                    "description": "The margin of the entry (pUSD): a plain decimal above 0, at most 12 digits before the point and 6 after it. The quantity and the limit price are set by this service."
+                  },
+                  "leverage": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "description": "The leverage of the entry: a whole number from 1 to 1000."
+                  },
+                  "takeProfit": {
+                    "description": "A take-profit for the position. Long: above order.priceBound; short: below it. Placed by this service on the whole position once the entry's fill is confirmed — never before, and never for an entry that filled nothing. Null or left out: none. Any other shape is refused with perps_tpsl_invalid, and no order is placed.",
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "triggerPrice": {
+                            "type": "string",
+                            "description": "The trigger price: a plain decimal above 0, at most 12 digits before the point and no more places than the instrument's price step."
+                          }
+                        },
+                        "required": [
+                          "triggerPrice"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "stopLoss": {
+                    "description": "A stop-loss for the position. Long: below the mark price; short: above it. Placed by this service on the whole position once the entry's fill is confirmed — never before, and never for an entry that filled nothing. Null or left out: none. Any other shape is refused with perps_tpsl_invalid, and no order is placed.",
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "triggerPrice": {
+                            "type": "string",
+                            "description": "The trigger price: a plain decimal above 0, at most 12 digits before the point and no more places than the instrument's price step."
+                          }
+                        },
+                        "required": [
+                          "triggerPrice"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "termsVersion": {
+                    "description": "The Perps terms version the end user accepted. When it is sent and is not the current version, the order is refused with perps_terms_outdated.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "instrumentId",
+                  "side",
+                  "margin",
+                  "leverage"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": [],
+            "endUserToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "This idempotency-key already names an order of this end user with the same body: that order is returned as it is now, and nothing new was placed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": {
+                      "type": "object",
+                      "properties": {
+                        "orderId": {
+                          "type": "string",
+                          "description": "This service's identifier of the order. Treat it as opaque: it is never the exchange's order id. The same value is history.items[].orderId of GET /v1/perps/account/history."
+                        },
+                        "kind": {
+                          "type": "string",
+                          "description": "entry or close. This is an open set: other values can be added."
+                        },
+                        "status": {
+                          "type": "string",
+                          "description": "pending: the outcome is not known yet (no answer from the exchange, or a refusal being confirmed — see statusReason). accepted: the exchange took the order; the fill is read afterwards. filled · partially_filled (an immediate-or-cancel order that filled in part) · not_filled (nothing filled within the limit price) · rejected (the exchange placed nothing; see statusReason) · unknown (this service cannot tell yet; after an entry, new entries on the instrument wait until it can). An entry and a close are read to these ends alike. This is an open set: other values can be added."
+                        },
+                        "statusReason": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode. This is an open set: other values can be added."
+                        },
+                        "instrumentId": {
+                          "type": "string"
+                        },
+                        "side": {
+                          "type": "string",
+                          "description": "long or short: the side the order was sent with. A close is sent on the side opposite the position (short closes a long)."
+                        },
+                        "requestedMargin": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The margin asked for (pUSD). Null for a close."
+                        },
+                        "quantity": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The quantity the order was sent with, in the instrument's base unit. An entry: margin × leverage ÷ the mark price, rounded down to the instrument's quantity step. A close: the whole position."
+                        },
+                        "filledQuantity": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The sum of the order's fills. Null until a fill of the order is recorded."
+                        },
+                        "averagePrice": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The quantity-weighted mean price of the order's fills. Null until a fill of the order is recorded."
+                        },
+                        "fee": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The sum of the fees of the order's fills (pUSD), as the exchange charged them — never estimated from a rate. Null until a fill of the order is recorded, and while the fills name more than one fee asset."
+                        },
+                        "priceBound": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The limit price the order was sent with: the worst price it may fill at, set by this service from the mark price. Not the same value as preview.priceBound of GET /v1/perps/order-preview, which is the widest price the exchange accepts."
+                        },
+                        "leverage": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The leverage asked for. Null for a close."
+                        },
+                        "tpSl": {
+                          "type": "object",
+                          "properties": {
+                            "takeProfit": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "null: none was asked, or the entry filled nothing. pending: asked, not placed yet (it is placed once the fill is confirmed). placed: the exchange took it. failed: it could not be placed — the position is not protected by it, and this service never closes the position because of that. This is an open set: other values can be added."
+                            },
+                            "stopLoss": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "null: none was asked, or the entry filled nothing. pending: asked, not placed yet (it is placed once the fill is confirmed). placed: the exchange took it. failed: it could not be placed — the position is not protected by it, and this service never closes the position because of that. This is an open set: other values can be added."
+                            }
+                          },
+                          "required": [
+                            "takeProfit",
+                            "stopLoss"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                          "description": "When the order was recorded (ISO 8601, UTC)."
+                        }
+                      },
+                      "required": [
+                        "orderId",
+                        "kind",
+                        "status",
+                        "statusReason",
+                        "instrumentId",
+                        "side",
+                        "requestedMargin",
+                        "quantity",
+                        "filledQuantity",
+                        "averagePrice",
+                        "fee",
+                        "priceBound",
+                        "leverage",
+                        "tpSl",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "order"
+                  ],
+                  "additionalProperties": false,
+                  "description": "This idempotency-key already names an order of this end user with the same body: that order is returned as it is now, and nothing new was placed."
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The exchange answered: order.status is accepted (it took the order; the fill is read afterwards) or rejected (it placed nothing; order.statusReason says why).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": {
+                      "type": "object",
+                      "properties": {
+                        "orderId": {
+                          "type": "string",
+                          "description": "This service's identifier of the order. Treat it as opaque: it is never the exchange's order id. The same value is history.items[].orderId of GET /v1/perps/account/history."
+                        },
+                        "kind": {
+                          "type": "string",
+                          "description": "entry or close. This is an open set: other values can be added."
+                        },
+                        "status": {
+                          "type": "string",
+                          "description": "pending: the outcome is not known yet (no answer from the exchange, or a refusal being confirmed — see statusReason). accepted: the exchange took the order; the fill is read afterwards. filled · partially_filled (an immediate-or-cancel order that filled in part) · not_filled (nothing filled within the limit price) · rejected (the exchange placed nothing; see statusReason) · unknown (this service cannot tell yet; after an entry, new entries on the instrument wait until it can). An entry and a close are read to these ends alike. This is an open set: other values can be added."
+                        },
+                        "statusReason": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode. This is an open set: other values can be added."
+                        },
+                        "instrumentId": {
+                          "type": "string"
+                        },
+                        "side": {
+                          "type": "string",
+                          "description": "long or short: the side the order was sent with. A close is sent on the side opposite the position (short closes a long)."
+                        },
+                        "requestedMargin": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The margin asked for (pUSD). Null for a close."
+                        },
+                        "quantity": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The quantity the order was sent with, in the instrument's base unit. An entry: margin × leverage ÷ the mark price, rounded down to the instrument's quantity step. A close: the whole position."
+                        },
+                        "filledQuantity": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The sum of the order's fills. Null until a fill of the order is recorded."
+                        },
+                        "averagePrice": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The quantity-weighted mean price of the order's fills. Null until a fill of the order is recorded."
+                        },
+                        "fee": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The sum of the fees of the order's fills (pUSD), as the exchange charged them — never estimated from a rate. Null until a fill of the order is recorded, and while the fills name more than one fee asset."
+                        },
+                        "priceBound": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The limit price the order was sent with: the worst price it may fill at, set by this service from the mark price. Not the same value as preview.priceBound of GET /v1/perps/order-preview, which is the widest price the exchange accepts."
+                        },
+                        "leverage": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The leverage asked for. Null for a close."
+                        },
+                        "tpSl": {
+                          "type": "object",
+                          "properties": {
+                            "takeProfit": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "null: none was asked, or the entry filled nothing. pending: asked, not placed yet (it is placed once the fill is confirmed). placed: the exchange took it. failed: it could not be placed — the position is not protected by it, and this service never closes the position because of that. This is an open set: other values can be added."
+                            },
+                            "stopLoss": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "null: none was asked, or the entry filled nothing. pending: asked, not placed yet (it is placed once the fill is confirmed). placed: the exchange took it. failed: it could not be placed — the position is not protected by it, and this service never closes the position because of that. This is an open set: other values can be added."
+                            }
+                          },
+                          "required": [
+                            "takeProfit",
+                            "stopLoss"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                          "description": "When the order was recorded (ISO 8601, UTC)."
+                        }
+                      },
+                      "required": [
+                        "orderId",
+                        "kind",
+                        "status",
+                        "statusReason",
+                        "instrumentId",
+                        "side",
+                        "requestedMargin",
+                        "quantity",
+                        "filledQuantity",
+                        "averagePrice",
+                        "fee",
+                        "priceBound",
+                        "leverage",
+                        "tpSl",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "order"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The exchange answered: order.status is accepted (it took the order; the fill is read afterwards) or rejected (it placed nothing; order.statusReason says why)."
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "The exchange's answer does not settle the order yet: order.status is pending (no answer came, or a refusal is being confirmed — order.statusReason) or unknown. Poll GET /v1/perps/orders/{orderId}; no other entry on this instrument is placed meanwhile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": {
+                      "type": "object",
+                      "properties": {
+                        "orderId": {
+                          "type": "string",
+                          "description": "This service's identifier of the order. Treat it as opaque: it is never the exchange's order id. The same value is history.items[].orderId of GET /v1/perps/account/history."
+                        },
+                        "kind": {
+                          "type": "string",
+                          "description": "entry or close. This is an open set: other values can be added."
+                        },
+                        "status": {
+                          "type": "string",
+                          "description": "pending: the outcome is not known yet (no answer from the exchange, or a refusal being confirmed — see statusReason). accepted: the exchange took the order; the fill is read afterwards. filled · partially_filled (an immediate-or-cancel order that filled in part) · not_filled (nothing filled within the limit price) · rejected (the exchange placed nothing; see statusReason) · unknown (this service cannot tell yet; after an entry, new entries on the instrument wait until it can). An entry and a close are read to these ends alike. This is an open set: other values can be added."
+                        },
+                        "statusReason": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode. This is an open set: other values can be added."
+                        },
+                        "instrumentId": {
+                          "type": "string"
+                        },
+                        "side": {
+                          "type": "string",
+                          "description": "long or short: the side the order was sent with. A close is sent on the side opposite the position (short closes a long)."
+                        },
+                        "requestedMargin": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The margin asked for (pUSD). Null for a close."
+                        },
+                        "quantity": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The quantity the order was sent with, in the instrument's base unit. An entry: margin × leverage ÷ the mark price, rounded down to the instrument's quantity step. A close: the whole position."
+                        },
+                        "filledQuantity": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The sum of the order's fills. Null until a fill of the order is recorded."
+                        },
+                        "averagePrice": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The quantity-weighted mean price of the order's fills. Null until a fill of the order is recorded."
+                        },
+                        "fee": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The sum of the fees of the order's fills (pUSD), as the exchange charged them — never estimated from a rate. Null until a fill of the order is recorded, and while the fills name more than one fee asset."
+                        },
+                        "priceBound": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The limit price the order was sent with: the worst price it may fill at, set by this service from the mark price. Not the same value as preview.priceBound of GET /v1/perps/order-preview, which is the widest price the exchange accepts."
+                        },
+                        "leverage": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The leverage asked for. Null for a close."
+                        },
+                        "tpSl": {
+                          "type": "object",
+                          "properties": {
+                            "takeProfit": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "null: none was asked, or the entry filled nothing. pending: asked, not placed yet (it is placed once the fill is confirmed). placed: the exchange took it. failed: it could not be placed — the position is not protected by it, and this service never closes the position because of that. This is an open set: other values can be added."
+                            },
+                            "stopLoss": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "null: none was asked, or the entry filled nothing. pending: asked, not placed yet (it is placed once the fill is confirmed). placed: the exchange took it. failed: it could not be placed — the position is not protected by it, and this service never closes the position because of that. This is an open set: other values can be added."
+                            }
+                          },
+                          "required": [
+                            "takeProfit",
+                            "stopLoss"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                          "description": "When the order was recorded (ISO 8601, UTC)."
+                        }
+                      },
+                      "required": [
+                        "orderId",
+                        "kind",
+                        "status",
+                        "statusReason",
+                        "instrumentId",
+                        "side",
+                        "requestedMargin",
+                        "quantity",
+                        "filledQuantity",
+                        "averagePrice",
+                        "fee",
+                        "priceBound",
+                        "leverage",
+                        "tpSl",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "order"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The exchange's answer does not settle the order yet: order.status is pending (no answer came, or a refusal is being confirmed — order.statusReason) or unknown. Poll GET /v1/perps/orders/{orderId}; no other entry on this instrument is placed meanwhile."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "error.code is VALIDATION_FAILED. error.details.reason is perps_leverage_invalid when leverage is absent, not a whole number from 1 to 1000, or above the leverage this order may use; perps_min_notional when the order is below the instrument's minimum notional; perps_order_notional_exceeded when margin × leverage is above the per-order cap (limits.maxOrderNotional of GET /v1/perps/account); perps_tpsl_invalid when takeProfit or stopLoss is not null and not { triggerPrice }, or its trigger price is on the wrong side (a long's take-profit at or below order.priceBound or stop-loss at or above the mark price; the mirror for a short) or has more places than the instrument's price step. error.details is omitted when the body, the idempotency-key header, instrumentId, side or margin is absent or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is VALIDATION_FAILED. error.details.reason is perps_leverage_invalid when leverage is absent, not a whole number from 1 to 1000, or above the leverage this order may use; perps_min_notional when the order is below the instrument's minimum notional; perps_order_notional_exceeded when margin × leverage is above the per-order cap (limits.maxOrderNotional of GET /v1/perps/account); perps_tpsl_invalid when takeProfit or stopLoss is not null and not { triggerPrice }, or its trigger price is on the wrong side (a long's take-profit at or below order.priceBound or stop-loss at or above the mark price; the mirror for a short) or has more places than the instrument's price step. error.details is omitted when the body, the idempotency-key header, instrumentId, side or margin is absent or malformed."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "error.code is FORBIDDEN. error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/perps/orders routes require trade scope), or subbuilder_suspended when the builder API key's subbuilder is not active. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result. error.details.reason is perps_trading_paused when new Perps entries are closed for this subbuilder or this order, and perps_terms_outdated when termsVersion is not the current Perps terms version.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is FORBIDDEN. error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/perps/orders routes require trade scope), or subbuilder_suspended when the builder API key's subbuilder is not active. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result. error.details.reason is perps_trading_paused when new Perps entries are closed for this subbuilder or this order, and perps_terms_outdated when termsVersion is not the current Perps terms version."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "error.code is NOT_FOUND. error.details.reason is perps_account_not_found when the end user has no Perps account, and perps_instrument_not_found when no listed Perps instrument has this instrumentId. While Perps accounts are not open for the caller, this route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_accounts_not_open; the answer is the same whether Perps accounts are closed on this deployment or closed for the API key's subbuilder, and waiting or retrying does not change it. perps_accounts_not_open is the account gate only: the market-data routes under /v1/perps/instruments have their own (perps_not_open), and either can be open while the other is closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is NOT_FOUND. error.details.reason is perps_account_not_found when the end user has no Perps account, and perps_instrument_not_found when no listed Perps instrument has this instrumentId. While Perps accounts are not open for the caller, this route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_accounts_not_open; the answer is the same whether Perps accounts are closed on this deployment or closed for the API key's subbuilder, and waiting or retrying does not change it. perps_accounts_not_open is the account gate only: the market-data routes under /v1/perps/instruments have their own (perps_not_open), and either can be open while the other is closed."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "error.code is CONFLICT. error.details.reason is idempotency_key_reused when the idempotency-key was used for a different request; perps_order_in_flight when another order of the end user on this instrument is still in progress; perps_position_exists when a position on this instrument is open; perps_leverage_locked when the leverage cannot change on this instrument now; perps_cancel_only when the exchange takes no new orders (maintenance — GET /v1/perps/account shows account.exchangeStatus cancel_only); perps_trading_not_ready when the end user's Perps account cannot trade yet (just opened, or its trading key is being replaced) — retrying later may succeed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is CONFLICT. error.details.reason is idempotency_key_reused when the idempotency-key was used for a different request; perps_order_in_flight when another order of the end user on this instrument is still in progress; perps_position_exists when a position on this instrument is open; perps_leverage_locked when the leverage cannot change on this instrument now; perps_cancel_only when the exchange takes no new orders (maintenance — GET /v1/perps/account shows account.exchangeStatus cancel_only); perps_trading_not_ready when the end user's Perps account cannot trade yet (just opened, or its trading key is being replaced) — retrying later may succeed."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "error.code is RATE_LIMITED. error.details.reason is perps_capacity when the end user placed too many orders in a short time or this service's capacity for Perps orders is used; the Retry-After header, when present, says how many seconds to wait. A 429 with another reason is the builder API key's own rate limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is RATE_LIMITED. error.details.reason is perps_capacity when the end user placed too many orders in a short time or this service's capacity for Perps orders is used; the Retry-After header, when present, says how many seconds to wait. A 429 with another reason is the builder API key's own rate limit."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "error.code is INTERNAL: Perps order storage is unavailable or misconfigured. On POST an order may already have been placed: send the same request again with the same idempotency-key, which places nothing new — never under a new key. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is INTERNAL: Perps order storage is unavailable or misconfigured. On POST an order may already have been placed: send the same request again with the same idempotency-key, which places nothing new — never under a new key. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "error.code is UPSTREAM_UNAVAILABLE. error.details.reason is perps_unavailable when the order could not be placed just now and nothing was sent, and perps_leverage_unverified when the leverage could not be set and checked on the exchange; nothing was placed. Retrying later may succeed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is UPSTREAM_UNAVAILABLE. error.details.reason is perps_unavailable when the order could not be placed just now and nothing was sent, and perps_leverage_unverified when the leverage could not be set and checked on the exchange; nothing was placed. Retrying later may succeed."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/perps/orders/{orderId}": {
+      "get": {
+        "summary": "Get a Perps order of a user",
+        "description": "Returns one Perps order of the end user as it is now. An order of another end user, or an id that is not one, answers 404 perps_order_not_found alike.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "orderId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": [],
+            "endUserToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The order as it is now: the same object POST /v1/perps/orders answers.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": {
+                      "type": "object",
+                      "properties": {
+                        "orderId": {
+                          "type": "string",
+                          "description": "This service's identifier of the order. Treat it as opaque: it is never the exchange's order id. The same value is history.items[].orderId of GET /v1/perps/account/history."
+                        },
+                        "kind": {
+                          "type": "string",
+                          "description": "entry or close. This is an open set: other values can be added."
+                        },
+                        "status": {
+                          "type": "string",
+                          "description": "pending: the outcome is not known yet (no answer from the exchange, or a refusal being confirmed — see statusReason). accepted: the exchange took the order; the fill is read afterwards. filled · partially_filled (an immediate-or-cancel order that filled in part) · not_filled (nothing filled within the limit price) · rejected (the exchange placed nothing; see statusReason) · unknown (this service cannot tell yet; after an entry, new entries on the instrument wait until it can). An entry and a close are read to these ends alike. This is an open set: other values can be added."
+                        },
+                        "statusReason": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode. This is an open set: other values can be added."
+                        },
+                        "instrumentId": {
+                          "type": "string"
+                        },
+                        "side": {
+                          "type": "string",
+                          "description": "long or short: the side the order was sent with. A close is sent on the side opposite the position (short closes a long)."
+                        },
+                        "requestedMargin": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The margin asked for (pUSD). Null for a close."
+                        },
+                        "quantity": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The quantity the order was sent with, in the instrument's base unit. An entry: margin × leverage ÷ the mark price, rounded down to the instrument's quantity step. A close: the whole position."
+                        },
+                        "filledQuantity": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The sum of the order's fills. Null until a fill of the order is recorded."
+                        },
+                        "averagePrice": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The quantity-weighted mean price of the order's fills. Null until a fill of the order is recorded."
+                        },
+                        "fee": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The sum of the fees of the order's fills (pUSD), as the exchange charged them — never estimated from a rate. Null until a fill of the order is recorded, and while the fills name more than one fee asset."
+                        },
+                        "priceBound": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The limit price the order was sent with: the worst price it may fill at, set by this service from the mark price. Not the same value as preview.priceBound of GET /v1/perps/order-preview, which is the widest price the exchange accepts."
+                        },
+                        "leverage": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The leverage asked for. Null for a close."
+                        },
+                        "tpSl": {
+                          "type": "object",
+                          "properties": {
+                            "takeProfit": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "null: none was asked, or the entry filled nothing. pending: asked, not placed yet (it is placed once the fill is confirmed). placed: the exchange took it. failed: it could not be placed — the position is not protected by it, and this service never closes the position because of that. This is an open set: other values can be added."
+                            },
+                            "stopLoss": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "null: none was asked, or the entry filled nothing. pending: asked, not placed yet (it is placed once the fill is confirmed). placed: the exchange took it. failed: it could not be placed — the position is not protected by it, and this service never closes the position because of that. This is an open set: other values can be added."
+                            }
+                          },
+                          "required": [
+                            "takeProfit",
+                            "stopLoss"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                          "description": "When the order was recorded (ISO 8601, UTC)."
+                        }
+                      },
+                      "required": [
+                        "orderId",
+                        "kind",
+                        "status",
+                        "statusReason",
+                        "instrumentId",
+                        "side",
+                        "requestedMargin",
+                        "quantity",
+                        "filledQuantity",
+                        "averagePrice",
+                        "fee",
+                        "priceBound",
+                        "leverage",
+                        "tpSl",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "order"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The order as it is now: the same object POST /v1/perps/orders answers."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "error.code is FORBIDDEN. error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/perps/orders routes require trade scope), or subbuilder_suspended when the builder API key's subbuilder is not active. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is FORBIDDEN. error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/perps/orders routes require trade scope), or subbuilder_suspended when the builder API key's subbuilder is not active. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "error.code is NOT_FOUND. error.details.reason is perps_order_not_found when the end user has no order with this orderId, and perps_account_not_found when the end user has no Perps account. While Perps accounts are not open for the caller, this route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_accounts_not_open; the answer is the same whether Perps accounts are closed on this deployment or closed for the API key's subbuilder, and waiting or retrying does not change it. perps_accounts_not_open is the account gate only: the market-data routes under /v1/perps/instruments have their own (perps_not_open), and either can be open while the other is closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is NOT_FOUND. error.details.reason is perps_order_not_found when the end user has no order with this orderId, and perps_account_not_found when the end user has no Perps account. While Perps accounts are not open for the caller, this route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_accounts_not_open; the answer is the same whether Perps accounts are closed on this deployment or closed for the API key's subbuilder, and waiting or retrying does not change it. perps_accounts_not_open is the account gate only: the market-data routes under /v1/perps/instruments have their own (perps_not_open), and either can be open while the other is closed."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "error.code is INTERNAL: Perps order storage is unavailable or misconfigured. On POST an order may already have been placed: send the same request again with the same idempotency-key, which places nothing new — never under a new key. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is INTERNAL: Perps order storage is unavailable or misconfigured. On POST an order may already have been placed: send the same request again with the same idempotency-key, which places nothing new — never under a new key. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/perps/positions/{instrumentId}/close": {
+      "post": {
+        "summary": "Close a Perps position of a user",
+        "description": "Closes the end user's whole Perps position on the instrument with one immediate-or-cancel, reduce-only order bounded by a limit price this service sets from the mark price, and answers when the exchange has acknowledged it — not when it has filled. The size is read from the exchange (from this service's records when the exchange cannot be read). A close is not refused because new Perps entries are paused or closed. A position the order cannot close whole (below the instrument's minimum notional) is not closed in part: nothing is sent. The outcome is read afterwards: poll GET /v1/perps/orders/{orderId} until it reads filled, partially_filled, not_filled or rejected. When a close ends not_filled (nothing filled), this service sends at most one more close by itself, shortly after and only while no entry of the end user on this instrument is in progress: a new order with its own orderId, sized from the exchange's position at that moment, with a limit up to 0.9 × the instrument's price bounds from the mark price — never a third. That order is not returned here: read GET /v1/perps/account/positions to see whether the position is closed. A close that filled in part, or a position still open after that, can be closed again under a new idempotency-key. The idempotency-key header is required. It is trimmed before use, and the trimmed value must be 1 to 200 characters and must not contain a comma; the declared schema states only minLength 1. A request sent again with the same idempotency-key places nothing new and returns the order as it is now.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false,
+                "description": "An empty object. The size is read by this service from the exchange; other keys are not read."
+              }
+            }
+          },
+          "description": "An empty object. The size is read by this service from the exchange; other keys are not read."
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "instrumentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": [],
+            "endUserToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "This idempotency-key already names a close of this end user on this instrument: that order is returned as it is now, and nothing new was placed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": {
+                      "type": "object",
+                      "properties": {
+                        "orderId": {
+                          "type": "string",
+                          "description": "This service's identifier of the order. Treat it as opaque: it is never the exchange's order id. The same value is history.items[].orderId of GET /v1/perps/account/history."
+                        },
+                        "kind": {
+                          "type": "string",
+                          "description": "entry or close. This is an open set: other values can be added."
+                        },
+                        "status": {
+                          "type": "string",
+                          "description": "pending: the outcome is not known yet (no answer from the exchange, or a refusal being confirmed — see statusReason). accepted: the exchange took the order; the fill is read afterwards. filled · partially_filled (an immediate-or-cancel order that filled in part) · not_filled (nothing filled within the limit price) · rejected (the exchange placed nothing; see statusReason) · unknown (this service cannot tell yet; after an entry, new entries on the instrument wait until it can). An entry and a close are read to these ends alike. This is an open set: other values can be added."
+                        },
+                        "statusReason": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode. This is an open set: other values can be added."
+                        },
+                        "instrumentId": {
+                          "type": "string"
+                        },
+                        "side": {
+                          "type": "string",
+                          "description": "long or short: the side the order was sent with. A close is sent on the side opposite the position (short closes a long)."
+                        },
+                        "requestedMargin": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The margin asked for (pUSD). Null for a close."
+                        },
+                        "quantity": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The quantity the order was sent with, in the instrument's base unit. An entry: margin × leverage ÷ the mark price, rounded down to the instrument's quantity step. A close: the whole position."
+                        },
+                        "filledQuantity": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The sum of the order's fills. Null until a fill of the order is recorded."
+                        },
+                        "averagePrice": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The quantity-weighted mean price of the order's fills. Null until a fill of the order is recorded."
+                        },
+                        "fee": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The sum of the fees of the order's fills (pUSD), as the exchange charged them — never estimated from a rate. Null until a fill of the order is recorded, and while the fills name more than one fee asset."
+                        },
+                        "priceBound": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The limit price the order was sent with: the worst price it may fill at, set by this service from the mark price. Not the same value as preview.priceBound of GET /v1/perps/order-preview, which is the widest price the exchange accepts."
+                        },
+                        "leverage": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The leverage asked for. Null for a close."
+                        },
+                        "tpSl": {
+                          "type": "object",
+                          "properties": {
+                            "takeProfit": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "null: none was asked, or the entry filled nothing. pending: asked, not placed yet (it is placed once the fill is confirmed). placed: the exchange took it. failed: it could not be placed — the position is not protected by it, and this service never closes the position because of that. This is an open set: other values can be added."
+                            },
+                            "stopLoss": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "null: none was asked, or the entry filled nothing. pending: asked, not placed yet (it is placed once the fill is confirmed). placed: the exchange took it. failed: it could not be placed — the position is not protected by it, and this service never closes the position because of that. This is an open set: other values can be added."
+                            }
+                          },
+                          "required": [
+                            "takeProfit",
+                            "stopLoss"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                          "description": "When the order was recorded (ISO 8601, UTC)."
+                        }
+                      },
+                      "required": [
+                        "orderId",
+                        "kind",
+                        "status",
+                        "statusReason",
+                        "instrumentId",
+                        "side",
+                        "requestedMargin",
+                        "quantity",
+                        "filledQuantity",
+                        "averagePrice",
+                        "fee",
+                        "priceBound",
+                        "leverage",
+                        "tpSl",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "order"
+                  ],
+                  "additionalProperties": false,
+                  "description": "This idempotency-key already names a close of this end user on this instrument: that order is returned as it is now, and nothing new was placed."
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The exchange answered: order.kind is close and order.status is accepted (it took the order; the fill is read afterwards) or rejected (it placed nothing; order.statusReason says why).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": {
+                      "type": "object",
+                      "properties": {
+                        "orderId": {
+                          "type": "string",
+                          "description": "This service's identifier of the order. Treat it as opaque: it is never the exchange's order id. The same value is history.items[].orderId of GET /v1/perps/account/history."
+                        },
+                        "kind": {
+                          "type": "string",
+                          "description": "entry or close. This is an open set: other values can be added."
+                        },
+                        "status": {
+                          "type": "string",
+                          "description": "pending: the outcome is not known yet (no answer from the exchange, or a refusal being confirmed — see statusReason). accepted: the exchange took the order; the fill is read afterwards. filled · partially_filled (an immediate-or-cancel order that filled in part) · not_filled (nothing filled within the limit price) · rejected (the exchange placed nothing; see statusReason) · unknown (this service cannot tell yet; after an entry, new entries on the instrument wait until it can). An entry and a close are read to these ends alike. This is an open set: other values can be added."
+                        },
+                        "statusReason": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode. This is an open set: other values can be added."
+                        },
+                        "instrumentId": {
+                          "type": "string"
+                        },
+                        "side": {
+                          "type": "string",
+                          "description": "long or short: the side the order was sent with. A close is sent on the side opposite the position (short closes a long)."
+                        },
+                        "requestedMargin": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The margin asked for (pUSD). Null for a close."
+                        },
+                        "quantity": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The quantity the order was sent with, in the instrument's base unit. An entry: margin × leverage ÷ the mark price, rounded down to the instrument's quantity step. A close: the whole position."
+                        },
+                        "filledQuantity": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The sum of the order's fills. Null until a fill of the order is recorded."
+                        },
+                        "averagePrice": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The quantity-weighted mean price of the order's fills. Null until a fill of the order is recorded."
+                        },
+                        "fee": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The sum of the fees of the order's fills (pUSD), as the exchange charged them — never estimated from a rate. Null until a fill of the order is recorded, and while the fills name more than one fee asset."
+                        },
+                        "priceBound": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The limit price the order was sent with: the worst price it may fill at, set by this service from the mark price. Not the same value as preview.priceBound of GET /v1/perps/order-preview, which is the widest price the exchange accepts."
+                        },
+                        "leverage": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The leverage asked for. Null for a close."
+                        },
+                        "tpSl": {
+                          "type": "object",
+                          "properties": {
+                            "takeProfit": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "null: none was asked, or the entry filled nothing. pending: asked, not placed yet (it is placed once the fill is confirmed). placed: the exchange took it. failed: it could not be placed — the position is not protected by it, and this service never closes the position because of that. This is an open set: other values can be added."
+                            },
+                            "stopLoss": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "null: none was asked, or the entry filled nothing. pending: asked, not placed yet (it is placed once the fill is confirmed). placed: the exchange took it. failed: it could not be placed — the position is not protected by it, and this service never closes the position because of that. This is an open set: other values can be added."
+                            }
+                          },
+                          "required": [
+                            "takeProfit",
+                            "stopLoss"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                          "description": "When the order was recorded (ISO 8601, UTC)."
+                        }
+                      },
+                      "required": [
+                        "orderId",
+                        "kind",
+                        "status",
+                        "statusReason",
+                        "instrumentId",
+                        "side",
+                        "requestedMargin",
+                        "quantity",
+                        "filledQuantity",
+                        "averagePrice",
+                        "fee",
+                        "priceBound",
+                        "leverage",
+                        "tpSl",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "order"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The exchange answered: order.kind is close and order.status is accepted (it took the order; the fill is read afterwards) or rejected (it placed nothing; order.statusReason says why)."
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "The exchange's answer does not settle the close yet: order.status is pending (no answer came, or a refusal is being confirmed — order.statusReason) or unknown. Poll GET /v1/perps/orders/{orderId}; do not send the close again under a new idempotency-key until it reads otherwise.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "order": {
+                      "type": "object",
+                      "properties": {
+                        "orderId": {
+                          "type": "string",
+                          "description": "This service's identifier of the order. Treat it as opaque: it is never the exchange's order id. The same value is history.items[].orderId of GET /v1/perps/account/history."
+                        },
+                        "kind": {
+                          "type": "string",
+                          "description": "entry or close. This is an open set: other values can be added."
+                        },
+                        "status": {
+                          "type": "string",
+                          "description": "pending: the outcome is not known yet (no answer from the exchange, or a refusal being confirmed — see statusReason). accepted: the exchange took the order; the fill is read afterwards. filled · partially_filled (an immediate-or-cancel order that filled in part) · not_filled (nothing filled within the limit price) · rejected (the exchange placed nothing; see statusReason) · unknown (this service cannot tell yet; after an entry, new entries on the instrument wait until it can). An entry and a close are read to these ends alike. This is an open set: other values can be added."
+                        },
+                        "statusReason": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode. This is an open set: other values can be added."
+                        },
+                        "instrumentId": {
+                          "type": "string"
+                        },
+                        "side": {
+                          "type": "string",
+                          "description": "long or short: the side the order was sent with. A close is sent on the side opposite the position (short closes a long)."
+                        },
+                        "requestedMargin": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The margin asked for (pUSD). Null for a close."
+                        },
+                        "quantity": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The quantity the order was sent with, in the instrument's base unit. An entry: margin × leverage ÷ the mark price, rounded down to the instrument's quantity step. A close: the whole position."
+                        },
+                        "filledQuantity": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The sum of the order's fills. Null until a fill of the order is recorded."
+                        },
+                        "averagePrice": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The quantity-weighted mean price of the order's fills. Null until a fill of the order is recorded."
+                        },
+                        "fee": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The sum of the fees of the order's fills (pUSD), as the exchange charged them — never estimated from a rate. Null until a fill of the order is recorded, and while the fills name more than one fee asset."
+                        },
+                        "priceBound": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The limit price the order was sent with: the worst price it may fill at, set by this service from the mark price. Not the same value as preview.priceBound of GET /v1/perps/order-preview, which is the widest price the exchange accepts."
+                        },
+                        "leverage": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The leverage asked for. Null for a close."
+                        },
+                        "tpSl": {
+                          "type": "object",
+                          "properties": {
+                            "takeProfit": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "null: none was asked, or the entry filled nothing. pending: asked, not placed yet (it is placed once the fill is confirmed). placed: the exchange took it. failed: it could not be placed — the position is not protected by it, and this service never closes the position because of that. This is an open set: other values can be added."
+                            },
+                            "stopLoss": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "null: none was asked, or the entry filled nothing. pending: asked, not placed yet (it is placed once the fill is confirmed). placed: the exchange took it. failed: it could not be placed — the position is not protected by it, and this service never closes the position because of that. This is an open set: other values can be added."
+                            }
+                          },
+                          "required": [
+                            "takeProfit",
+                            "stopLoss"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                          "description": "When the order was recorded (ISO 8601, UTC)."
+                        }
+                      },
+                      "required": [
+                        "orderId",
+                        "kind",
+                        "status",
+                        "statusReason",
+                        "instrumentId",
+                        "side",
+                        "requestedMargin",
+                        "quantity",
+                        "filledQuantity",
+                        "averagePrice",
+                        "fee",
+                        "priceBound",
+                        "leverage",
+                        "tpSl",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "order"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The exchange's answer does not settle the close yet: order.status is pending (no answer came, or a refusal is being confirmed — order.statusReason) or unknown. Poll GET /v1/perps/orders/{orderId}; do not send the close again under a new idempotency-key until it reads otherwise."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "error.code is VALIDATION_FAILED. error.details.reason is perps_min_notional when the position cannot be closed whole by one order (below the instrument's minimum notional, or a size off the instrument's quantity step); nothing was sent. error.details is omitted when the body is not an object or the idempotency-key header is absent or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is VALIDATION_FAILED. error.details.reason is perps_min_notional when the position cannot be closed whole by one order (below the instrument's minimum notional, or a size off the instrument's quantity step); nothing was sent. error.details is omitted when the body is not an object or the idempotency-key header is absent or malformed."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "error.code is FORBIDDEN. error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/perps/positions routes require trade scope), or subbuilder_suspended when the builder API key's subbuilder is not active. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result. error.details.reason is perps_trading_paused only when this service has no Perps trading configured at all — never because new entries are paused.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is FORBIDDEN. error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/perps/positions routes require trade scope), or subbuilder_suspended when the builder API key's subbuilder is not active. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result. error.details.reason is perps_trading_paused only when this service has no Perps trading configured at all — never because new entries are paused."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "error.code is NOT_FOUND. error.details.reason is perps_account_not_found when the end user has no Perps account, and perps_instrument_not_found when no listed Perps instrument has this instrumentId. While Perps accounts are not open for the caller, this route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_accounts_not_open; the answer is the same whether Perps accounts are closed on this deployment or closed for the API key's subbuilder, and waiting or retrying does not change it. perps_accounts_not_open is the account gate only: the market-data routes under /v1/perps/instruments have their own (perps_not_open), and either can be open while the other is closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is NOT_FOUND. error.details.reason is perps_account_not_found when the end user has no Perps account, and perps_instrument_not_found when no listed Perps instrument has this instrumentId. While Perps accounts are not open for the caller, this route answers an authenticated request with 404, error.code NOT_FOUND and error.details.reason perps_accounts_not_open; the answer is the same whether Perps accounts are closed on this deployment or closed for the API key's subbuilder, and waiting or retrying does not change it. perps_accounts_not_open is the account gate only: the market-data routes under /v1/perps/instruments have their own (perps_not_open), and either can be open while the other is closed."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "error.code is CONFLICT. error.details.reason is perps_position_not_found when the exchange shows no position of the end user on this instrument; perps_order_in_flight when it shows none while an entry of the end user on this instrument is still in progress (it may be about to fill — close once it has settled); idempotency_key_reused when the idempotency-key was used for a different request; perps_cancel_only when the exchange takes no orders but cancels (maintenance — GET /v1/perps/account shows account.exchangeStatus cancel_only); perps_trading_not_ready when the end user's Perps account cannot trade yet (just opened, or its trading key is being replaced) — retrying later may succeed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is CONFLICT. error.details.reason is perps_position_not_found when the exchange shows no position of the end user on this instrument; perps_order_in_flight when it shows none while an entry of the end user on this instrument is still in progress (it may be about to fill — close once it has settled); idempotency_key_reused when the idempotency-key was used for a different request; perps_cancel_only when the exchange takes no orders but cancels (maintenance — GET /v1/perps/account shows account.exchangeStatus cancel_only); perps_trading_not_ready when the end user's Perps account cannot trade yet (just opened, or its trading key is being replaced) — retrying later may succeed."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "error.code is RATE_LIMITED. error.details.reason is perps_capacity when this service's reserve for closing positions is used; the Retry-After header, when present, says how many seconds to wait. A 429 with no reason is the builder API key's per-minute rate limit. A close counts toward the trade key's hourly request limit but is never refused by it (trade_hourly_limit_exceeded is never returned here).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is RATE_LIMITED. error.details.reason is perps_capacity when this service's reserve for closing positions is used; the Retry-After header, when present, says how many seconds to wait. A 429 with no reason is the builder API key's per-minute rate limit. A close counts toward the trade key's hourly request limit but is never refused by it (trade_hourly_limit_exceeded is never returned here)."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "error.code is INTERNAL: Perps order storage is unavailable or misconfigured. On POST an order may already have been placed: send the same request again with the same idempotency-key, which places nothing new — never under a new key. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is INTERNAL: Perps order storage is unavailable or misconfigured. On POST an order may already have been placed: send the same request again with the same idempotency-key, which places nothing new — never under a new key. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "error.code is UPSTREAM_UNAVAILABLE. error.details.reason is perps_unavailable when the close could not be sent just now (no fresh mark price, or neither the exchange nor this service's records give the position's size) and nothing was sent. Retrying later may succeed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is UPSTREAM_UNAVAILABLE. error.details.reason is perps_unavailable when the close could not be sent just now (no fresh mark price, or neither the exchange nor this service's records give the position's size) and nothing was sent. Retrying later may succeed."
                 }
               }
             }
