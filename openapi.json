@@ -698,6 +698,17 @@
                               "redeemed"
                             ],
                             "description": "Settlement status this service derives from its own record of resolved markets, matching the winning token to this position's tokenId; redeemed may also rest on the upstream's record of this wallet's redemptions, as described below. open: anything else, including every market this service holds no resolution for; it records resolutions only for the short-window crypto rounds it serves. resolved_won: the market is resolved and this position's token is the winning token. resolved_lost: the market is resolved and this position's token is not the winning token. redeemed: the upstream lists the position as closed with a positive realized profit, which is how a winning position looks after its winnings were paid out, and either this service's record shows this position's token won or, for a market it holds no resolution for, the upstream lists a redemption by this wallet in that market for a positive amount, naming this position's token or no token; the first page, a request without a cursor, lists up to half its limit, rounded up, of such positions after the positions on it that still hold at least 1 token; the rest are listed after every position that still holds at least 1 token, so they appear on the last pages; a closed position this service cannot show as won is not listed. redeemable is passed through from the upstream unchanged and does not depend on status."
+                          },
+                          "firstBuyAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "When this user first took part in this position's token through this service: an ISO 8601 UTC timestamp of the earliest buy order for this tokenId that this service recorded for this user under this builder. It is when this service recorded the order, normally right after the venue accepted it and later for an order recorded on a retry of the same request; it is not when the order filled, and that order may never have filled. Later buy orders and any sell orders do not change it. Null means this service holds no such buy order, for example for a position bought outside this service or a position without a tokenId; null does not mean the position is new. Every listed position carries it, redeemed ones included."
                           }
                         },
                         "required": [
@@ -719,7 +730,8 @@
                           "endDate",
                           "realizedPnl",
                           "totalCostUsdc",
-                          "status"
+                          "status",
+                          "firstBuyAt"
                         ],
                         "additionalProperties": false
                       }
