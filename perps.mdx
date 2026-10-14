@@ -527,7 +527,7 @@ The values above illustrate the shape.
 
 ### Read an order
 
-`GET /v1/perps/orders/{orderId}` returns `{"order": ...}`. Another end user's order answers exactly like one that does not exist: 404 with `perps_order_not_found`. Both routes count against a `trade` key's hourly budget and its per-minute limit (see **Rate limits** on the API reference home page), so read an order every second or two, not in a tight loop.
+`GET /v1/perps/orders/{orderId}` returns `{"order": ...}`. Another end user's order answers exactly like one that does not exist: 404 with `perps_order_not_found`. The read is outside a `trade` key's hourly budget: it is not counted against it and is not rejected when it is exhausted. Each read still counts against the key's per-minute limit, so read an order every second or two, not in a tight loop. `POST /v1/perps/orders` counts against both (see **Rate limits** on the API reference home page).
 
 `GET /v1/perps/account/orders` lists the end user's orders whose outcome is not known yet. Its `status` is the word the order object gives the same order: `pending`, `accepted` or `unknown`.
 

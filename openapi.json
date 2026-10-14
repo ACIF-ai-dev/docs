@@ -667,6 +667,28 @@
                               }
                             ]
                           },
+                          "realizedPnl": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The upstream's realized profit or loss for this position in USDC, written as a plain decimal. Null means the upstream did not provide a readable value; this is not zero. A closed position is listed only when this value is readable and positive, as described under status."
+                          },
+                          "totalCostUsdc": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The upstream's total cost for this position in USDC, which the upstream documents as including entry fees, written as a plain decimal; initialValue is the cost without those fees. Null means the upstream did not provide a readable value; this is not zero. A client may label a position as a hit when realizedPnl plus cashPnl is at least 0.01 × totalCostUsdc, and should treat any of the three being null as unknown, not as a hit; this service does not apply that rule, and status is not computed from totalCostUsdc."
+                          },
                           "status": {
                             "type": "string",
                             "enum": [
@@ -675,7 +697,7 @@
                               "resolved_lost",
                               "redeemed"
                             ],
-                            "description": "Settlement status this service derives from its own record of resolved markets, matching the winning token to this position's tokenId. open: anything else, including every market this service holds no resolution for; it records resolutions only for the short-window crypto rounds it serves. resolved_won: the market is resolved and this position's token is the winning token. resolved_lost: the market is resolved and this position's token is not the winning token. redeemed: this position's token won and the upstream lists the position as closed with a positive realized profit, which is how a winning position looks after its winnings were paid out; such positions are listed after every position that still holds at least 1 token, so they appear on the last pages, and a closed position this service cannot show as won is not listed. redeemable is passed through from the upstream unchanged and does not depend on status."
+                            "description": "Settlement status this service derives from its own record of resolved markets, matching the winning token to this position's tokenId; redeemed may also rest on the upstream's record of this wallet's redemptions, as described below. open: anything else, including every market this service holds no resolution for; it records resolutions only for the short-window crypto rounds it serves. resolved_won: the market is resolved and this position's token is the winning token. resolved_lost: the market is resolved and this position's token is not the winning token. redeemed: the upstream lists the position as closed with a positive realized profit, which is how a winning position looks after its winnings were paid out, and either this service's record shows this position's token won or, for a market it holds no resolution for, the upstream lists a redemption by this wallet in that market for a positive amount, naming this position's token or no token; such positions are listed after every position that still holds at least 1 token, so they appear on the last pages, and a closed position this service cannot show as won is not listed. redeemable is passed through from the upstream unchanged and does not depend on status."
                           }
                         },
                         "required": [
@@ -695,6 +717,8 @@
                           "percentPnl",
                           "redeemable",
                           "endDate",
+                          "realizedPnl",
+                          "totalCostUsdc",
                           "status"
                         ],
                         "additionalProperties": false
@@ -18442,13 +18466,35 @@
                             }
                           ],
                           "description": "When the event ends: the latest endDate among the markets returned, as an ISO 8601 UTC timestamp. Null when none of them has an endDate."
+                        },
+                        "underlying": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "symbol": {
+                                  "type": "string",
+                                  "description": "The coin's symbol, one of BTC, ETH, SOL, XRP, DOGE, HYPE, BNB, ZEC. Read it as an open string: a symbol you do not know means a coin this client does not draw yet."
+                                }
+                              },
+                              "required": [
+                                "symbol"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The coin this event is about, for drawing the coin's price next to the event. Present only on a crypto event whose markets' tags name exactly one of the coins listed under symbol; null on every other event, including a crypto event about two coins or about a coin not listed there. The key is always present. GET /v1/events/{eventId}/underlying/price-history serves the coin's price history while this is not null."
                         }
                       },
                       "required": [
                         "id",
                         "slug",
                         "title",
-                        "endDate"
+                        "endDate",
+                        "underlying"
                       ],
                       "additionalProperties": false,
                       "description": "The event, as its returned markets describe it."
@@ -19221,6 +19267,471 @@
                   ],
                   "additionalProperties": false,
                   "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/events/{eventId}/underlying/price-history": {
+      "get": {
+        "summary": "Read an event's underlying coin price history",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1h",
+                "1d",
+                "1w"
+              ]
+            },
+            "in": "query",
+            "name": "range",
+            "required": true,
+            "description": "How far back from now the series reaches, and so the width of each point: 1h (1m points), 1d (15m points), 1w (1h points). Longer ranges are not served."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "in": "path",
+            "name": "eventId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns the price history of the coin an event is about (event.underlying of GET /v1/events/{eventId}), as open, high, low and close points over one range: 1h, 1d, 1w. A month or all-time range is not served. The series is the price of the coin's perpetual on Polymarket Perps, not the price the event's markets resolve on (their rules name the source, such as Coinbase): close to it, never the same. The answer can be served from a cache shared with GET /v1/perps/instruments/{instrumentId}/candles, so the last point is not a live price; fetchedAt says when the series was read. Continue the line with the reference price frames of /v1/stream.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "eventId": {
+                      "type": "string",
+                      "description": "The event's identifier as requested."
+                    },
+                    "symbol": {
+                      "type": "string",
+                      "description": "The coin, as event.underlying.symbol of GET /v1/events/{eventId}."
+                    },
+                    "range": {
+                      "type": "string",
+                      "enum": [
+                        "1h",
+                        "1d",
+                        "1w"
+                      ],
+                      "description": "The requested range."
+                    },
+                    "interval": {
+                      "type": "string",
+                      "description": "The width of each point this range is read at: 1m for 1h, 15m for 1d, 1h for 1w."
+                    },
+                    "source": {
+                      "type": "string",
+                      "description": "Where the series comes from, as an open string. Today it is always perps_candles: the price of the coin's perpetual on Polymarket Perps (the coin's listed crypto instrument), which follows the coin closely but is not the price a market resolves on, such as the Coinbase price its rules name."
+                    },
+                    "fetchedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "description": "When this service read the series upstream (ISO 8601). It is not the request time, and it stays the same on cache hits."
+                    },
+                    "points": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "ts": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "The point's start time as upstream gives it, epoch milliseconds; points are unique by it and in ascending order."
+                          },
+                          "open": {
+                            "type": "string",
+                            "description": "Open: a plain decimal string in units of the instrument's quoteAsset, never exponent notation, with the upstream precision kept as is, trailing zeros included. It is not a 0-to-1 probability."
+                          },
+                          "high": {
+                            "type": "string",
+                            "description": "High: a plain decimal string in units of the instrument's quoteAsset, never exponent notation, with the upstream precision kept as is, trailing zeros included. It is not a 0-to-1 probability."
+                          },
+                          "low": {
+                            "type": "string",
+                            "description": "Low: a plain decimal string in units of the instrument's quoteAsset, never exponent notation, with the upstream precision kept as is, trailing zeros included. It is not a 0-to-1 probability."
+                          },
+                          "close": {
+                            "type": "string",
+                            "description": "Close: a plain decimal string in units of the instrument's quoteAsset, never exponent notation, with the upstream precision kept as is, trailing zeros included. It is not a 0-to-1 probability."
+                          }
+                        },
+                        "required": [
+                          "ts",
+                          "open",
+                          "high",
+                          "low",
+                          "close"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "The series in ascending time order, the range ending at fetchedAt. An interval with no trade has no point: gaps are not filled, so do not assume evenly spaced points. Draw a line from close and candles from open, high, low and close."
+                    }
+                  },
+                  "required": [
+                    "eventId",
+                    "symbol",
+                    "range",
+                    "interval",
+                    "source",
+                    "fetchedAt",
+                    "points"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Returns the price history of the coin an event is about (event.underlying of GET /v1/events/{eventId}), as open, high, low and close points over one range: 1h, 1d, 1w. A month or all-time range is not served. The series is the price of the coin's perpetual on Polymarket Perps, not the price the event's markets resolve on (their rules name the source, such as Coinbase): close to it, never the same. The answer can be served from a cache shared with GET /v1/perps/instruments/{instrumentId}/candles, so the last point is not a live price; fetchedAt says when the series was read. Continue the line with the reference price frames of /v1/stream."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "While Perps market data is open, an eventId holding anything other than letters, digits, hyphens, and underscores, or a missing or repeated range, or a range other than 1h, 1d, 1w (matched exactly and case-sensitive), produces error.code VALIDATION_FAILED with error.details omitted. While it is not open, each of these is answered with the 404 perps_not_open instead.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "While Perps market data is open, an eventId holding anything other than letters, digits, hyphens, and underscores, or a missing or repeated range, or a range other than 1h, 1d, 1w (matched exactly and case-sensitive), produces error.code VALIDATION_FAILED with error.details omitted. While it is not open, each of these is answered with the 404 perps_not_open instead."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/events through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/events through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "error.code is NOT_FOUND. With error.details.reason perps_not_open, Perps market data is not open on this deployment: that answer comes before the request is checked or the event is looked up, carries no Retry-After, and waiting or retrying does not change it. With event_underlying_not_found, the event is served but event.underlying is null: it names no single coin. With perps_instrument_not_found, the event's coin has no listed Perps crypto instrument on this deployment, or more than one. Without error.details, this service serves no market of this event, as on GET /v1/events/{eventId}; on this path a 404 without error.details can also come from a deployment that does not have the route yet, so do not cache it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is NOT_FOUND. With error.details.reason perps_not_open, Perps market data is not open on this deployment: that answer comes before the request is checked or the event is looked up, carries no Retry-After, and waiting or retrying does not change it. With event_underlying_not_found, the event is served but event.underlying is null: it names no single coin. With perps_instrument_not_found, the event's coin has no listed Perps crypto instrument on this deployment, or more than one. Without error.details, this service serves no market of this event, as on GET /v1/events/{eventId}; on this path a 404 without error.details can also come from a deployment that does not have the route yet, so do not cache it."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After. This route can also answer 429 with error.details.reason perps_capacity when this service's own per-minute budget for reading Perps market data upstream is spent; that response always carries Retry-After, a whole number of seconds from 1 through 60, and its RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset headers still describe the API key limit, not that budget.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After. This route can also answer 429 with error.details.reason perps_capacity when this service's own per-minute budget for reading Perps market data upstream is spent; that response always carries Retry-After, a whole number of seconds from 1 through 60, and its RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset headers still describe the API key limit, not that budget."
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The Perps market data provider could not be read, or the data this service holds is older than its freshness ceiling. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is perps_rate_limited when the provider rate-limited this service, otherwise perps_unavailable. Retry-After is returned only with perps_rate_limited, and only when the provider supplied a usable value. Stale data is never served in place of this response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The Perps market data provider could not be read, or the data this service holds is older than its freshness ceiling. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is perps_rate_limited when the provider rate-limited this service, otherwise perps_unavailable. Retry-After is returned only with perps_rate_limited, and only when the provider supplied a usable value. Stale data is never served in place of this response."
                 }
               }
             }
@@ -28446,7 +28957,7 @@
             }
           },
           "429": {
-            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
             "content": {
               "application/json": {
                 "schema": {
@@ -28494,7 +29005,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
                 }
               }
             }

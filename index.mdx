@@ -73,11 +73,11 @@ Operations that act on behalf of one of your end users need a second credential,
 
 ## Rate limits
 
-Three budgets apply, and all of them are fixed windows rather than sliding ones. Stream ticket issuance (`POST /v1/stream/tickets`) is counted only against the third. Thirteen reads, `GET /v1/markets`, `GET /v1/markets/{marketId}`, `GET /v1/markets/rounds`, `GET /v1/events/{eventId}`, `GET /v1/perps/account`, `GET /v1/perps/account/positions`, `GET /v1/perps/account/orders`, `GET /v1/perps/account/history`, `GET /v1/perps/account/pnl`, `GET /v1/perps/order-preview`, `GET /v1/perps/transfers`, `GET /v1/perps/transfers/{transferId}` and `GET /v1/withdrawals/verification`, are counted only against the first. Every other request is counted against the first and, when the key is a `trade` key, the second; the two apply independently.
+Three budgets apply, and all of them are fixed windows rather than sliding ones. Stream ticket issuance (`POST /v1/stream/tickets`) is counted only against the third. Fourteen reads, `GET /v1/markets`, `GET /v1/markets/{marketId}`, `GET /v1/markets/rounds`, `GET /v1/events/{eventId}`, `GET /v1/perps/account`, `GET /v1/perps/account/positions`, `GET /v1/perps/account/orders`, `GET /v1/perps/account/history`, `GET /v1/perps/account/pnl`, `GET /v1/perps/order-preview`, `GET /v1/perps/orders/{orderId}`, `GET /v1/perps/transfers`, `GET /v1/perps/transfers/{transferId}` and `GET /v1/withdrawals/verification`, are counted only against the first. Every other request is counted against the first and, when the key is a `trade` key, the second; the two apply independently.
 
 **Per key, per minute.** Every request except stream ticket issuance is counted against the key's own per-minute limit. `GET /v1/me` reports that limit as `rateLimitPerMinute`. Responses that reach the limiter carry `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset`.
 
-**Per account, per hour, for `trade` keys.** A `trade`-scope key is additionally limited to 600 requests per hour by default, counted per builder account in a window that resets at the top of the hour. Thirteen reads are outside this budget: `GET /v1/markets`, `GET /v1/markets/{marketId}`, `GET /v1/markets/rounds`, `GET /v1/events/{eventId}`, `GET /v1/perps/account`, `GET /v1/perps/account/positions`, `GET /v1/perps/account/orders`, `GET /v1/perps/account/history`, `GET /v1/perps/account/pnl`, `GET /v1/perps/order-preview`, `GET /v1/perps/transfers`, `GET /v1/perps/transfers/{transferId}` and `GET /v1/withdrawals/verification` are not counted against it and are not rejected when it is exhausted, so an account whose orders this budget is refusing can still read its market list; the per-minute limit still applies to all thirteen. Nothing else under `/v1/markets`, `/v1/events`, `/v1/perps` or `/v1/withdrawals` is outside it — a market's order book and fee preview, both price histories, the Perps market-data reads, `POST /v1/perps/account`, `POST /v1/perps/transfers`, `POST /v1/perps/orders`, `GET /v1/perps/orders/{orderId}` and `POST /v1/withdrawals/verification/telegram-link` count. `POST /v1/perps/positions/{instrumentId}/close` counts too but is never rejected by this budget: an end user can always leave a position. Every other request except stream ticket issuance counts against the budget — including the other GET requests, and including the requests that are themselves rejected with 429 by this budget. A tight retry loop therefore spends the budget it is waiting for. Exceeding it returns **429** with `error.details.reason` set to `trade_hourly_limit_exceeded`.
+**Per account, per hour, for `trade` keys.** A `trade`-scope key is additionally limited to 600 requests per hour by default, counted per builder account in a window that resets at the top of the hour. Fourteen reads are outside this budget: `GET /v1/markets`, `GET /v1/markets/{marketId}`, `GET /v1/markets/rounds`, `GET /v1/events/{eventId}`, `GET /v1/perps/account`, `GET /v1/perps/account/positions`, `GET /v1/perps/account/orders`, `GET /v1/perps/account/history`, `GET /v1/perps/account/pnl`, `GET /v1/perps/order-preview`, `GET /v1/perps/orders/{orderId}`, `GET /v1/perps/transfers`, `GET /v1/perps/transfers/{transferId}` and `GET /v1/withdrawals/verification` are not counted against it and are not rejected when it is exhausted, so an account whose orders this budget is refusing can still read its market list; the per-minute limit still applies to all fourteen. Nothing else under `/v1/markets`, `/v1/events`, `/v1/perps` or `/v1/withdrawals` is outside it — a market's order book and fee preview, the three price histories (a market's, an event's, and an event's underlying coin's), the Perps market-data reads, `POST /v1/perps/account`, `POST /v1/perps/transfers`, `POST /v1/perps/orders` and `POST /v1/withdrawals/verification/telegram-link` count. `POST /v1/perps/positions/{instrumentId}/close` counts too but is never rejected by this budget: an end user can always leave a position. Every other request except stream ticket issuance counts against the budget — including the other GET requests, and including the requests that are themselves rejected with 429 by this budget. A tight retry loop therefore spends the budget it is waiting for. Exceeding it returns **429** with `error.details.reason` set to `trade_hourly_limit_exceeded`.
 
 **Stream tickets, per account, per minute.** `POST /v1/stream/tickets` has its own budget of 600 ticket requests per minute by default, shared by every key of the builder account, in a window that resets at the start of each minute. Issuing tickets therefore does not spend the per-minute or hourly budget your orders use. Every ticket request that reaches this budget counts — including requests rejected with 429 and requests the operation then rejects, such as an unknown `userId`. Its responses carry `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset` for this budget. Exceeding it returns **429** with `error.details.reason` set to `stream_ticket_limit_exceeded`.
 
@@ -245,7 +245,8 @@ curl "https://api.tobuilder.app/v1/events/903193" \
     "id": "903193",
     "slug": "fed-decision-in-december",
     "title": "Fed decision in December?",
-    "endDate": "2026-12-10T00:00:00.000Z"
+    "endDate": "2026-12-10T00:00:00.000Z",
+    "underlying": null
   },
   "markets": [
     { "marketId": "0x9a1c-example", "groupItemTitle": "25 bps decrease", "rules": { "description": "…", "resolutionSource": null } }
@@ -265,6 +266,7 @@ curl "https://api.tobuilder.app/v1/events/903193" \
 - **Listed markets, and expiries taken in.** The markets are those the catalog lists and, when the event is one expiry in a weekly or monthly group of events the catalog lists a market of, the event's other open markets, which `GET /v1/markets` does not list. A market of the event that is neither is not here, although `GET /v1/markets/{marketId}` can still return it by its `marketId`.
 - **Order and size.** The markets are ordered by `marketId`, at most 200. `truncated` is `true` when the event has more of these markets than that; those past the first 200 are not returned.
 - **The event object.** `slug` and `title` are those stored with the event's markets, and `endDate` is the latest `endDate` among the markets returned: when the event ends, as far as the service knows. Each is `null` when no market has one.
+- **The event's coin.** `underlying` is `{ "symbol": "BTC" }` on a crypto event whose markets' tags name exactly one of BTC, ETH, SOL, XRP, DOGE, HYPE, BNB or ZEC, and `null` on every other event — including a crypto event about two coins. The key is always present. When it is not `null`, draw the coin's price with `GET /v1/events/{eventId}/underlying/price-history` (see **Chart an event's coin**).
 - **Expiry chips.** `expiries.items` lists the open expiries of the same question, the requested event among them with `current: true`, at most 12, ordered by `endDate` (the end date Polymarket gives each event, which can differ from `event.endDate`). Each `eventId` opens on this read. `marketId` is set only when that event has one open market; otherwise open the event. `group` is `null`, and `items` holds the event alone, when the event is in no weekly or monthly group, and `expiries.truncated` is `true` when there are more expiries than `items` holds.
 - **`lang`** applies to each market as on `GET /v1/markets/{marketId}`.
 - **Not found.** An event of which the service serves no market is a 404 `NOT_FOUND`.
@@ -442,6 +444,34 @@ curl "https://api.tobuilder.app/v1/events/903193/price-history?range=1w" \
 **Which markets an event response covers.** The series are the markets of the event that this service's catalog lists, at most 8, ordered by the current price of that first outcome; `omitted` counts the listed markets cut by that cap. Because prices move, the order can change from one request to the next — key colours and legend entries by `marketId`, not by position. Markets of the event that the catalog does not list — the catalog keeps markets above a trading-volume threshold — are not included and not counted.
 
 **When it is not available.** A 404 with `error.details.reason` `price_history_not_open` means price history is not open on this deployment; retrying does not change it. That 404 is counted against the key's per-minute limit and, for a `trade` key, its hourly budget like any other request, so stop calling the route after the first one and hide the chart until your deployment changes. A 404 without `error.details` on this path can also mean the deployment you reached does not have the route yet — do not cache it. A 429 with `price_history_limit_exceeded` or `price_history_capacity` is this service's own budget for reading Polymarket; a read answered from the cache does not spend it. Wait for `Retry-After`. Do not retry a 502 immediately; when its reason is `clob_rate_limited`, its `Retry-After` says when reads resume.
+
+## Chart an event's coin
+
+```bash
+curl "https://api.tobuilder.app/v1/events/123456/underlying/price-history?range=1d" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
+
+```json
+{
+  "eventId": "123456",
+  "symbol": "BTC",
+  "range": "1d",
+  "interval": "15m",
+  "source": "perps_candles",
+  "fetchedAt": "2026-10-14T03:40:00.000Z",
+  "points": [
+    { "ts": 1791944100000, "open": "82410.5", "high": "82555", "low": "82390.1", "close": "82501.2" }
+  ]
+}
+```
+
+`GET /v1/events/{eventId}/underlying/price-history` returns the price history of the coin named by the event's `underlying` (see **Read a market's rules and its event**), for one `range`: `1h` (one point a minute), `1d` (one point every 15 minutes) or `1w` (one point an hour). A month or all-time range is not served. Each point carries `open`, `high`, `low` and `close` as decimal strings, so the same answer draws a line (from `close`) and candles; `ts` is epoch milliseconds, ascending, and a stretch with no trade has no point.
+
+- **It is the perpetual's price, not the resolution source.** The series is the price of the coin's perpetual on Polymarket Perps (`source: "perps_candles"`). It follows the coin closely but is not the price the event's markets resolve on — their `rules` name that source, such as the Coinbase BTC/USD price. Read `source` as an open string.
+- **Cached and shared.** The answer can come from the same cache as `GET /v1/perps/instruments/{instrumentId}/candles`, so its last point is not a live price; `fetchedAt` says when it was read. Continue the line with the reference price frames of `/v1/stream`.
+- **When there is no chart.** A 404 with `error.details.reason` `event_underlying_not_found` means the event has no single coin (`underlying` is `null`); `perps_instrument_not_found` means the coin has no listed Perps instrument on this deployment; `perps_not_open` means Perps market data is not open on this deployment, before the request is checked — waiting does not change it. A 404 without `error.details` is an event the service does not serve, or a deployment that does not have this route yet — do not cache it.
+- **Rate limits.** This read counts against the per-minute limit and, for a `trade` key, the hourly budget. It can also answer 429 `perps_capacity` when the service's own budget for reading Perps market data is spent (with `Retry-After`), and 502 `perps_unavailable` or `perps_rate_limited` when the provider cannot be read.
 
 ## Browse sports games
 
@@ -697,7 +727,7 @@ A suspended account answers **403** with `error.details.reason` set to `subbuild
 
 **Nothing in this API retries for you**, and the SDK does not retry either. Three reasons:
 
-1. **Rate budget.** The hourly budget counts GET requests — all but the thirteen reads named under **Rate limits** — and counts rejected requests, so an automatic retry spends the budget on the failure instead of on your next real call.
+1. **Rate budget.** The hourly budget counts GET requests — all but the fourteen reads named under **Rate limits** — and counts rejected requests, so an automatic retry spends the budget on the failure instead of on your next real call.
 2. **Money.** `POST /v1/orders` and `POST /v1/orders/market` submit real funds. After a 5xx you do not know whether the submission was stored, so a blind retry can duplicate an order; read `GET /v1/orders` and `GET /v1/orders/fills` back before sending anything again.
 3. **429 is not uniform.** Some 429 responses carry `Retry-After` and some do not, so any single backoff policy baked into a client would be wrong for half of them.
 
