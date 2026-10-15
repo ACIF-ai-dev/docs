@@ -13837,6 +13837,33 @@
             "schema": {
               "type": "string"
             },
+            "in": "query",
+            "name": "eventTag",
+            "required": false,
+            "description": "Returns the crypto markets listed by a crypto event that carries this tag slug in its tags. The value is one tag slug, with the same characters and length as tag; anything else is VALIDATION_FAILED. eventTag=crypto returns the markets of the crypto events tagged crypto. Any one of eventTag, seriesRecurrence, and cryptoFamily switches the list to crypto markets: the markets that a crypto event this service read from Polymarket within the last 15 minutes lists, that are active and whose endDate is null or later than now, whether or not the catalog lists them. Without these filters the list holds none of the markets only that read brings in. The filters are compared, exactly and case-sensitive, with each such event that lists the market; given together, one event must match them all, and a market listed by several matching events appears once. A market is listed by every such event that matches, while its event.tags, event.series, and cryptoFamilies describe one chosen event (see event), so when a market is in more than one crypto event they can lack the value a filter matched. The crypto list is ordered by volume24h, largest first and null last, then by marketId, with or without sort. total counts that list. It combines with category, tag, and game, which then apply to the market as without these filters. An older version of this service ignores these parameters, values it would refuse included, and answers the plain list with status 200, whose markets carry no cryptoFamilies key; every market this version serves carries that key, so check for it before you trust a filtered page."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "seriesRecurrence",
+            "required": false,
+            "description": "Returns the crypto markets listed by a crypto event that has a series with this recurrence, such as hourly, daily, or weekly. The value has the same characters and length as tag; anything else is VALIDATION_FAILED. Any one of eventTag, seriesRecurrence, and cryptoFamily switches the list to crypto markets: the markets that a crypto event this service read from Polymarket within the last 15 minutes lists, that are active and whose endDate is null or later than now, whether or not the catalog lists them. Without these filters the list holds none of the markets only that read brings in. The filters are compared, exactly and case-sensitive, with each such event that lists the market; given together, one event must match them all, and a market listed by several matching events appears once. A market is listed by every such event that matches, while its event.tags, event.series, and cryptoFamilies describe one chosen event (see event), so when a market is in more than one crypto event they can lack the value a filter matched. The crypto list is ordered by volume24h, largest first and null last, then by marketId, with or without sort. total counts that list. It combines with category, tag, and game, which then apply to the market as without these filters. An older version of this service ignores these parameters, values it would refuse included, and answers the plain list with status 200, whose markets carry no cryptoFamilies key; every market this version serves carries that key, so check for it before you trust a filtered page."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "cryptoFamily",
+            "required": false,
+            "description": "Returns the crypto markets listed by a crypto event whose families, derived as cryptoFamilies describes, hold this value: one of up_down, daily, weekly, pre_market; any other value is VALIDATION_FAILED. Any one of eventTag, seriesRecurrence, and cryptoFamily switches the list to crypto markets: the markets that a crypto event this service read from Polymarket within the last 15 minutes lists, that are active and whose endDate is null or later than now, whether or not the catalog lists them. Without these filters the list holds none of the markets only that read brings in. The filters are compared, exactly and case-sensitive, with each such event that lists the market; given together, one event must match them all, and a market listed by several matching events appears once. A market is listed by every such event that matches, while its event.tags, event.series, and cryptoFamilies describe one chosen event (see event), so when a market is in more than one crypto event they can lack the value a filter matched. The crypto list is ordered by volume24h, largest first and null last, then by marketId, with or without sort. total counts that list. It combines with category, tag, and game, which then apply to the market as without these filters. An older version of this service ignores these parameters, values it would refuse included, and answers the plain list with status 200, whose markets carry no cryptoFamilies key; every market this version serves carries that key, so check for it before you trust a filtered page."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
             "in": "header",
             "name": "x-end-user-ip",
             "required": false,
@@ -13850,7 +13877,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache. The list holds only the markets the catalog sync keeps in scope: moneyline game markets from shortly before their start until shortly after it, and non-game markets above a lifetime volume threshold. A market that leaves that scope drops out of this list but is still returned by GET /v1/markets/{marketId}. The list is ordered most recently synced first and, among markets synced together, by marketId, so paging with limit and offset returns every market once while the catalog does not change between the requests; sort=volume24h orders by 24-hour volume instead. total counts the markets that match category, tag, and game, and the top-level syncedAt is the latest sync of the whole catalog whatever the filters. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price, tokenId, and oneHourPriceChange stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. lang also adds translation, or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered.",
+            "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache. The list holds only the markets the catalog sync keeps in scope: moneyline game markets from shortly before their start until shortly after it, and non-game markets above a lifetime volume threshold. A market that leaves that scope drops out of this list but is still returned by GET /v1/markets/{marketId}. The list is ordered most recently synced first and, among markets synced together, by marketId, so paging with limit and offset returns every market once while the catalog does not change between the requests; sort=volume24h orders by 24-hour volume instead. total counts the markets that match category, tag, and game, and the top-level syncedAt is the latest sync of the whole catalog whatever the filters. eventTag, seriesRecurrence, and cryptoFamily ask for the crypto list instead, with its own membership, order, and total, described with those parameters; syncedAt stays the catalog's. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price, tokenId, and oneHourPriceChange stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. lang also adds translation, or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13967,12 +13994,108 @@
                                         "type": "null"
                                       }
                                     ]
+                                  },
+                                  "tags": {
+                                    "anyOf": [
+                                      {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "slug": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            },
+                                            "label": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "slug",
+                                            "label"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "The slug and label of each entry in the Gamma event field tags of this market's crypto event, as sent, hide-from-new included. This market's crypto event is a Polymarket crypto event, other than the 5- and 15-minute crypto rounds, that lists this market and that this service read within the last 15 minutes: the one event.id names when it is among them, else the one with the lowest id compared as text. Null when there is none, which is always the case on a crypto round's market and on a market whose crypto event this service does not read, and is the case on a crypto market whose last read is older than that. Null, too, whenever event is null. An empty array means that event was read with no tags. These are the event's tags; the top-level tags are the market's own, a different list."
+                                  },
+                                  "series": {
+                                    "anyOf": [
+                                      {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "id": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            },
+                                            "slug": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            },
+                                            "recurrence": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ],
+                                              "description": "As Gamma sends it, such as hourly, 4h, daily, weekly, or monthly. Read it as an open string."
+                                            }
+                                          },
+                                          "required": [
+                                            "id",
+                                            "slug",
+                                            "recurrence"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "The id, slug, and recurrence of each entry in the Gamma event field series of this market's crypto event, as sent. This market's crypto event is a Polymarket crypto event, other than the 5- and 15-minute crypto rounds, that lists this market and that this service read within the last 15 minutes: the one event.id names when it is among them, else the one with the lowest id compared as text. Null when there is none, which is always the case on a crypto round's market and on a market whose crypto event this service does not read, and is the case on a crypto market whose last read is older than that. Null, too, whenever event is null. An empty array means that event has no series."
                                   }
                                 },
                                 "required": [
                                   "id",
                                   "slug",
-                                  "title"
+                                  "title",
+                                  "tags",
+                                  "series"
                                 ],
                                 "additionalProperties": false
                               },
@@ -13980,7 +14103,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "The first entry of the Gamma market field events (id, slug, title), or null when Gamma lists no event or the market was stored before this field existed. On a crypto round's market, which only GET /v1/markets/{marketId} serves, it is the round's event."
+                            "description": "The first entry of the Gamma market field events (id, slug, title), or null when Gamma lists no event or the market was stored before this field existed. On a crypto round's market, which only GET /v1/markets/{marketId} serves, it is the round's event. tags and series describe this market's crypto event, which can be another event than id names."
                           },
                           "tags": {
                             "type": "array",
@@ -14108,6 +14231,20 @@
                             ],
                             "description": "The Gamma market field eventStartTime, as an ISO 8601 UTC timestamp. It is the value read at syncedAt, copied from that one field: a separate field from gameStartTime and endDate, never filled from them or from any other field. Null means the value is unknown: Gamma sent none, sent a value this service does not read as a timestamp with a time zone, or the market was last stored before this field existed. On a crypto round's market, which only GET /v1/markets/{marketId} serves, it is the start of the round's window, never null: this service keeps a round only when at least one of that field and the event's start time is present and every one present equals the start its slug names."
                           },
+                          "cryptoFamilies": {
+                            "anyOf": [
+                              {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The crypto families of this market's crypto event, for drawing crypto filter chips: up_down when its tags hold up-or-down or a series slug holds up-or-down as a whole hyphen-separated part, daily when its tags hold daily or a series has recurrence daily, weekly the same way with weekly, and pre_market when its tags hold pre-market. Derived from event.tags and event.series only, never from a title; in the order up_down, daily, weekly, pre_market; empty when none applies. This market's crypto event is a Polymarket crypto event, other than the 5- and 15-minute crypto rounds, that lists this market and that this service read within the last 15 minutes: the one event.id names when it is among them, else the one with the lowest id compared as text. Null when there is none, which is always the case on a crypto round's market and on a market whose crypto event this service does not read, and is the case on a crypto market whose last read is older than that. Null, too, whenever event is null. Read the values as open strings: a value you do not know is a family your client does not draw yet."
+                          },
                           "translation": {
                             "anyOf": [
                               {
@@ -14153,7 +14290,8 @@
                           "icon",
                           "image",
                           "volume24h",
-                          "eventStartTime"
+                          "eventStartTime",
+                          "cryptoFamilies"
                         ],
                         "additionalProperties": false
                       }
@@ -14182,13 +14320,13 @@
                     "syncedAt"
                   ],
                   "additionalProperties": false,
-                  "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache. The list holds only the markets the catalog sync keeps in scope: moneyline game markets from shortly before their start until shortly after it, and non-game markets above a lifetime volume threshold. A market that leaves that scope drops out of this list but is still returned by GET /v1/markets/{marketId}. The list is ordered most recently synced first and, among markets synced together, by marketId, so paging with limit and offset returns every market once while the catalog does not change between the requests; sort=volume24h orders by 24-hour volume instead. total counts the markets that match category, tag, and game, and the top-level syncedAt is the latest sync of the whole catalog whatever the filters. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price, tokenId, and oneHourPriceChange stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. lang also adds translation, or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."
+                  "description": "Returns the active market list with markets, total, and syncedAt; the response may come from the route cache. The list holds only the markets the catalog sync keeps in scope: moneyline game markets from shortly before their start until shortly after it, and non-game markets above a lifetime volume threshold. A market that leaves that scope drops out of this list but is still returned by GET /v1/markets/{marketId}. The list is ordered most recently synced first and, among markets synced together, by marketId, so paging with limit and offset returns every market once while the catalog does not change between the requests; sort=volume24h orders by 24-hour volume instead. total counts the markets that match category, tag, and game, and the top-level syncedAt is the latest sync of the whole catalog whatever the filters. eventTag, seriesRecurrence, and cryptoFamily ask for the crypto list instead, with its own membership, order, and total, described with those parameters; syncedAt stays the catalog's. lang localizes each outcomes[].outcome label through a fixed per-language dictionary, changing only the label so price, tokenId, and oneHourPriceChange stay on the same element; ko turns Yes and No into Korean, and a language or label without a dictionary entry is returned unchanged. lang also adds translation, or null when no matching translation exists. The tokenId is the outcome's CTF token ID as a decimal string; pass it unchanged as tokenId to POST /v1/orders, and a null value means the outcome cannot be ordered."
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid query syntax or values such as limit outside 1-100, offset outside 0-10000, empty category, an invalid lang, a sort other than volume24h, a tag that is empty, longer than 100 characters, or holds a character other than letters, digits, hyphen, underscore, and dot, or a game other than true or false produce error.code VALIDATION_FAILED with error.details omitted.",
+            "description": "Invalid query syntax or values such as limit outside 1-100, offset outside 0-10000, empty category, an invalid lang, a sort other than volume24h, a tag, eventTag, or seriesRecurrence that is empty, longer than 100 characters, or holds a character other than letters, digits, hyphen, underscore, and dot, a cryptoFamily other than up_down, daily, weekly, pre_market, or a game other than true or false produce error.code VALIDATION_FAILED with error.details omitted.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14236,7 +14374,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "Invalid query syntax or values such as limit outside 1-100, offset outside 0-10000, empty category, an invalid lang, a sort other than volume24h, a tag that is empty, longer than 100 characters, or holds a character other than letters, digits, hyphen, underscore, and dot, or a game other than true or false produce error.code VALIDATION_FAILED with error.details omitted."
+                  "description": "Invalid query syntax or values such as limit outside 1-100, offset outside 0-10000, empty category, an invalid lang, a sort other than volume24h, a tag, eventTag, or seriesRecurrence that is empty, longer than 100 characters, or holds a character other than letters, digits, hyphen, underscore, and dot, a cryptoFamily other than up_down, daily, weekly, pre_market, or a game other than true or false produce error.code VALIDATION_FAILED with error.details omitted."
                 }
               }
             }
@@ -14556,12 +14694,108 @@
                                   "type": "null"
                                 }
                               ]
+                            },
+                            "tags": {
+                              "anyOf": [
+                                {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "slug": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "label": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "slug",
+                                      "label"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "The slug and label of each entry in the Gamma event field tags of this market's crypto event, as sent, hide-from-new included. This market's crypto event is a Polymarket crypto event, other than the 5- and 15-minute crypto rounds, that lists this market and that this service read within the last 15 minutes: the one event.id names when it is among them, else the one with the lowest id compared as text. Null when there is none, which is always the case on a crypto round's market and on a market whose crypto event this service does not read, and is the case on a crypto market whose last read is older than that. Null, too, whenever event is null. An empty array means that event was read with no tags. These are the event's tags; the top-level tags are the market's own, a different list."
+                            },
+                            "series": {
+                              "anyOf": [
+                                {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "slug": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "recurrence": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "As Gamma sends it, such as hourly, 4h, daily, weekly, or monthly. Read it as an open string."
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "slug",
+                                      "recurrence"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "The id, slug, and recurrence of each entry in the Gamma event field series of this market's crypto event, as sent. This market's crypto event is a Polymarket crypto event, other than the 5- and 15-minute crypto rounds, that lists this market and that this service read within the last 15 minutes: the one event.id names when it is among them, else the one with the lowest id compared as text. Null when there is none, which is always the case on a crypto round's market and on a market whose crypto event this service does not read, and is the case on a crypto market whose last read is older than that. Null, too, whenever event is null. An empty array means that event has no series."
                             }
                           },
                           "required": [
                             "id",
                             "slug",
-                            "title"
+                            "title",
+                            "tags",
+                            "series"
                           ],
                           "additionalProperties": false
                         },
@@ -14569,7 +14803,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "The first entry of the Gamma market field events (id, slug, title), or null when Gamma lists no event or the market was stored before this field existed. On a crypto round's market, which only GET /v1/markets/{marketId} serves, it is the round's event."
+                      "description": "The first entry of the Gamma market field events (id, slug, title), or null when Gamma lists no event or the market was stored before this field existed. On a crypto round's market, which only GET /v1/markets/{marketId} serves, it is the round's event. tags and series describe this market's crypto event, which can be another event than id names."
                     },
                     "tags": {
                       "type": "array",
@@ -14697,6 +14931,20 @@
                       ],
                       "description": "The Gamma market field eventStartTime, as an ISO 8601 UTC timestamp. It is the value read at syncedAt, copied from that one field: a separate field from gameStartTime and endDate, never filled from them or from any other field. Null means the value is unknown: Gamma sent none, sent a value this service does not read as a timestamp with a time zone, or the market was last stored before this field existed. On a crypto round's market, which only GET /v1/markets/{marketId} serves, it is the start of the round's window, never null: this service keeps a round only when at least one of that field and the event's start time is present and every one present equals the start its slug names."
                     },
+                    "cryptoFamilies": {
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The crypto families of this market's crypto event, for drawing crypto filter chips: up_down when its tags hold up-or-down or a series slug holds up-or-down as a whole hyphen-separated part, daily when its tags hold daily or a series has recurrence daily, weekly the same way with weekly, and pre_market when its tags hold pre-market. Derived from event.tags and event.series only, never from a title; in the order up_down, daily, weekly, pre_market; empty when none applies. This market's crypto event is a Polymarket crypto event, other than the 5- and 15-minute crypto rounds, that lists this market and that this service read within the last 15 minutes: the one event.id names when it is among them, else the one with the lowest id compared as text. Null when there is none, which is always the case on a crypto round's market and on a market whose crypto event this service does not read, and is the case on a crypto market whose last read is older than that. Null, too, whenever event is null. Read the values as open strings: a value you do not know is a family your client does not draw yet."
+                    },
                     "translation": {
                       "anyOf": [
                         {
@@ -14804,6 +15052,7 @@
                     "image",
                     "volume24h",
                     "eventStartTime",
+                    "cryptoFamilies",
                     "rules"
                   ],
                   "additionalProperties": false,
@@ -18623,12 +18872,108 @@
                                         "type": "null"
                                       }
                                     ]
+                                  },
+                                  "tags": {
+                                    "anyOf": [
+                                      {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "slug": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            },
+                                            "label": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "slug",
+                                            "label"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "The slug and label of each entry in the Gamma event field tags of this market's crypto event, as sent, hide-from-new included. This market's crypto event is a Polymarket crypto event, other than the 5- and 15-minute crypto rounds, that lists this market and that this service read within the last 15 minutes: the one event.id names when it is among them, else the one with the lowest id compared as text. Null when there is none, which is always the case on a crypto round's market and on a market whose crypto event this service does not read, and is the case on a crypto market whose last read is older than that. Null, too, whenever event is null. An empty array means that event was read with no tags. These are the event's tags; the top-level tags are the market's own, a different list."
+                                  },
+                                  "series": {
+                                    "anyOf": [
+                                      {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "id": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            },
+                                            "slug": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            },
+                                            "recurrence": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ],
+                                              "description": "As Gamma sends it, such as hourly, 4h, daily, weekly, or monthly. Read it as an open string."
+                                            }
+                                          },
+                                          "required": [
+                                            "id",
+                                            "slug",
+                                            "recurrence"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "The id, slug, and recurrence of each entry in the Gamma event field series of this market's crypto event, as sent. This market's crypto event is a Polymarket crypto event, other than the 5- and 15-minute crypto rounds, that lists this market and that this service read within the last 15 minutes: the one event.id names when it is among them, else the one with the lowest id compared as text. Null when there is none, which is always the case on a crypto round's market and on a market whose crypto event this service does not read, and is the case on a crypto market whose last read is older than that. Null, too, whenever event is null. An empty array means that event has no series."
                                   }
                                 },
                                 "required": [
                                   "id",
                                   "slug",
-                                  "title"
+                                  "title",
+                                  "tags",
+                                  "series"
                                 ],
                                 "additionalProperties": false
                               },
@@ -18636,7 +18981,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "The first entry of the Gamma market field events (id, slug, title), or null when Gamma lists no event or the market was stored before this field existed. On a crypto round's market, which only GET /v1/markets/{marketId} serves, it is the round's event."
+                            "description": "The first entry of the Gamma market field events (id, slug, title), or null when Gamma lists no event or the market was stored before this field existed. On a crypto round's market, which only GET /v1/markets/{marketId} serves, it is the round's event. tags and series describe this market's crypto event, which can be another event than id names."
                           },
                           "tags": {
                             "type": "array",
@@ -18764,6 +19109,20 @@
                             ],
                             "description": "The Gamma market field eventStartTime, as an ISO 8601 UTC timestamp. It is the value read at syncedAt, copied from that one field: a separate field from gameStartTime and endDate, never filled from them or from any other field. Null means the value is unknown: Gamma sent none, sent a value this service does not read as a timestamp with a time zone, or the market was last stored before this field existed. On a crypto round's market, which only GET /v1/markets/{marketId} serves, it is the start of the round's window, never null: this service keeps a round only when at least one of that field and the event's start time is present and every one present equals the start its slug names."
                           },
+                          "cryptoFamilies": {
+                            "anyOf": [
+                              {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The crypto families of this market's crypto event, for drawing crypto filter chips: up_down when its tags hold up-or-down or a series slug holds up-or-down as a whole hyphen-separated part, daily when its tags hold daily or a series has recurrence daily, weekly the same way with weekly, and pre_market when its tags hold pre-market. Derived from event.tags and event.series only, never from a title; in the order up_down, daily, weekly, pre_market; empty when none applies. This market's crypto event is a Polymarket crypto event, other than the 5- and 15-minute crypto rounds, that lists this market and that this service read within the last 15 minutes: the one event.id names when it is among them, else the one with the lowest id compared as text. Null when there is none, which is always the case on a crypto round's market and on a market whose crypto event this service does not read, and is the case on a crypto market whose last read is older than that. Null, too, whenever event is null. Read the values as open strings: a value you do not know is a family your client does not draw yet."
+                          },
                           "translation": {
                             "anyOf": [
                               {
@@ -18871,11 +19230,12 @@
                           "image",
                           "volume24h",
                           "eventStartTime",
+                          "cryptoFamilies",
                           "rules"
                         ],
                         "additionalProperties": false
                       },
-                      "description": "The markets of the event that this service serves: those its catalog lists and, when the event is in a weekly or monthly group of which the catalog lists a market, the event's open markets taken in for its expiries. Ordered by marketId (compared as text), at most 200. Each has the keys of GET /v1/markets/{marketId}, rules included."
+                      "description": "The markets of the event that this service serves: those its catalog lists; when the event is in a weekly or monthly group of which the catalog lists a market, the event's open markets taken in for its expiries; and, when the event's markets are crypto markets this service read from Polymarket's crypto events within the last 15 minutes, those that are active and whose endDate is null or later than now (the markets GET /v1/markets returns with eventTag, seriesRecurrence, or cryptoFamily). Ordered by marketId (compared as text), at most 200. Each has the keys of GET /v1/markets/{marketId}, rules included."
                     },
                     "truncated": {
                       "type": "boolean",

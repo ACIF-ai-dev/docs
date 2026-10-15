@@ -167,6 +167,41 @@ curl "https://api.tobuilder.app/v1/markets?tag=sports&game=false" \
 
 Sorting by volume orders the values the catalog sync last read (see below), not live figures.
 
+### Crypto filters
+
+Three more parameters ask for a different list: the crypto markets this service reads from Polymarket's crypto events, other than the 5- and 15-minute crypto rounds (see [Crypto rounds](#crypto-rounds)). Without them the list above is unchanged and holds none of the markets only that read brings in.
+
+| Parameter | Value | Effect |
+| --- | --- | --- |
+| `eventTag` | one tag slug | Crypto markets listed by a crypto event that carries that tag slug. Same characters, length, and exact matching as `tag`. `eventTag=crypto` returns the markets of the crypto events tagged `crypto`. |
+| `seriesRecurrence` | one recurrence | Crypto markets listed by a crypto event that has a series with that recurrence, such as `hourly`, `daily`, or `weekly`. |
+| `cryptoFamily` | `up_down`, `daily`, `weekly`, or `pre_market` | Crypto markets listed by a crypto event whose families (the table below) hold that value. Any other value is a 400 `VALIDATION_FAILED`. |
+
+Any one of them switches the list: it holds the markets that a crypto event read within the last 15 minutes lists, that are active and have not ended, whether or not the catalog lists them. The filters are compared with each such event that lists the market; given together, one event must match them all, and a market listed by several matching events appears once. A market in more than one crypto event is listed by every one that matches, while its `event.tags`, `event.series`, and `cryptoFamilies` describe one chosen event (below), so they can lack the value a filter matched. The crypto list is ordered by `volume24h`, largest first and `null` last, then by `marketId`, with or without `sort`; `total` counts it; `category`, `tag`, and `game` still narrow it; the top-level `syncedAt` stays the catalog's.
+
+Each market, in every list and on the detail, also carries what this service read of its crypto event: `event.tags` (`slug` and `label`, as Polymarket sends them, `hide-from-new` included), `event.series` (`id`, `slug`, `recurrence`), and `cryptoFamilies`, derived from those tags and series only, never from a title:
+
+| Family | When |
+| --- | --- |
+| `up_down` | a tag `up-or-down`, or a series slug with `up-or-down` as a whole hyphen-separated part |
+| `daily` | a tag `daily`, or a series with recurrence `daily` |
+| `weekly` | a tag `weekly`, or a series with recurrence `weekly` |
+| `pre_market` | a tag `pre-market` |
+
+The chosen event is the one `event.id` names when it is among the market's crypto events read in the last 15 minutes, else the one of those with the lowest id. The three keys are `null` when there is none — on every market only the catalog serves, on every crypto round's market, and on a crypto market whose read has aged — and whenever `event` is `null`. `event.tags` are the event's tags; the top-level `tags` are the market's own. Read `cryptoFamilies` values as open strings: a value you do not know is a family your client does not draw yet.
+
+```bash
+# The Up/Down chip.
+curl "https://api.tobuilder.app/v1/markets?cryptoFamily=up_down" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+
+# Markets of crypto events tagged crypto; build a dropdown from event.tags labels.
+curl "https://api.tobuilder.app/v1/markets?eventTag=crypto&limit=100" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
+
+During a deployment an older version of the service can answer: it ignores these parameters, values it would refuse included, and returns the plain list with status 200, whose markets carry no `cryptoFamilies` key. Every market this version serves carries that key, so check for it before you trust a filtered page. A crypto event's page (`GET /v1/events/{eventId}`) lists the same live crypto markets of that event.
+
 ### Market images
 
 Each market, in the list and from `GET /v1/markets/{marketId}`, carries `icon` and `image`: the market's images from Gamma, each an absolute `https` URL or `null`. The two may be the same URL. `null` means Gamma sent no image, sent one this service did not accept, or the market was last stored before these fields existed; show your own placeholder.
