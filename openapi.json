@@ -9965,6 +9965,7 @@
                     "type": "boolean"
                   },
                   "expiration": {
+                    "description": "Unix timestamp in seconds (not milliseconds) after which the order expires. When present, the order is placed as a Good-Til-Date (GTD) limit order; when omitted, it is Good-Til-Cancelled (GTC). It must be at least 3 minutes (180 seconds) after the moment the service builds the order — add your own margin for latency and clock skew. A nearer value is refused before the order is sent to the venue, and no order is placed.",
                     "type": "integer",
                     "exclusiveMinimum": 0,
                     "maximum": 9007199254740991
