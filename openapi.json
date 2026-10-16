@@ -9918,6 +9918,705 @@
         }
       }
     },
+    "/v1/orders/events": {
+      "get": {
+        "summary": "Stream order events",
+        "description": "Server-sent events for the API key's sub-builder; off unless the operator enables it (404 order_events_disabled). userId narrows to one end user. Events are not replayed: after feedGap re-read GET /v1/orders/fills and GET /v1/orders; after feedDown poll them. The first MATCHED fill of a market order can happen before the stream sees anything, so read the order's own answer first. ownOrder with event UPDATE may be a state snapshot after a reconnect. Heartbeat comment every 15 s. The key is checked again every 30 s: the stream ends when the key is revoked, its sub-builder is suspended, its scope no longer allows the route, or the check cannot be completed; it also ends when the client reads too slowly. Reconnect and re-read the REST routes after any end. Each connect counts against the per-key minute limit and the trade-scope hourly limit.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "userId",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UTF-8 SSE frames: event: <name>\\ndata: <JSON>\\n\\n; initial comment : ok and heartbeat comment : hb every 15 s. ownFill data keys: userId, fillId, orderId, marketId, tokenId, side (BUY/SELL), traderSide (TAKER), price (decimal text 0–1), size (decimal share text), status (MATCHED/MINED/RETRYING/CONFIRMED/FAILED), ts (epoch milliseconds text). ownOrder data keys: userId, orderId, event (PLACEMENT/UPDATE/CANCELLATION), status (LIVE/MATCHED/DELAYED/UNMATCHED), originalSize and sizeMatched (decimal share text), ts (epoch milliseconds text). feedDown and feedGap data keys: userId only. No replay or event IDs.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "description": "UTF-8 SSE frames: event: <name>\\ndata: <JSON>\\n\\n; initial comment : ok and heartbeat comment : hb every 15 s. ownFill data keys: userId, fillId, orderId, marketId, tokenId, side (BUY/SELL), traderSide (TAKER), price (decimal text 0–1), size (decimal share text), status (MATCHED/MINED/RETRYING/CONFIRMED/FAILED), ts (epoch milliseconds text). ownOrder data keys: userId, orderId, event (PLACEMENT/UPDATE/CANCELLATION), status (LIVE/MATCHED/DELAYED/UNMATCHED), originalSize and sizeMatched (decimal share text), ts (epoch milliseconds text). feedDown and feedGap data keys: userId only. No replay or event IDs."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The order-events request is invalid and no stream was opened. error.code is VALIDATION_FAILED and error.details.reason is order_query_key_unknown for an unknown query key; Fastify validation failures (userId not a string of 1 to 200 characters) omit error.details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The order-events request is invalid and no stream was opened. error.code is VALIDATION_FAILED and error.details.reason is order_query_key_unknown for an unknown query key; Fastify validation failures (userId not a string of 1 to 200 characters) omit error.details."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. /v1/orders requires trade scope, so bot-read and bot-link keys receive this response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. /v1/orders requires trade scope, so bot-read and bot-link keys receive this response."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No stream was opened. error.code is NOT_FOUND and error.details.reason is order_events_disabled when the operator has not enabled order event streams on this deployment (the default; retrying will not help until it is enabled — keep polling GET /v1/orders/fills and GET /v1/orders), or order_events_user_not_found when userId does not identify a user of the API key's sub-builder.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "No stream was opened. error.code is NOT_FOUND and error.details.reason is order_events_disabled when the operator has not enabled order event streams on this deployment (the default; retrying will not help until it is enabled — keep polling GET /v1/orders/fills and GET /v1/orders), or order_events_user_not_found when userId does not identify a user of the API key's sub-builder."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "No stream was opened. error.code is RATE_LIMITED. error.details.reason is order_events_stream_limit_exceeded when this API key already holds the maximum number of concurrent order event streams (close one first), or order_events_process_limit_exceeded when the server holds its maximum number of streams in total. The per-key request rate limiter and the trade-scope hourly limit also apply to each connect, as on every /v1/orders route. API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "No stream was opened. error.code is RATE_LIMITED. error.details.reason is order_events_stream_limit_exceeded when this API key already holds the maximum number of concurrent order event streams (close one first), or order_events_process_limit_exceeded when the server holds its maximum number of streams in total. The per-key request rate limiter and the trade-scope hourly limit also apply to each connect, as on every /v1/orders route. API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "No stream was opened. error.code is INTERNAL and error.details.reason is order_user_storage_unavailable when user storage is not configured, or error.details is omitted for an uncaught failure of the user lookup. This route makes no wallet, Privy or CLOB call.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "No stream was opened. error.code is INTERNAL and error.details.reason is order_user_storage_unavailable when user storage is not configured, or error.details is omitted for an uncaught failure of the user lookup. This route makes no wallet, Privy or CLOB call."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/orders/prewarm": {
+      "post": {
+        "summary": "Prewarm an order",
+        "description": "Best-effort hint that userId is about to order tokenId of marketId (for example on opening the market's detail page), so the next market order skips the public market reads and the trading-client build. Off unless the operator enables it; it then answers 204 and does nothing. It always answers 204 with no body, whatever happened: an unknown user, a user of another sub-builder, a token outside the market, a cap or a failure; the status, headers and body are the same. The time to answer is not constant: a user of your own account that has a wallet is looked up a little longer, so it reveals nothing beyond your own account's users. No market data is fetched upstream and no trading client is built for a user without a stored wallet. It never signs or submits an order, never provisions a wallet and never opens a user socket. When it builds the trading client, that build spends one Privy signature from the monthly quota shared with order signing, so call it once per detail-page open, not on a timer. Each call counts against the per-key minute limit and the trade-scope hourly limit, which order submission shares.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "marketId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "tokenId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "userId",
+                  "marketId",
+                  "tokenId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content. Best-effort prewarm accepted; the status, headers and body are the same whatever happened. The time to answer is not constant: a user of your own account that has a wallet is looked up a little longer, so it reveals nothing beyond your own account's users. No market data is fetched upstream and no trading client is built for a user without a stored wallet. No order is signed or submitted, no wallet is provisioned, and no user socket is opened. Each client build can consume a Privy signature from the shared monthly quota."
+          },
+          "400": {
+            "description": "error.code is VALIDATION_FAILED and error.details.reason is order_prewarm_body_invalid for a body other than exactly userId, marketId and tokenId strings of 1 to 200 characters. Malformed JSON is rejected before body validation; error.details.reason is omitted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is VALIDATION_FAILED and error.details.reason is order_prewarm_body_invalid for a body other than exactly userId, marketId and tokenId strings of 1 to 200 characters. Malformed JSON is rejected before body validation; error.details.reason is omitted."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "error.code is UNAUTHORIZED and error.details.reason is omitted. Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is UNAUTHORIZED and error.details.reason is omitted. Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "error.code is FORBIDDEN and error.details.reason is omitted. The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. This route requires trade scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is FORBIDDEN and error.details.reason is omitted. The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. This route requires trade scope."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "error.code is RATE_LIMITED and error.details.reason is trade_hourly_limit_exceeded for the trade-hourly limit, or omitted for the per-key limiter. API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After. Internal prewarm build caps still answer 204.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is RATE_LIMITED and error.details.reason is trade_hourly_limit_exceeded for the trade-hourly limit, or omitted for the per-key limiter. API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After. Internal prewarm build caps still answer 204."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "error.code is INTERNAL and error.details.reason is omitted for an infrastructure failure before the handler; nothing was read, built or sent, so a retry is safe. All failures after body validation are contained and answer 204.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is INTERNAL and error.details.reason is omitted for an infrastructure failure before the handler; nothing was read, built or sent, so a retry is safe. All failures after body validation are contained and answer 204."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/orders": {
       "post": {
         "summary": "Submit a limit order",
@@ -10439,7 +11138,7 @@
             }
           },
           "500": {
-            "description": "An internal limit-order submission failure occurred. error.code is INTERNAL and error.details.reason is order_storage_unavailable, order_privy_unavailable, order_fee_repository_unavailable, order_fee_rate_invalid, order_builder_code_missing, order_builder_code_invalid, order_wallet_columns_partial, order_wallet_address_invalid, order_wallet_type_invalid, builder_api_credentials_missing, secure_client_unexpected_response, secure_client_user_input_invalid, order_post_unexpected_response, order_post_user_input_invalid, order_post_unclassified, order_row_amount_invalid, order_submission_record_failed, order_persist_failed_after_accept, or omitted for uncaught failures. order_row_amount_invalid can arise while replaying a stored row before submission or while comparing a concurrent insert after submission. When error.details has orderId, that orderId reached and was accepted by the CLOB. Failures without an orderId may still have reached the CLOB: order_post_unexpected_response, order_post_user_input_invalid, order_post_unclassified, order_row_amount_invalid raised while comparing a concurrent insert, and any response whose error.details is omitted. Always inspect both GET /v1/orders and GET /v1/orders/fills before retrying with a new Idempotency-Key, because a marketable order fills immediately and never appears in the open-order list; an absent stored row is not evidence that no order was placed. The service records a submission attempt for the Idempotency-Key immediately before it sends the signed order to the CLOB, and removes it only after the order is stored or the CLOB answers order_rejected (on POST /v1/orders/market also order_market_not_filled carrying rejectionCode). While an attempt or a stored order exists for the key, reusing the key sends no order: with the same order fields, a stored order is replayed with 200, an attempt recorded as accepted is stored and replayed with 200 (or fails again with order_persist_failed_after_accept), and any other attempt, including an accepted order whose acceptance could not be recorded, answers 409 with error.details.reason order_submission_outcome_unknown. Only when neither exists, because the failure happened before the attempt was recorded (for example order_submission_record_failed) or the CLOB answered order_rejected (or, on POST /v1/orders/market, order_market_not_filled carrying rejectionCode), does reusing the key start a new submission.",
+            "description": "An internal limit-order submission failure occurred. error.code is INTERNAL and error.details.reason is order_storage_unavailable, order_privy_unavailable, order_fee_repository_unavailable, order_fee_rate_invalid, order_builder_code_missing, order_builder_code_invalid, order_wallet_columns_partial, order_wallet_address_invalid, order_wallet_type_invalid, builder_api_credentials_missing, secure_client_unexpected_response, secure_client_user_input_invalid, order_post_unexpected_response, order_post_user_input_invalid, order_post_unclassified, order_row_amount_invalid, order_submission_record_failed, order_persist_failed_after_accept, or omitted for uncaught failures. order_row_amount_invalid can arise while replaying a stored row before submission or while comparing a concurrent insert after submission. When error.details has orderId, that orderId reached and was accepted by the CLOB. Failures without an orderId may still have reached the CLOB: order_post_unexpected_response, order_post_user_input_invalid, order_post_unclassified, order_row_amount_invalid raised while comparing a concurrent insert, and any response whose error.details is omitted. Always inspect both GET /v1/orders and GET /v1/orders/fills before retrying with a new Idempotency-Key, because a marketable order fills immediately and never appears in the open-order list; an absent stored row is not evidence that no order was placed. The service records a submission attempt for the Idempotency-Key immediately before it sends the signed order to the CLOB, and removes it only after the order is stored or the CLOB answers order_rejected (on POST /v1/orders/market also order_market_not_filled carrying rejectionCode). On POST /v1/orders/market, order_market_amount_below_minimum also leaves no attempt for the key: either the service refused before recording or sending anything, or the CLOB refused the order with its 400 minimum-size answer and the attempt was removed. While an attempt or a stored order exists for the key, reusing the key sends no order: with the same order fields, a stored order is replayed with 200, an attempt recorded as accepted is stored and replayed with 200 (or fails again with order_persist_failed_after_accept), and any other attempt, including an accepted order whose acceptance could not be recorded, answers 409 with error.details.reason order_submission_outcome_unknown. Only when neither exists, because the failure happened before the attempt was recorded (for example order_submission_record_failed) or the CLOB answered order_rejected (or, on POST /v1/orders/market, order_market_not_filled carrying rejectionCode), does reusing the key start a new submission.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10487,13 +11186,13 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "An internal limit-order submission failure occurred. error.code is INTERNAL and error.details.reason is order_storage_unavailable, order_privy_unavailable, order_fee_repository_unavailable, order_fee_rate_invalid, order_builder_code_missing, order_builder_code_invalid, order_wallet_columns_partial, order_wallet_address_invalid, order_wallet_type_invalid, builder_api_credentials_missing, secure_client_unexpected_response, secure_client_user_input_invalid, order_post_unexpected_response, order_post_user_input_invalid, order_post_unclassified, order_row_amount_invalid, order_submission_record_failed, order_persist_failed_after_accept, or omitted for uncaught failures. order_row_amount_invalid can arise while replaying a stored row before submission or while comparing a concurrent insert after submission. When error.details has orderId, that orderId reached and was accepted by the CLOB. Failures without an orderId may still have reached the CLOB: order_post_unexpected_response, order_post_user_input_invalid, order_post_unclassified, order_row_amount_invalid raised while comparing a concurrent insert, and any response whose error.details is omitted. Always inspect both GET /v1/orders and GET /v1/orders/fills before retrying with a new Idempotency-Key, because a marketable order fills immediately and never appears in the open-order list; an absent stored row is not evidence that no order was placed. The service records a submission attempt for the Idempotency-Key immediately before it sends the signed order to the CLOB, and removes it only after the order is stored or the CLOB answers order_rejected (on POST /v1/orders/market also order_market_not_filled carrying rejectionCode). While an attempt or a stored order exists for the key, reusing the key sends no order: with the same order fields, a stored order is replayed with 200, an attempt recorded as accepted is stored and replayed with 200 (or fails again with order_persist_failed_after_accept), and any other attempt, including an accepted order whose acceptance could not be recorded, answers 409 with error.details.reason order_submission_outcome_unknown. Only when neither exists, because the failure happened before the attempt was recorded (for example order_submission_record_failed) or the CLOB answered order_rejected (or, on POST /v1/orders/market, order_market_not_filled carrying rejectionCode), does reusing the key start a new submission."
+                  "description": "An internal limit-order submission failure occurred. error.code is INTERNAL and error.details.reason is order_storage_unavailable, order_privy_unavailable, order_fee_repository_unavailable, order_fee_rate_invalid, order_builder_code_missing, order_builder_code_invalid, order_wallet_columns_partial, order_wallet_address_invalid, order_wallet_type_invalid, builder_api_credentials_missing, secure_client_unexpected_response, secure_client_user_input_invalid, order_post_unexpected_response, order_post_user_input_invalid, order_post_unclassified, order_row_amount_invalid, order_submission_record_failed, order_persist_failed_after_accept, or omitted for uncaught failures. order_row_amount_invalid can arise while replaying a stored row before submission or while comparing a concurrent insert after submission. When error.details has orderId, that orderId reached and was accepted by the CLOB. Failures without an orderId may still have reached the CLOB: order_post_unexpected_response, order_post_user_input_invalid, order_post_unclassified, order_row_amount_invalid raised while comparing a concurrent insert, and any response whose error.details is omitted. Always inspect both GET /v1/orders and GET /v1/orders/fills before retrying with a new Idempotency-Key, because a marketable order fills immediately and never appears in the open-order list; an absent stored row is not evidence that no order was placed. The service records a submission attempt for the Idempotency-Key immediately before it sends the signed order to the CLOB, and removes it only after the order is stored or the CLOB answers order_rejected (on POST /v1/orders/market also order_market_not_filled carrying rejectionCode). On POST /v1/orders/market, order_market_amount_below_minimum also leaves no attempt for the key: either the service refused before recording or sending anything, or the CLOB refused the order with its 400 minimum-size answer and the attempt was removed. While an attempt or a stored order exists for the key, reusing the key sends no order: with the same order fields, a stored order is replayed with 200, an attempt recorded as accepted is stored and replayed with 200 (or fails again with order_persist_failed_after_accept), and any other attempt, including an accepted order whose acceptance could not be recorded, answers 409 with error.details.reason order_submission_outcome_unknown. Only when neither exists, because the failure happened before the attempt was recorded (for example order_submission_record_failed) or the CLOB answered order_rejected (or, on POST /v1/orders/market, order_market_not_filled carrying rejectionCode), does reusing the key start a new submission."
                 }
               }
             }
           },
           "502": {
-            "description": "An upstream limit-order submission failure occurred. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is order_fee_lookup_failed, privy_validation_failed, privy_not_found, privy_conflict, privy_authentication_failed, privy_permission_denied, privy_rate_limited, privy_upstream_error, privy_transport_failed, privy_unclassified_failure, privy_wallet_response_invalid, deposit_wallet_not_deployed, secure_client_signing_failed, secure_client_transport_failed, secure_client_upstream_rejected, secure_client_rate_limited, secure_client_transaction_failed, secure_client_transaction_unconfirmed, secure_client_failed, order_builder_attribution_invalid, order_rejected, order_response_amount_invalid, order_post_signing_failed, order_post_transport_failed, order_post_upstream_rejected, order_post_rate_limited, order_post_transaction_failed, order_post_transaction_unconfirmed, or order_post_failed. When error.details has orderId, that orderId reached and was accepted by the CLOB. Failures without an orderId may still have reached the CLOB: every order_post_* reason and order_rejected. Always inspect both GET /v1/orders and GET /v1/orders/fills before retrying with a new Idempotency-Key, because a marketable order fills immediately and never appears in the open-order list; an absent stored row is not evidence that no order was placed. The service records a submission attempt for the Idempotency-Key immediately before it sends the signed order to the CLOB, and removes it only after the order is stored or the CLOB answers order_rejected (on POST /v1/orders/market also order_market_not_filled carrying rejectionCode). While an attempt or a stored order exists for the key, reusing the key sends no order: with the same order fields, a stored order is replayed with 200, an attempt recorded as accepted is stored and replayed with 200 (or fails again with order_persist_failed_after_accept), and any other attempt, including an accepted order whose acceptance could not be recorded, answers 409 with error.details.reason order_submission_outcome_unknown. Only when neither exists, because the failure happened before the attempt was recorded (for example order_submission_record_failed) or the CLOB answered order_rejected (or, on POST /v1/orders/market, order_market_not_filled carrying rejectionCode), does reusing the key start a new submission.",
+            "description": "An upstream limit-order submission failure occurred. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is order_fee_lookup_failed, privy_validation_failed, privy_not_found, privy_conflict, privy_authentication_failed, privy_permission_denied, privy_rate_limited, privy_upstream_error, privy_transport_failed, privy_unclassified_failure, privy_wallet_response_invalid, deposit_wallet_not_deployed, secure_client_signing_failed, secure_client_transport_failed, secure_client_upstream_rejected, secure_client_rate_limited, secure_client_transaction_failed, secure_client_transaction_unconfirmed, secure_client_failed, order_builder_attribution_invalid, order_rejected, order_response_amount_invalid, order_post_signing_failed, order_post_transport_failed, order_post_upstream_rejected, order_post_rate_limited, order_post_transaction_failed, order_post_transaction_unconfirmed, or order_post_failed. When error.details has orderId, that orderId reached and was accepted by the CLOB. Failures without an orderId may still have reached the CLOB: every order_post_* reason and order_rejected. Always inspect both GET /v1/orders and GET /v1/orders/fills before retrying with a new Idempotency-Key, because a marketable order fills immediately and never appears in the open-order list; an absent stored row is not evidence that no order was placed. The service records a submission attempt for the Idempotency-Key immediately before it sends the signed order to the CLOB, and removes it only after the order is stored or the CLOB answers order_rejected (on POST /v1/orders/market also order_market_not_filled carrying rejectionCode). On POST /v1/orders/market, order_market_amount_below_minimum also leaves no attempt for the key: either the service refused before recording or sending anything, or the CLOB refused the order with its 400 minimum-size answer and the attempt was removed. While an attempt or a stored order exists for the key, reusing the key sends no order: with the same order fields, a stored order is replayed with 200, an attempt recorded as accepted is stored and replayed with 200 (or fails again with order_persist_failed_after_accept), and any other attempt, including an accepted order whose acceptance could not be recorded, answers 409 with error.details.reason order_submission_outcome_unknown. Only when neither exists, because the failure happened before the attempt was recorded (for example order_submission_record_failed) or the CLOB answered order_rejected (or, on POST /v1/orders/market, order_market_not_filled carrying rejectionCode), does reusing the key start a new submission.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10541,7 +11240,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "An upstream limit-order submission failure occurred. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is order_fee_lookup_failed, privy_validation_failed, privy_not_found, privy_conflict, privy_authentication_failed, privy_permission_denied, privy_rate_limited, privy_upstream_error, privy_transport_failed, privy_unclassified_failure, privy_wallet_response_invalid, deposit_wallet_not_deployed, secure_client_signing_failed, secure_client_transport_failed, secure_client_upstream_rejected, secure_client_rate_limited, secure_client_transaction_failed, secure_client_transaction_unconfirmed, secure_client_failed, order_builder_attribution_invalid, order_rejected, order_response_amount_invalid, order_post_signing_failed, order_post_transport_failed, order_post_upstream_rejected, order_post_rate_limited, order_post_transaction_failed, order_post_transaction_unconfirmed, or order_post_failed. When error.details has orderId, that orderId reached and was accepted by the CLOB. Failures without an orderId may still have reached the CLOB: every order_post_* reason and order_rejected. Always inspect both GET /v1/orders and GET /v1/orders/fills before retrying with a new Idempotency-Key, because a marketable order fills immediately and never appears in the open-order list; an absent stored row is not evidence that no order was placed. The service records a submission attempt for the Idempotency-Key immediately before it sends the signed order to the CLOB, and removes it only after the order is stored or the CLOB answers order_rejected (on POST /v1/orders/market also order_market_not_filled carrying rejectionCode). While an attempt or a stored order exists for the key, reusing the key sends no order: with the same order fields, a stored order is replayed with 200, an attempt recorded as accepted is stored and replayed with 200 (or fails again with order_persist_failed_after_accept), and any other attempt, including an accepted order whose acceptance could not be recorded, answers 409 with error.details.reason order_submission_outcome_unknown. Only when neither exists, because the failure happened before the attempt was recorded (for example order_submission_record_failed) or the CLOB answered order_rejected (or, on POST /v1/orders/market, order_market_not_filled carrying rejectionCode), does reusing the key start a new submission."
+                  "description": "An upstream limit-order submission failure occurred. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is order_fee_lookup_failed, privy_validation_failed, privy_not_found, privy_conflict, privy_authentication_failed, privy_permission_denied, privy_rate_limited, privy_upstream_error, privy_transport_failed, privy_unclassified_failure, privy_wallet_response_invalid, deposit_wallet_not_deployed, secure_client_signing_failed, secure_client_transport_failed, secure_client_upstream_rejected, secure_client_rate_limited, secure_client_transaction_failed, secure_client_transaction_unconfirmed, secure_client_failed, order_builder_attribution_invalid, order_rejected, order_response_amount_invalid, order_post_signing_failed, order_post_transport_failed, order_post_upstream_rejected, order_post_rate_limited, order_post_transaction_failed, order_post_transaction_unconfirmed, or order_post_failed. When error.details has orderId, that orderId reached and was accepted by the CLOB. Failures without an orderId may still have reached the CLOB: every order_post_* reason and order_rejected. Always inspect both GET /v1/orders and GET /v1/orders/fills before retrying with a new Idempotency-Key, because a marketable order fills immediately and never appears in the open-order list; an absent stored row is not evidence that no order was placed. The service records a submission attempt for the Idempotency-Key immediately before it sends the signed order to the CLOB, and removes it only after the order is stored or the CLOB answers order_rejected (on POST /v1/orders/market also order_market_not_filled carrying rejectionCode). On POST /v1/orders/market, order_market_amount_below_minimum also leaves no attempt for the key: either the service refused before recording or sending anything, or the CLOB refused the order with its 400 minimum-size answer and the attempt was removed. While an attempt or a stored order exists for the key, reusing the key sends no order: with the same order fields, a stored order is replayed with 200, an attempt recorded as accepted is stored and replayed with 200 (or fails again with order_persist_failed_after_accept), and any other attempt, including an accepted order whose acceptance could not be recorded, answers 409 with error.details.reason order_submission_outcome_unknown. Only when neither exists, because the failure happened before the attempt was recorded (for example order_submission_record_failed) or the CLOB answered order_rejected (or, on POST /v1/orders/market, order_market_not_filled carrying rejectionCode), does reusing the key start a new submission."
                 }
               }
             }
@@ -11385,7 +12084,7 @@
             }
           },
           "400": {
-            "description": "The market-order request is invalid. error.code is VALIDATION_FAILED and error.details.reason is order_idempotency_key_missing, order_idempotency_key_invalid, order_idempotency_key_conflict, order_idempotency_duplicate, order_market_body_invalid, order_market_field_side_mismatch, order_market_order_type_missing, order_market_insufficient_liquidity, order_market_create_user_input_invalid, order_market_price_invalid, order_market_price_out_of_range, order_market_size_invalid, or order_market_size_out_of_range; Fastify validation failures omit error.details. order_idempotency_duplicate and order_idempotency_key_conflict can occur after CLOB submission and a persistence race, so inspect GET /v1/orders and GET /v1/orders/fills before retrying. The Idempotency-Key header is trimmed before use, and the trimmed value must be 1 to 200 characters and must not contain a comma; the declared schema states only minLength 1, so an over-long value or one containing a comma is rejected as order_idempotency_key_invalid rather than by schema validation, and an absent or blank value is order_idempotency_key_missing. Because the trimmed value is what is stored and compared, two keys that differ only in surrounding whitespace are the same key.",
+            "description": "The market-order request is invalid. error.code is VALIDATION_FAILED and error.details.reason is order_idempotency_key_missing, order_idempotency_key_invalid, order_idempotency_key_conflict, order_idempotency_duplicate, order_market_body_invalid, order_market_field_side_mismatch, order_market_order_type_missing, order_market_insufficient_liquidity, order_market_amount_below_minimum, order_market_create_user_input_invalid, order_market_price_invalid, order_market_price_out_of_range, order_market_size_invalid, or order_market_size_out_of_range; Fastify validation failures omit error.details. order_idempotency_duplicate and order_idempotency_key_conflict can occur after CLOB submission and a persistence race, so inspect GET /v1/orders and GET /v1/orders/fills before retrying. The Idempotency-Key header is trimmed before use, and the trimmed value must be 1 to 200 characters and must not contain a comma; the declared schema states only minLength 1, so an over-long value or one containing a comma is rejected as order_idempotency_key_invalid rather than by schema validation, and an absent or blank value is order_idempotency_key_missing. Because the trimmed value is what is stored and compared, two keys that differ only in surrounding whitespace are the same key. order_market_amount_below_minimum means the signed amount of this market BUY, after the CLOB fees the SDK takes out of maxSpend, is below the CLOB's $1 minimum for a marketable BUY. error.details.minimumAmount is a USDC decimal string with exactly two decimals: an amount, sent with maxSpend equal to it at this maxPrice, that this service computes to reach the minimum with one cent of margin. It depends on the market's fee schedule, the builder's taker fee and maxPrice. error.details.submissionState is not_placed; nothing was filled. When the CLOB itself refused it, error.details.upstreamStatus is 400 and upstreamMessage is its sentence. Send again with amount and maxSpend at least minimumAmount; reusing the Idempotency-Key starts a new submission.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11433,7 +12132,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "The market-order request is invalid. error.code is VALIDATION_FAILED and error.details.reason is order_idempotency_key_missing, order_idempotency_key_invalid, order_idempotency_key_conflict, order_idempotency_duplicate, order_market_body_invalid, order_market_field_side_mismatch, order_market_order_type_missing, order_market_insufficient_liquidity, order_market_create_user_input_invalid, order_market_price_invalid, order_market_price_out_of_range, order_market_size_invalid, or order_market_size_out_of_range; Fastify validation failures omit error.details. order_idempotency_duplicate and order_idempotency_key_conflict can occur after CLOB submission and a persistence race, so inspect GET /v1/orders and GET /v1/orders/fills before retrying. The Idempotency-Key header is trimmed before use, and the trimmed value must be 1 to 200 characters and must not contain a comma; the declared schema states only minLength 1, so an over-long value or one containing a comma is rejected as order_idempotency_key_invalid rather than by schema validation, and an absent or blank value is order_idempotency_key_missing. Because the trimmed value is what is stored and compared, two keys that differ only in surrounding whitespace are the same key."
+                  "description": "The market-order request is invalid. error.code is VALIDATION_FAILED and error.details.reason is order_idempotency_key_missing, order_idempotency_key_invalid, order_idempotency_key_conflict, order_idempotency_duplicate, order_market_body_invalid, order_market_field_side_mismatch, order_market_order_type_missing, order_market_insufficient_liquidity, order_market_amount_below_minimum, order_market_create_user_input_invalid, order_market_price_invalid, order_market_price_out_of_range, order_market_size_invalid, or order_market_size_out_of_range; Fastify validation failures omit error.details. order_idempotency_duplicate and order_idempotency_key_conflict can occur after CLOB submission and a persistence race, so inspect GET /v1/orders and GET /v1/orders/fills before retrying. The Idempotency-Key header is trimmed before use, and the trimmed value must be 1 to 200 characters and must not contain a comma; the declared schema states only minLength 1, so an over-long value or one containing a comma is rejected as order_idempotency_key_invalid rather than by schema validation, and an absent or blank value is order_idempotency_key_missing. Because the trimmed value is what is stored and compared, two keys that differ only in surrounding whitespace are the same key. order_market_amount_below_minimum means the signed amount of this market BUY, after the CLOB fees the SDK takes out of maxSpend, is below the CLOB's $1 minimum for a marketable BUY. error.details.minimumAmount is a USDC decimal string with exactly two decimals: an amount, sent with maxSpend equal to it at this maxPrice, that this service computes to reach the minimum with one cent of margin. It depends on the market's fee schedule, the builder's taker fee and maxPrice. error.details.submissionState is not_placed; nothing was filled. When the CLOB itself refused it, error.details.upstreamStatus is 400 and upstreamMessage is its sentence. Send again with amount and maxSpend at least minimumAmount; reusing the Idempotency-Key starts a new submission."
                 }
               }
             }
@@ -11709,7 +12408,7 @@
             }
           },
           "500": {
-            "description": "An internal market-order submission failure occurred. error.code is INTERNAL and error.details.reason is order_storage_unavailable, order_privy_unavailable, order_fee_repository_unavailable, order_fee_rate_invalid, order_builder_code_missing, order_builder_code_invalid, order_wallet_columns_partial, order_wallet_address_invalid, order_wallet_type_invalid, builder_api_credentials_missing, secure_client_unexpected_response, secure_client_user_input_invalid, order_market_create_unexpected_response, order_market_post_unexpected_response, order_market_post_user_input_invalid, order_market_create_unclassified, order_market_post_unclassified, order_row_amount_invalid, order_submission_record_failed, order_persist_failed_after_accept, or omitted for uncaught failures. order_row_amount_invalid can arise while replaying a stored row before submission or while comparing a concurrent insert after submission. When error.details has orderId, that orderId reached and was accepted by the CLOB. Failures without an orderId may still have reached the CLOB: order_market_post_unexpected_response, order_market_post_user_input_invalid, order_market_post_unclassified, order_row_amount_invalid raised while comparing a concurrent insert, and any response whose error.details is omitted. Always inspect both GET /v1/orders and GET /v1/orders/fills before retrying with a new Idempotency-Key, because a marketable order fills immediately and never appears in the open-order list; an absent stored row is not evidence that no order was placed. The service records a submission attempt for the Idempotency-Key immediately before it sends the signed order to the CLOB, and removes it only after the order is stored or the CLOB answers order_rejected (on POST /v1/orders/market also order_market_not_filled carrying rejectionCode). While an attempt or a stored order exists for the key, reusing the key sends no order: with the same order fields, a stored order is replayed with 200, an attempt recorded as accepted is stored and replayed with 200 (or fails again with order_persist_failed_after_accept), and any other attempt, including an accepted order whose acceptance could not be recorded, answers 409 with error.details.reason order_submission_outcome_unknown. Only when neither exists, because the failure happened before the attempt was recorded (for example order_submission_record_failed) or the CLOB answered order_rejected (or, on POST /v1/orders/market, order_market_not_filled carrying rejectionCode), does reusing the key start a new submission.",
+            "description": "An internal market-order submission failure occurred. error.code is INTERNAL and error.details.reason is order_storage_unavailable, order_privy_unavailable, order_fee_repository_unavailable, order_fee_rate_invalid, order_builder_code_missing, order_builder_code_invalid, order_wallet_columns_partial, order_wallet_address_invalid, order_wallet_type_invalid, builder_api_credentials_missing, secure_client_unexpected_response, secure_client_user_input_invalid, order_market_create_unexpected_response, order_market_post_unexpected_response, order_market_post_user_input_invalid, order_market_create_unclassified, order_market_post_unclassified, order_row_amount_invalid, order_submission_record_failed, order_persist_failed_after_accept, or omitted for uncaught failures. order_row_amount_invalid can arise while replaying a stored row before submission or while comparing a concurrent insert after submission. When error.details has orderId, that orderId reached and was accepted by the CLOB. Failures without an orderId may still have reached the CLOB: order_market_post_unexpected_response, order_market_post_user_input_invalid, order_market_post_unclassified, order_row_amount_invalid raised while comparing a concurrent insert, and any response whose error.details is omitted. Always inspect both GET /v1/orders and GET /v1/orders/fills before retrying with a new Idempotency-Key, because a marketable order fills immediately and never appears in the open-order list; an absent stored row is not evidence that no order was placed. The service records a submission attempt for the Idempotency-Key immediately before it sends the signed order to the CLOB, and removes it only after the order is stored or the CLOB answers order_rejected (on POST /v1/orders/market also order_market_not_filled carrying rejectionCode). On POST /v1/orders/market, order_market_amount_below_minimum also leaves no attempt for the key: either the service refused before recording or sending anything, or the CLOB refused the order with its 400 minimum-size answer and the attempt was removed. While an attempt or a stored order exists for the key, reusing the key sends no order: with the same order fields, a stored order is replayed with 200, an attempt recorded as accepted is stored and replayed with 200 (or fails again with order_persist_failed_after_accept), and any other attempt, including an accepted order whose acceptance could not be recorded, answers 409 with error.details.reason order_submission_outcome_unknown. Only when neither exists, because the failure happened before the attempt was recorded (for example order_submission_record_failed) or the CLOB answered order_rejected (or, on POST /v1/orders/market, order_market_not_filled carrying rejectionCode), does reusing the key start a new submission.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11757,13 +12456,13 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "An internal market-order submission failure occurred. error.code is INTERNAL and error.details.reason is order_storage_unavailable, order_privy_unavailable, order_fee_repository_unavailable, order_fee_rate_invalid, order_builder_code_missing, order_builder_code_invalid, order_wallet_columns_partial, order_wallet_address_invalid, order_wallet_type_invalid, builder_api_credentials_missing, secure_client_unexpected_response, secure_client_user_input_invalid, order_market_create_unexpected_response, order_market_post_unexpected_response, order_market_post_user_input_invalid, order_market_create_unclassified, order_market_post_unclassified, order_row_amount_invalid, order_submission_record_failed, order_persist_failed_after_accept, or omitted for uncaught failures. order_row_amount_invalid can arise while replaying a stored row before submission or while comparing a concurrent insert after submission. When error.details has orderId, that orderId reached and was accepted by the CLOB. Failures without an orderId may still have reached the CLOB: order_market_post_unexpected_response, order_market_post_user_input_invalid, order_market_post_unclassified, order_row_amount_invalid raised while comparing a concurrent insert, and any response whose error.details is omitted. Always inspect both GET /v1/orders and GET /v1/orders/fills before retrying with a new Idempotency-Key, because a marketable order fills immediately and never appears in the open-order list; an absent stored row is not evidence that no order was placed. The service records a submission attempt for the Idempotency-Key immediately before it sends the signed order to the CLOB, and removes it only after the order is stored or the CLOB answers order_rejected (on POST /v1/orders/market also order_market_not_filled carrying rejectionCode). While an attempt or a stored order exists for the key, reusing the key sends no order: with the same order fields, a stored order is replayed with 200, an attempt recorded as accepted is stored and replayed with 200 (or fails again with order_persist_failed_after_accept), and any other attempt, including an accepted order whose acceptance could not be recorded, answers 409 with error.details.reason order_submission_outcome_unknown. Only when neither exists, because the failure happened before the attempt was recorded (for example order_submission_record_failed) or the CLOB answered order_rejected (or, on POST /v1/orders/market, order_market_not_filled carrying rejectionCode), does reusing the key start a new submission."
+                  "description": "An internal market-order submission failure occurred. error.code is INTERNAL and error.details.reason is order_storage_unavailable, order_privy_unavailable, order_fee_repository_unavailable, order_fee_rate_invalid, order_builder_code_missing, order_builder_code_invalid, order_wallet_columns_partial, order_wallet_address_invalid, order_wallet_type_invalid, builder_api_credentials_missing, secure_client_unexpected_response, secure_client_user_input_invalid, order_market_create_unexpected_response, order_market_post_unexpected_response, order_market_post_user_input_invalid, order_market_create_unclassified, order_market_post_unclassified, order_row_amount_invalid, order_submission_record_failed, order_persist_failed_after_accept, or omitted for uncaught failures. order_row_amount_invalid can arise while replaying a stored row before submission or while comparing a concurrent insert after submission. When error.details has orderId, that orderId reached and was accepted by the CLOB. Failures without an orderId may still have reached the CLOB: order_market_post_unexpected_response, order_market_post_user_input_invalid, order_market_post_unclassified, order_row_amount_invalid raised while comparing a concurrent insert, and any response whose error.details is omitted. Always inspect both GET /v1/orders and GET /v1/orders/fills before retrying with a new Idempotency-Key, because a marketable order fills immediately and never appears in the open-order list; an absent stored row is not evidence that no order was placed. The service records a submission attempt for the Idempotency-Key immediately before it sends the signed order to the CLOB, and removes it only after the order is stored or the CLOB answers order_rejected (on POST /v1/orders/market also order_market_not_filled carrying rejectionCode). On POST /v1/orders/market, order_market_amount_below_minimum also leaves no attempt for the key: either the service refused before recording or sending anything, or the CLOB refused the order with its 400 minimum-size answer and the attempt was removed. While an attempt or a stored order exists for the key, reusing the key sends no order: with the same order fields, a stored order is replayed with 200, an attempt recorded as accepted is stored and replayed with 200 (or fails again with order_persist_failed_after_accept), and any other attempt, including an accepted order whose acceptance could not be recorded, answers 409 with error.details.reason order_submission_outcome_unknown. Only when neither exists, because the failure happened before the attempt was recorded (for example order_submission_record_failed) or the CLOB answered order_rejected (or, on POST /v1/orders/market, order_market_not_filled carrying rejectionCode), does reusing the key start a new submission."
                 }
               }
             }
           },
           "502": {
-            "description": "An upstream market-order submission failure occurred. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is order_fee_lookup_failed, privy_validation_failed, privy_not_found, privy_conflict, privy_authentication_failed, privy_permission_denied, privy_rate_limited, privy_upstream_error, privy_transport_failed, privy_unclassified_failure, privy_wallet_response_invalid, deposit_wallet_not_deployed, secure_client_signing_failed, secure_client_transport_failed, secure_client_upstream_rejected, secure_client_rate_limited, secure_client_transaction_failed, secure_client_transaction_unconfirmed, secure_client_failed, order_builder_attribution_invalid, order_rejected, order_response_amount_invalid, order_market_create_signing_failed, order_market_create_transport_failed, order_market_create_upstream_rejected, order_market_create_rate_limited, order_market_create_transaction_failed, order_market_create_transaction_unconfirmed, order_market_create_failed, order_market_post_signing_failed, order_market_post_transport_failed, order_market_post_upstream_rejected, order_market_post_rate_limited, order_market_post_transaction_failed, order_market_post_transaction_unconfirmed, or order_market_post_failed. When error.details has orderId, that orderId reached and was accepted by the CLOB. Failures without an orderId may still have reached the CLOB: every order_market_post_* reason and order_rejected. Always inspect both GET /v1/orders and GET /v1/orders/fills before retrying with a new Idempotency-Key, because a marketable order fills immediately and never appears in the open-order list; an absent stored row is not evidence that no order was placed. The service records a submission attempt for the Idempotency-Key immediately before it sends the signed order to the CLOB, and removes it only after the order is stored or the CLOB answers order_rejected (on POST /v1/orders/market also order_market_not_filled carrying rejectionCode). While an attempt or a stored order exists for the key, reusing the key sends no order: with the same order fields, a stored order is replayed with 200, an attempt recorded as accepted is stored and replayed with 200 (or fails again with order_persist_failed_after_accept), and any other attempt, including an accepted order whose acceptance could not be recorded, answers 409 with error.details.reason order_submission_outcome_unknown. Only when neither exists, because the failure happened before the attempt was recorded (for example order_submission_record_failed) or the CLOB answered order_rejected (or, on POST /v1/orders/market, order_market_not_filled carrying rejectionCode), does reusing the key start a new submission.",
+            "description": "An upstream market-order submission failure occurred. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is order_fee_lookup_failed, privy_validation_failed, privy_not_found, privy_conflict, privy_authentication_failed, privy_permission_denied, privy_rate_limited, privy_upstream_error, privy_transport_failed, privy_unclassified_failure, privy_wallet_response_invalid, deposit_wallet_not_deployed, secure_client_signing_failed, secure_client_transport_failed, secure_client_upstream_rejected, secure_client_rate_limited, secure_client_transaction_failed, secure_client_transaction_unconfirmed, secure_client_failed, order_builder_attribution_invalid, order_rejected, order_response_amount_invalid, order_market_create_signing_failed, order_market_create_transport_failed, order_market_create_upstream_rejected, order_market_create_rate_limited, order_market_create_transaction_failed, order_market_create_transaction_unconfirmed, order_market_create_failed, order_market_post_signing_failed, order_market_post_transport_failed, order_market_post_upstream_rejected, order_market_post_rate_limited, order_market_post_transaction_failed, order_market_post_transaction_unconfirmed, or order_market_post_failed. When error.details has orderId, that orderId reached and was accepted by the CLOB. Failures without an orderId may still have reached the CLOB: every order_market_post_* reason and order_rejected. Always inspect both GET /v1/orders and GET /v1/orders/fills before retrying with a new Idempotency-Key, because a marketable order fills immediately and never appears in the open-order list; an absent stored row is not evidence that no order was placed. The service records a submission attempt for the Idempotency-Key immediately before it sends the signed order to the CLOB, and removes it only after the order is stored or the CLOB answers order_rejected (on POST /v1/orders/market also order_market_not_filled carrying rejectionCode). On POST /v1/orders/market, order_market_amount_below_minimum also leaves no attempt for the key: either the service refused before recording or sending anything, or the CLOB refused the order with its 400 minimum-size answer and the attempt was removed. While an attempt or a stored order exists for the key, reusing the key sends no order: with the same order fields, a stored order is replayed with 200, an attempt recorded as accepted is stored and replayed with 200 (or fails again with order_persist_failed_after_accept), and any other attempt, including an accepted order whose acceptance could not be recorded, answers 409 with error.details.reason order_submission_outcome_unknown. Only when neither exists, because the failure happened before the attempt was recorded (for example order_submission_record_failed) or the CLOB answered order_rejected (or, on POST /v1/orders/market, order_market_not_filled carrying rejectionCode), does reusing the key start a new submission.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11811,7 +12510,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "An upstream market-order submission failure occurred. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is order_fee_lookup_failed, privy_validation_failed, privy_not_found, privy_conflict, privy_authentication_failed, privy_permission_denied, privy_rate_limited, privy_upstream_error, privy_transport_failed, privy_unclassified_failure, privy_wallet_response_invalid, deposit_wallet_not_deployed, secure_client_signing_failed, secure_client_transport_failed, secure_client_upstream_rejected, secure_client_rate_limited, secure_client_transaction_failed, secure_client_transaction_unconfirmed, secure_client_failed, order_builder_attribution_invalid, order_rejected, order_response_amount_invalid, order_market_create_signing_failed, order_market_create_transport_failed, order_market_create_upstream_rejected, order_market_create_rate_limited, order_market_create_transaction_failed, order_market_create_transaction_unconfirmed, order_market_create_failed, order_market_post_signing_failed, order_market_post_transport_failed, order_market_post_upstream_rejected, order_market_post_rate_limited, order_market_post_transaction_failed, order_market_post_transaction_unconfirmed, or order_market_post_failed. When error.details has orderId, that orderId reached and was accepted by the CLOB. Failures without an orderId may still have reached the CLOB: every order_market_post_* reason and order_rejected. Always inspect both GET /v1/orders and GET /v1/orders/fills before retrying with a new Idempotency-Key, because a marketable order fills immediately and never appears in the open-order list; an absent stored row is not evidence that no order was placed. The service records a submission attempt for the Idempotency-Key immediately before it sends the signed order to the CLOB, and removes it only after the order is stored or the CLOB answers order_rejected (on POST /v1/orders/market also order_market_not_filled carrying rejectionCode). While an attempt or a stored order exists for the key, reusing the key sends no order: with the same order fields, a stored order is replayed with 200, an attempt recorded as accepted is stored and replayed with 200 (or fails again with order_persist_failed_after_accept), and any other attempt, including an accepted order whose acceptance could not be recorded, answers 409 with error.details.reason order_submission_outcome_unknown. Only when neither exists, because the failure happened before the attempt was recorded (for example order_submission_record_failed) or the CLOB answered order_rejected (or, on POST /v1/orders/market, order_market_not_filled carrying rejectionCode), does reusing the key start a new submission."
+                  "description": "An upstream market-order submission failure occurred. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is order_fee_lookup_failed, privy_validation_failed, privy_not_found, privy_conflict, privy_authentication_failed, privy_permission_denied, privy_rate_limited, privy_upstream_error, privy_transport_failed, privy_unclassified_failure, privy_wallet_response_invalid, deposit_wallet_not_deployed, secure_client_signing_failed, secure_client_transport_failed, secure_client_upstream_rejected, secure_client_rate_limited, secure_client_transaction_failed, secure_client_transaction_unconfirmed, secure_client_failed, order_builder_attribution_invalid, order_rejected, order_response_amount_invalid, order_market_create_signing_failed, order_market_create_transport_failed, order_market_create_upstream_rejected, order_market_create_rate_limited, order_market_create_transaction_failed, order_market_create_transaction_unconfirmed, order_market_create_failed, order_market_post_signing_failed, order_market_post_transport_failed, order_market_post_upstream_rejected, order_market_post_rate_limited, order_market_post_transaction_failed, order_market_post_transaction_unconfirmed, or order_market_post_failed. When error.details has orderId, that orderId reached and was accepted by the CLOB. Failures without an orderId may still have reached the CLOB: every order_market_post_* reason and order_rejected. Always inspect both GET /v1/orders and GET /v1/orders/fills before retrying with a new Idempotency-Key, because a marketable order fills immediately and never appears in the open-order list; an absent stored row is not evidence that no order was placed. The service records a submission attempt for the Idempotency-Key immediately before it sends the signed order to the CLOB, and removes it only after the order is stored or the CLOB answers order_rejected (on POST /v1/orders/market also order_market_not_filled carrying rejectionCode). On POST /v1/orders/market, order_market_amount_below_minimum also leaves no attempt for the key: either the service refused before recording or sending anything, or the CLOB refused the order with its 400 minimum-size answer and the attempt was removed. While an attempt or a stored order exists for the key, reusing the key sends no order: with the same order fields, a stored order is replayed with 200, an attempt recorded as accepted is stored and replayed with 200 (or fails again with order_persist_failed_after_accept), and any other attempt, including an accepted order whose acceptance could not be recorded, answers 409 with error.details.reason order_submission_outcome_unknown. Only when neither exists, because the failure happened before the attempt was recorded (for example order_submission_record_failed) or the CLOB answered order_rejected (or, on POST /v1/orders/market, order_market_not_filled carrying rejectionCode), does reusing the key start a new submission."
                 }
               }
             }

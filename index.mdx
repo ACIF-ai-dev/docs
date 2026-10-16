@@ -707,9 +707,49 @@ curl -X POST https://api.tobuilder.app/v1/orders/market \
 
 When the market kills a FOK or FAK order without a fill, the answer is **409** with `error.details.reason` set to `order_market_not_filled`, `error.details.kind` set to `fok_killed` or `fak_no_match`, and `error.details.submissionState` set to `not_placed`: nothing was filled and nothing rests on the book. To try again, send a new order with a new idempotency key.
 
+A market BUY must reach the market's $1 minimum after the fees taken out of `maxSpend`. When it would not, the answer is **400** with `error.details.reason` set to `order_market_amount_below_minimum`, `error.details.minimumAmount` set to an `amount` that reaches it with one cent of margin — a decimal string in pUSD with two decimals, for an order sent with `maxSpend` equal to `amount` at the same `maxPrice` (it depends on the market's fees and on `maxPrice`) — and `error.details.submissionState` set to `not_placed`: nothing was filled. Send again with `amount` and `maxSpend` at least `minimumAmount`; the same idempotency key may be reused.
+
 `POST /v1/orders` and `POST /v1/orders/market` **share one idempotency namespace**, keyed on your account and the key alone — the route is not part of the key. Sending a key on one route that you already used on the other replays that stored order when the compared fields match, and fails with `order_idempotency_key_conflict` when they do not. In neither case does the order you just wrote reach the market. Never reuse a key across the two routes; the two examples above deliberately use different values.
 
 Prices, sizes, amounts, and `tokenId` are strings in both directions, and they stay strings. A token id can be dozens of decimal digits; converting it to a `number` loses precision, just as it does for real-money values.
+
+## Warm up before an order
+
+`POST /v1/orders/prewarm` tells us a user is about to order a token — call it when the user opens the market's detail page — so their next market order can skip the public market reads and the build of their trading client. It takes a builder API key with `trade` scope and the body `{ "userId", "marketId", "tokenId" }`, and it is **off unless the operator enables it**.
+
+```bash
+curl -X POST https://api.tobuilder.app/v1/orders/prewarm \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"9f1d2c3b-4a5e-4f60-9b7c-8d0e1f2a3b4c","marketId":"0x9a1c-example","tokenId":"71453-example"}'
+```
+
+It always answers **204** with no body, whatever happened: for an unknown user, a user of another account, a token outside the market, a limit or a failure the status, headers and body are the same, so do not read anything into it — a 400 means only that the body was malformed. The time to answer is not constant (one of your own users with a wallet takes a little longer to look up), so it reveals nothing beyond your own account's users. No market data is fetched upstream and no trading client is built for a user without a stored wallet. It never signs or submits an order, never creates a wallet, and opens no event stream. **Each build of a trading client spends one Privy signature from the monthly quota your order signing also uses**, so call it once per detail-page open, never on a timer or for a whole list; builds are also capped per minute. Each call counts against your per-minute and hourly request limits, which order submission shares.
+
+## Follow orders as they fill
+
+`GET /v1/orders/events` is a server-sent event stream of your users' fills and order changes, for a builder API key with `trade` scope. It is **off unless the operator enables it** — until then it answers 404 with `error.details.reason` `order_events_disabled`, and `GET /v1/orders/fills` and `GET /v1/orders` stay the way to follow an order. Add `?userId=` to receive one user's events only.
+
+```bash
+curl -N https://api.tobuilder.app/v1/orders/events \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
+
+```text
+: ok
+
+event: ownFill
+data: {"userId":"9f1d2c3b-4a5e-4f60-9b7c-8d0e1f2a3b4c","fillId":"28f1-example","orderId":"0x77b1-example","marketId":"0x9a1c-example","tokenId":"71453-example","side":"BUY","traderSide":"TAKER","price":"0.55","size":"45.43","status":"MATCHED","ts":"1792123202275"}
+
+: hb
+```
+
+- `ownFill` — one of your user's fills. `price` is a decimal string between 0 and 1, `size` is a decimal string of **shares**, `ts` is epoch milliseconds as a string. `status` moves `MATCHED` → `MINED` → `CONFIRMED` (or `RETRYING` on the way, or `FAILED`, which reverses the fill); the same `fillId` comes again with each new status, and only `CONFIRMED` is settled.
+- `ownOrder` — an order changed: `event` is `PLACEMENT`, `UPDATE`, or `CANCELLATION`, with `status`, `originalSize` and `sizeMatched` (decimal share strings). After the stream reconnects to the market, open orders may arrive again as `UPDATE` with their current state.
+- `feedGap` — events for that user may have been missed: re-read `GET /v1/orders/fills` and `GET /v1/orders`.
+- `feedDown` — that user's events are no longer guaranteed: poll those two routes until their next order.
+
+Read the order's own answer first: the first `MATCHED` fill of a market order can happen before the stream has seen anything for that user. Events are not replayed and carry no event id, so after a disconnect reconnect and re-read the REST routes. A comment line `: hb` arrives every 15 seconds. Your key is checked again every 30 seconds; the stream ends when the key is revoked, your account is suspended, the key's scope no longer allows the route, or the check cannot be completed, and also when your client reads too slowly. Every connect counts against your per-minute and hourly request limits, so back off before reconnecting. Each API key may hold a limited number of concurrent streams (`order_events_stream_limit_exceeded`, 429).
 
 ## Deposit assets
 

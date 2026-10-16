@@ -86,8 +86,10 @@
             "pages": [
               "POST /v1/orders",
               "POST /v1/orders/market",
+              "POST /v1/orders/prewarm",
               "GET /v1/orders",
               "GET /v1/orders/fills",
+              "GET /v1/orders/events",
               "GET /v1/orders/{orderId}",
               "DELETE /v1/orders/{orderId}",
               "POST /v1/orders/cancel"

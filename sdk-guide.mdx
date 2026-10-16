@@ -5,7 +5,7 @@ description: "Using the tobuilder TypeScript SDK from your server"
 
 ## What this page is
 
-`@tobuilder/sdk` is the official **server-side** TypeScript client for the operations in the **API reference**. Its request and response types are generated from the same OpenAPI document this site publishes, so the shapes your editor completes are the shapes the API serves.
+`@tobuilder/sdk` is the official **server-side** TypeScript client for the operations in the **API reference**. Its request and response types are generated from the same OpenAPI document this site publishes, so the shapes your editor completes are the shapes the API serves. One operation is not wrapped: `GET /v1/orders/events` answers server-sent events rather than JSON, so read it with `fetch` and an event-stream parser (see **Follow orders as they fill** in the introduction).
 
 This page is a summary. The README shipped inside the package is the **canonical** reference for the client: it is versioned with the code, and where the two ever disagree, the README in the version you installed wins.
 
@@ -145,6 +145,8 @@ const marketOrder = await tb.orders.placeMarket(
 ```
 
 A FOK or FAK order the market killed without a fill rejects with `TobuilderApiError` whose `status` is `409` and `reason` is `order_market_not_filled`; `details.kind` says `fok_killed` or `fak_no_match`, and nothing was placed.
+
+A market BUY whose amount, after the fees taken out of `maxSpend`, stays below the market's $1 minimum rejects with `TobuilderApiError` whose `status` is `400` and `reason` is `order_market_amount_below_minimum`; `details.minimumAmount` is an `amount` (a pUSD decimal string with two decimals, sent with `maxSpend` equal to it at the same `maxPrice`) that reaches it with one cent of margin, and nothing was placed.
 
 The header name comes from the generated contract types rather than a string you typed: if the contract renames it, the call stops compiling instead of quietly losing idempotency.
 
