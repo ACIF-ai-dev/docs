@@ -73,11 +73,11 @@ Operations that act on behalf of one of your end users need a second credential,
 
 ## Rate limits
 
-Three budgets apply, and all of them are fixed windows rather than sliding ones. Stream ticket issuance (`POST /v1/stream/tickets`) is counted only against the third. Fifteen reads and the order prewarm, `GET /v1/markets`, `GET /v1/markets/{marketId}`, `GET /v1/markets/rounds`, `GET /v1/events/{eventId}`, `GET /v1/perps/account`, `GET /v1/perps/account/positions`, `GET /v1/perps/account/orders`, `GET /v1/perps/account/history`, `GET /v1/perps/account/pnl`, `GET /v1/perps/order-preview`, `GET /v1/perps/orders/{orderId}`, `GET /v1/perps/transfers`, `GET /v1/perps/transfers/{transferId}`, `GET /v1/withdrawals/verification`, `GET /v1/orders/events` and `POST /v1/orders/prewarm`, are counted only against the first. Every other request is counted against the first and, when the key is a `trade` key, the second; the two apply independently.
+Three budgets apply, and all of them are fixed windows rather than sliding ones. Stream ticket issuance (`POST /v1/stream/tickets`) is counted only against the third. Seventeen reads and the order prewarm, `GET /v1/markets`, `GET /v1/markets/{marketId}`, `GET /v1/markets/rounds`, `GET /v1/events/{eventId}`, `GET /v1/perps/account`, `GET /v1/perps/account/positions`, `GET /v1/perps/account/orders`, `GET /v1/perps/account/history`, `GET /v1/perps/account/pnl`, `GET /v1/perps/order-preview`, `GET /v1/perps/orders/{orderId}`, `GET /v1/perps/transfers`, `GET /v1/perps/transfers/{transferId}`, `GET /v1/withdrawals/verification`, `GET /v1/orders`, `GET /v1/orders/fills`, `GET /v1/orders/events` and `POST /v1/orders/prewarm`, are counted only against the first. Every other request is counted against the first and, when the key is a `trade` key, the second; the two apply independently.
 
 **Per key, per minute.** Every request except stream ticket issuance is counted against the key's own per-minute limit. `GET /v1/me` reports that limit as `rateLimitPerMinute`. Responses that reach the limiter carry `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset`.
 
-**Per account, per hour, for `trade` keys.** A `trade`-scope key is additionally limited to 600 requests per hour by default, counted per builder account in a window that resets at the top of the hour. Fifteen reads and the order prewarm are outside this budget: `GET /v1/markets`, `GET /v1/markets/{marketId}`, `GET /v1/markets/rounds`, `GET /v1/events/{eventId}`, `GET /v1/perps/account`, `GET /v1/perps/account/positions`, `GET /v1/perps/account/orders`, `GET /v1/perps/account/history`, `GET /v1/perps/account/pnl`, `GET /v1/perps/order-preview`, `GET /v1/perps/orders/{orderId}`, `GET /v1/perps/transfers`, `GET /v1/perps/transfers/{transferId}`, `GET /v1/withdrawals/verification`, `GET /v1/orders/events` and `POST /v1/orders/prewarm` are not counted against it and are not rejected when it is exhausted, so an account whose orders this budget is refusing can still read its market list; the per-minute limit still applies to all sixteen. Nothing else under `/v1/markets`, `/v1/events`, `/v1/perps`, `/v1/withdrawals` or `/v1/orders` is outside it — a market's order book and fee preview, the three price histories (a market's, an event's, and an event's underlying coin's), the Perps market-data reads, `POST /v1/perps/account`, `POST /v1/perps/transfers`, `POST /v1/perps/orders`, `POST /v1/withdrawals/verification/telegram-link` and every other `/v1/orders` operation, order submission included, count. `POST /v1/perps/positions/{instrumentId}/close` counts too but is never rejected by this budget: an end user can always leave a position. Every other request except stream ticket issuance counts against the budget — including the other GET requests, and including the requests that are themselves rejected with 429 by this budget. A tight retry loop therefore spends the budget it is waiting for. Exceeding it returns **429** with `error.details.reason` set to `trade_hourly_limit_exceeded`.
+**Per account, per hour, for `trade` keys.** A `trade`-scope key is additionally limited to 600 requests per hour by default, counted per builder account in a window that resets at the top of the hour. Seventeen reads and the order prewarm are outside this budget: `GET /v1/markets`, `GET /v1/markets/{marketId}`, `GET /v1/markets/rounds`, `GET /v1/events/{eventId}`, `GET /v1/perps/account`, `GET /v1/perps/account/positions`, `GET /v1/perps/account/orders`, `GET /v1/perps/account/history`, `GET /v1/perps/account/pnl`, `GET /v1/perps/order-preview`, `GET /v1/perps/orders/{orderId}`, `GET /v1/perps/transfers`, `GET /v1/perps/transfers/{transferId}`, `GET /v1/withdrawals/verification`, `GET /v1/orders`, `GET /v1/orders/fills`, `GET /v1/orders/events` and `POST /v1/orders/prewarm` are not counted against it and are not rejected when it is exhausted, so an account whose orders this budget is refusing can still read its market list, its open orders and its fills; the per-minute limit still applies to all eighteen. Nothing else under `/v1/markets`, `/v1/events`, `/v1/perps`, `/v1/withdrawals` or `/v1/orders` is outside it — a market's order book and fee preview, the three price histories (a market's, an event's, and an event's underlying coin's), the Perps market-data reads, `POST /v1/perps/account`, `POST /v1/perps/transfers`, `POST /v1/perps/orders`, `POST /v1/withdrawals/verification/telegram-link`, `GET /v1/orders/{orderId}` and every other `/v1/orders` operation, order submission included, count. `POST /v1/perps/positions/{instrumentId}/close` counts too but is never rejected by this budget: an end user can always leave a position. Every other request except stream ticket issuance counts against the budget — including the other GET requests, and including the requests that are themselves rejected with 429 by this budget. A tight retry loop therefore spends the budget it is waiting for. Exceeding it returns **429** with `error.details.reason` set to `trade_hourly_limit_exceeded`.
 
 **Stream tickets, per account, per minute.** `POST /v1/stream/tickets` has its own budget of 600 ticket requests per minute by default, shared by every key of the builder account, in a window that resets at the start of each minute. Issuing tickets therefore does not spend the per-minute or hourly budget your orders use. Every ticket request that reaches this budget counts — including requests rejected with 429 and requests the operation then rejects, such as an unknown `userId`. Its responses carry `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset` for this budget. Exceeding it returns **429** with `error.details.reason` set to `stream_ticket_limit_exceeded`.
 
@@ -786,6 +786,31 @@ A `logoId` longer than 100 characters is refused by the router with 414 before t
 
 The response includes an `ETag` and `Cache-Control: public, max-age=86400`; matching `If-None-Match` returns 304. The `v` query value changes when the image changes and has no other meaning. If your page has a CSP `img-src`, allow this API's origin there (for example `img-src 'self' https://api.tobuilder.app`).
 
+## Deposit transfers
+
+`GET /v1/deposit/transfers` lists an end user's deposits, newest first (default `limit` 20). To know whether a deposit was **credited**, read `stage`, never `status`: `status` is the Bridge's word, and a held transfer is listed `COMPLETED` without being credited.
+
+```json
+{
+  "id": "example-transfer-id-7f3a",
+  "status": "COMPLETED",
+  "stage": "credited",
+  "stageStep": null,
+  "detectedAt": "2026-10-20T10:15:02.118Z",
+  "creditedAt": "2026-10-20T10:15:47.004Z",
+  "creditedAmount": "25",
+  "creditedAsset": "USDT"
+}
+```
+
+(The other keys of an item are left out of this example.)
+
+- `stage` — `detected`, `processing`, `origin_confirmed`, `submitted` (the Bridge's four steps, `stageStep` 1–4); `credit_pending` (the Bridge says `COMPLETED`, not credited yet — not final and not a promise); `credited` (never undone); `not_credited` (sent before its address was issued — final); `failed`; `unknown`. More values may be added: read one you do not know as `unknown`.
+- `creditedAt`, `creditedAmount`, `creditedAsset` — `null` means **unknown**, not «not credited»: credits recorded before these fields existed, or by an older worker during a deploy, have them `null` next to `stage: "credited"`, and `creditedAmount` / `creditedAsset` can be `null` next to a `creditedAt`. `creditedAmount` is what was sent, in the source token, as a decimal string. `creditedAsset` is the Bridge's symbol text: render it as text, never as markup.
+- `detectedAt` is when this service first saw the transfer (its database clock); `creditedAt` is another clock — never compute a duration between them.
+
+If you show deposit progress, follow the **seven rules in the operation's description** in the API reference: they bound every progress state by a limit N measured against the response's `Date` header, keep one store of toasted ids, and ignore as a whole a response whose items lack `stage` (an older server during a deploy) — never toast a credit from `status`.
+
 ## When a call fails
 
 Every error response uses one envelope:
@@ -811,7 +836,7 @@ A suspended account answers **403** with `error.details.reason` set to `subbuild
 
 **Nothing in this API retries for you**, and the SDK does not retry either. Three reasons:
 
-1. **Rate budget.** The hourly budget counts GET requests — all but the fifteen reads named under **Rate limits** — and counts rejected requests, so an automatic retry spends the budget on the failure instead of on your next real call.
+1. **Rate budget.** The hourly budget counts GET requests — all but the seventeen reads named under **Rate limits** — and counts rejected requests, so an automatic retry spends the budget on the failure instead of on your next real call.
 2. **Money.** `POST /v1/orders` and `POST /v1/orders/market` submit real funds. After a 5xx you do not know whether the submission was stored, so a blind retry can duplicate an order; read `GET /v1/orders` and `GET /v1/orders/fills` back before sending anything again.
 3. **429 is not uniform.** Some 429 responses carry `Retry-After` and some do not, so any single backoff policy baked into a client would be wrong for half of them.
 

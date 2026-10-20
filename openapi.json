@@ -6313,6 +6313,7 @@
     "/v1/deposit/transfers": {
       "get": {
         "summary": "List deposit transfers",
+        "description": "Rules for a client that shows deposit progress to an end user. N is one bound for all rules (for example 10 minutes; it may differ per chainType — slow chains such as BTC take longer). Measure every age against the response's Date header, never the device clock; when the header or detectedAt is absent, count from your own first sight of the id on your own monotonic clock. Never read status for progress or credit: it is the Bridge's word, not a credit signal.\n1. A response whose items lack stage (an older server during a deploy) is ignored as a whole: keep every card's previous state, never treat it as a stage or a transition, and do not apply rule 5 to it; deadlines keep running from the last known detectedAt.\n2. On the first load, record every listed id as seen, with no toast except per rule 3. Afterwards, a credited toast fires on a change seen in this session from any earlier stage to credited — including from failed or unknown — or per rule 3. Keep an ended card tracked for N after its last stage change; its id stays in the seen record.\n3. An id first seen at credited: toast if creditedAt is within N, or, when creditedAt is null, if detectedAt is within N. Keep one store of toasted ids per user for at least N; check it before every credited toast (rules 2 and 3) and write it after; never toast an id that is in it.\n4. Every stage other than credited, not_credited and failed shows progress for at most N after detectedAt, with no exception for credit_pending or unknown. After N, show a neutral delayed state (not a failure, not a promise, not a spinner), stop the fast poll and keep the id tracked at a slow poll; a later credited still toasts per rule 2. not_credited ends the card; it never changes. failed ends it too, but if a later answer shows another stage, resume the card with its original deadline — never restart N.\n5. An id that leaves the list while the page was not full was folded into its source transfer: drop its card silently, pending or credited. If the page was full (transfers.length equals the limit), keep the card neutral and drop it after N unless the id comes back.\n6. Show progress only when detectedAt minus createdTimeMs is under N (allow 1 minute: createdTimeMs is the Bridge's clock): a transfer first recorded later — outside the deposit address's 24-hour watch window — shows the neutral state, then the credited toast per rule 3.\n7. Read with the default limit (20) or larger; do not narrow it.",
         "parameters": [
           {
             "schema": {
@@ -6342,7 +6343,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The authenticated user's recorded Bridge transfer list, with source and destination token details, transfer status, hashes, and timestamps. The list leaves out the Bridge's hand-over of a converted deposit, so such a deposit is normally one entry: once a transfer that changes chain or token is credited, the first same-chain, same-token transfer of the delivered token recorded for the same deposit address within ten minutes after it is read as that hand-over. It is not listed, and it gets no deposit.credited event unless it was credited before its source transfer was. A deposit sent directly in that token to that address inside those ten minutes cannot be told apart from the hand-over and can be the transfer left out; the hand-over, when recorded after it, is then listed and credited as a transfer of its own. A deposit.credited event is sent only for a transfer whose deposit address delivers to the user's current wallet. When the address was issued for a different wallet, or the two cannot be compared, the transfer is held: it is listed here with the Bridge's status, it gets no deposit.credited event, and it is credited the next time the address is polled after the wallet the address was issued for is the user's current wallet. fromTokenAddress and toTokenAddress are stored from the upstream Bridge response and can differ in case from token.address in GET /v1/deposit/assets; compare EVM hexadecimal addresses case-insensitively.",
+            "description": "The authenticated user's recorded Bridge transfer list, with source and destination token details, transfer status, hashes, and timestamps. The list leaves out the Bridge's hand-over of a converted deposit, so such a deposit is normally one entry: once a transfer that changes chain or token is credited, the first same-chain, same-token transfer of the delivered token recorded for the same deposit address within ten minutes after it is read as that hand-over. It is not listed, and it gets no deposit.credited event unless it was credited before its source transfer was. A deposit sent directly in that token to that address inside those ten minutes cannot be told apart from the hand-over and can be the transfer left out; the hand-over, when recorded after it, is then listed and credited as a transfer of its own. A deposit.credited event is sent only for a transfer whose deposit address delivers to the user's current wallet. When the address was issued for a different wallet, or the two cannot be compared, the transfer is held: it is listed here with the Bridge's status, it gets no deposit.credited event, and it is credited the next time the address is polled after the wallet the address was issued for is the user's current wallet. fromTokenAddress and toTokenAddress are stored from the upstream Bridge response and can differ in case from token.address in GET /v1/deposit/assets; compare EVM hexadecimal addresses case-insensitively. Read each item's stage, not status, to know whether this service credited a transfer.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6372,7 +6373,8 @@
                             "type": "string"
                           },
                           "status": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "The Bridge's word for the transfer as last read (it is overwritten on every poll). Not a credit signal: a held transfer is listed COMPLETED without being credited — read stage."
                           },
                           "txHash": {
                             "anyOf": [
@@ -6391,6 +6393,79 @@
                             "type": "string",
                             "format": "date-time",
                             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                          },
+                          "id": {
+                            "type": "string",
+                            "description": "This service's id for the transfer: opaque text (no UUID format is promised), stable for the life of the transfer — use it as the key of a progress card. An id can leave the list: a hand-over transfer stops being listed once its source transfer is credited."
+                          },
+                          "stage": {
+                            "type": "string",
+                            "enum": [
+                              "detected",
+                              "processing",
+                              "origin_confirmed",
+                              "submitted",
+                              "credit_pending",
+                              "credited",
+                              "not_credited",
+                              "failed",
+                              "unknown"
+                            ],
+                            "description": "Where the transfer is, as this service sees it; read this, not status. credited: this service credited the transfer, whatever status says; it is never undone. not_credited: sent before its deposit address was issued; never credited; final. detected, processing, origin_confirmed, submitted: the Bridge's four steps. credit_pending: the Bridge says COMPLETED and this service has not credited the transfer yet; not final and not a promise of delivery (a held transfer, an asset not resolved yet, a retry after a failure, or a credit on the same or a later poll — the item does not say which). failed: the Bridge says FAILED. unknown: a Bridge word this service does not know. More values may be added: read a value you do not know as unknown."
+                          },
+                          "stageStep": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 4
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The Bridge step out of 4: 1 detected, 2 processing, 3 origin_confirmed, 4 submitted; null for every other stage. It can go down between reads; show the highest step seen."
+                          },
+                          "detectedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                            "description": "When this service first recorded the transfer (the database clock) — not when it was sent (createdTimeMs, the Bridge's clock). A transfer recorded and credited in the same poll can have a creditedAt earlier than its detectedAt: never compute a duration between them."
+                          },
+                          "creditedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "When this service credited the transfer: the start of the poll pass whose credit record was stored (the application clock). After a retry it can be later than the ts of the deposit.credited event. null when the transfer is not credited, and also for transfers credited before this field existed or by an older worker during a deploy: null here is unknown, never not credited — stage says whether it was credited."
+                          },
+                          "creditedAmount": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The credited amount: what was sent, in the source token, as a decimal string — keep it a string and use a decimal library. Not the amount received after Bridge fees. Usually equal to the deposit.credited event's data.amount; a retry records its own computation. null when the transfer is not credited or the value is unknown (an older credit, or a value that could not be stored), never zero: a credited transfer can have a creditedAt and a null creditedAmount."
+                          },
+                          "creditedAsset": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The source token symbol recorded with the credit, as the Bridge's asset list named it at that time (the token.symbol GET /v1/deposit/assets gave for that token then). It is upstream text: not length-bounded and not escaped — render it as text, never as markup. Usually equal to the deposit.credited event's data.asset. null when the transfer is not credited or the value is unknown, like creditedAmount; a null here never means not credited — stage says that."
                           }
                         },
                         "required": [
@@ -6403,7 +6478,14 @@
                           "status",
                           "txHash",
                           "createdTimeMs",
-                          "updatedAt"
+                          "updatedAt",
+                          "id",
+                          "stage",
+                          "stageStep",
+                          "detectedAt",
+                          "creditedAt",
+                          "creditedAmount",
+                          "creditedAsset"
                         ],
                         "additionalProperties": false
                       }
@@ -6413,7 +6495,7 @@
                     "transfers"
                   ],
                   "additionalProperties": false,
-                  "description": "The authenticated user's recorded Bridge transfer list, with source and destination token details, transfer status, hashes, and timestamps. The list leaves out the Bridge's hand-over of a converted deposit, so such a deposit is normally one entry: once a transfer that changes chain or token is credited, the first same-chain, same-token transfer of the delivered token recorded for the same deposit address within ten minutes after it is read as that hand-over. It is not listed, and it gets no deposit.credited event unless it was credited before its source transfer was. A deposit sent directly in that token to that address inside those ten minutes cannot be told apart from the hand-over and can be the transfer left out; the hand-over, when recorded after it, is then listed and credited as a transfer of its own. A deposit.credited event is sent only for a transfer whose deposit address delivers to the user's current wallet. When the address was issued for a different wallet, or the two cannot be compared, the transfer is held: it is listed here with the Bridge's status, it gets no deposit.credited event, and it is credited the next time the address is polled after the wallet the address was issued for is the user's current wallet. fromTokenAddress and toTokenAddress are stored from the upstream Bridge response and can differ in case from token.address in GET /v1/deposit/assets; compare EVM hexadecimal addresses case-insensitively."
+                  "description": "The authenticated user's recorded Bridge transfer list, with source and destination token details, transfer status, hashes, and timestamps. The list leaves out the Bridge's hand-over of a converted deposit, so such a deposit is normally one entry: once a transfer that changes chain or token is credited, the first same-chain, same-token transfer of the delivered token recorded for the same deposit address within ten minutes after it is read as that hand-over. It is not listed, and it gets no deposit.credited event unless it was credited before its source transfer was. A deposit sent directly in that token to that address inside those ten minutes cannot be told apart from the hand-over and can be the transfer left out; the hand-over, when recorded after it, is then listed and credited as a transfer of its own. A deposit.credited event is sent only for a transfer whose deposit address delivers to the user's current wallet. When the address was issued for a different wallet, or the two cannot be compared, the transfer is held: it is listed here with the Bridge's status, it gets no deposit.credited event, and it is credited the next time the address is polled after the wallet the address was issued for is the user's current wallet. fromTokenAddress and toTokenAddress are stored from the upstream Bridge response and can differ in case from token.address in GET /v1/deposit/assets; compare EVM hexadecimal addresses case-insensitively. Read each item's stage, not status, to know whether this service credited a transfer."
                 }
               }
             }
@@ -11571,7 +11653,7 @@
             }
           },
           "429": {
-            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11619,7 +11701,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
                 }
               }
             }
@@ -14309,7 +14391,7 @@
             }
           },
           "429": {
-            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14357,7 +14439,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
                 }
               }
             }
