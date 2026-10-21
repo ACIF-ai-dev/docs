@@ -148,7 +148,7 @@ While a new version of the service is being rolled out, an instance that predate
 
 ## Order book frames
 
-The order book of an outcome token can be held on the same connection with `subscribeBook` and let go of with `unsubscribeBook` (see **Send frames**). The token ID is the `tokenId` of a market outcome, as for `subscribe`; a Perps instrument's order book is read from `GET /v1/perps/instruments/{instrumentId}/book`. Holding a token's order book and holding its prices are two separate holdings: a `subscribeBook` holding receives the frames of this section and no `price`, `trade`, or `resolved` frame, and a `subscribe` holding receives no `book` frame. Send both operations for a token to receive both.
+The order book of an outcome token can be held on the same connection with `subscribeBook` and let go of with `unsubscribeBook` (see **Send frames**). The token ID is the `tokenId` of a market outcome, as for `subscribe`; a Perps instrument's order book has operations of its own (see **Perps order book frames**). Holding a token's order book and holding its prices are two separate holdings: a `subscribeBook` holding receives the frames of this section and no `price`, `trade`, or `resolved` frame, and a `subscribe` holding receives no `book` frame. Send both operations for a token to receive both.
 
 A connection holds at most **4** order books at a time. They are counted apart from the tokens of `subscribe`: neither counts against the other's limit. A token listed twice, or one whose book the connection already holds, counts once. A token ID is not checked against any market when the frame arrives: any string of the accepted length is held and counted. A `subscribeBook` that would hold more books than the limit is refused with this `error` frame, and nothing in that frame is held:
 
@@ -291,6 +291,86 @@ A `perpsUnsubscribed` frame lists the instruments that `unsubscribePerps` let go
 
 When Perps market data is not open on this deployment, `subscribePerps` is answered with an `error` frame whose `code` is `NOT_FOUND` and whose `details.reason` is `perps_not_open`, and `unsubscribePerps` is answered with a `perpsUnsubscribed` frame with an empty `instrumentIds`. While a new version of the service is being rolled out, an instance that predates these operations answers both with `VALIDATION_FAILED`; send `subscribePerps` again after every reconnect.
 
+## Perps order book frames
+
+A Perps instrument's order book can be held on the same connection with operations of its own:
+
+```json
+{"op":"subscribePerpsBook","instrumentIds":["12"]}
+```
+
+```json
+{"op":"unsubscribePerpsBook","instrumentIds":["12"]}
+```
+
+`subscribePerpsBook` and `unsubscribePerpsBook` each require from **1** through **4** `instrumentIds`, each an `instrumentId` string of the form `subscribePerps` accepts (see **Perps frames**); any other value, and a frame with more or with none, is refused with `VALIDATION_FAILED`. The two operations have no other key. Holding an instrument's order book and holding its prices are two separate holdings: a `subscribePerpsBook` holding receives the frames of this section and no `perpsPrice` or `perpsTrade` frame, and a `subscribePerps` holding receives no `perpsBook` frame. Send both operations for an instrument to receive both.
+
+A connection holds at most **4** Perps order books at a time. They are counted apart from the instruments of `subscribePerps`, the tokens of `subscribe`, and the order books of `subscribeBook`: none counts against another's limit. An identifier listed twice, or one whose book the connection already holds, counts once. A `subscribePerpsBook` that would hold more books than the limit is refused with this `error` frame, and nothing in that frame is held:
+
+```json
+{"type":"error","code":"RATE_LIMITED","message":"Perps book subscription limit exceeded.","details":{"reason":"perps_book_subscription_limit","currentSubscriptions":4,"requestedSubscriptions":1}}
+```
+
+`currentSubscriptions` is the number of Perps books the connection holds, and `requestedSubscriptions` is the number of IDs in the refused frame. The same `error` frame, with the connection's own `currentSubscriptions`, refuses a `subscribePerpsBook` when the service instance already keeps as many Perps order books as it can for all of its connections together; nothing in that frame is held either. Try again later, or show the book from the REST read below.
+
+A well-formed identifier that the service has not seen in its live Perps prices is refused with `VALIDATION_FAILED`, and nothing in that frame is held. Right after the service starts, a listed instrument can be refused this way for a few seconds.
+
+The reply to `subscribePerpsBook` is a `perpsBookSubscribed` frame:
+
+```json
+{"type":"perpsBookSubscribed","instrumentIds":["12"],"snapshot":[{"instrumentId":"12","bids":[{"price":"118630.5","quantity":"0.5","cumulative":"0.5"}],"asks":[{"price":"118631.0","quantity":"1.25","cumulative":"1.25"}],"ts":1790000000400}],"feed":"live"}
+```
+
+- `instrumentIds`: the instruments whose book this frame newly holds. An instrument the connection already held is not listed again and gets no `snapshot` element again; when every listed instrument was already held, `instrumentIds` and `snapshot` are both empty.
+- `snapshot`: for each instrument in `instrumentIds` whose book the service has at that moment, that book in the shape of a `perpsBook` frame without `type`. An instrument without one is left out, and its book arrives as its first `perpsBook` frame.
+- `feed`: `"live"` or `"interrupted"`, the connection's Perps order book word described below. It covers every Perps book the connection holds, not only the newly held ones.
+
+Later frames:
+
+```json
+{"type":"perpsBook","instrumentId":"12","bids":[{"price":"118630.5","quantity":"0.5","cumulative":"0.5"},{"price":"118630","quantity":"2","cumulative":"2.5"}],"asks":[{"price":"118631.0","quantity":"1.25","cumulative":"1.25"}],"ts":1790000000650}
+```
+
+```json
+{"type":"perpsBookFeed","state":"interrupted","ts":1790000001000}
+```
+
+```json
+{"type":"perpsBookUnsubscribed","instrumentIds":["12"]}
+```
+
+A `perpsBook` frame is the whole top of one instrument's order book, never a change to apply: replace what you show for that `instrumentId` with it, and do not append. Besides `type`, it has these keys and no others:
+
+- `instrumentId`: the instrument the book belongs to.
+- `bids`, `asks`: at most **10** levels per side, best first: bids descending by price, asks ascending. Levels beyond that are not sent. A side can be empty.
+- Each level has `price`, `quantity` (base-asset units, as in `GET /v1/perps/instruments/{instrumentId}/book`), and `cumulative`, all decimal **strings**. `price` and `quantity` are kept as the source sends them, so trailing zeros can appear: parse them as decimals, and do not compare them as text. `cumulative` is the sum of `quantity` from the best level of that side through this one, as a plain decimal with no exponent and no trailing zeros.
+- `ts`: epoch milliseconds, the time the source gave the book the frame carries.
+
+The service sends at most one `perpsBook` frame per instrument every **250 ms**. The frame carries the top as it stands at the end of that window, and it is sent only when that top changed, in the `price` or `quantity` text of a level: a change below the levels a frame carries, a change of `ts` alone, or one undone within the window sends nothing. A `perpsBook` frame can still equal the book you already have, right after `perpsBookSubscribed` when a change was waiting in its window, or after an interruption. Replacing makes that harmless. A book the service cannot read in full is not sent rather than completed with a guessed value.
+
+`perpsBook` frames follow the buffer rule of `book` frames (see **Order book frames**) and count toward the same **4008** close (see **Disconnections**). A `subscribePerpsBook` that arrives while the connection is over that buffer threshold is answered with its true `instrumentIds` and `feed` and an empty `snapshot`, and that snapshot is not sent later either; send `unsubscribePerpsBook` and then `subscribePerpsBook` once you have caught up on reads.
+
+A `perpsBookUnsubscribed` frame lists the instruments whose book `unsubscribePerpsBook` let go of; an instrument whose book the connection did not hold is left out, so the list can be empty.
+
+`perpsBookSubscribed.feed` and `perpsBookFeed.state` are one word for the connection, about the Perps order books it holds:
+
+| Word | Meaning | What to do |
+|---|---|---|
+| `"interrupted"` | The service cannot vouch for at least one Perps book the connection holds: that book became unknown to the service, and no fresh `perpsBook` frame for it has gone out since. | A book you show can be stale. The frame does not name the instrument, so the safe reading is every Perps book you hold. A `perpsBook` frame that arrives after it is current for its instrument. |
+| `"live"` | For every Perps book the connection holds, the service has a book and has sent it out since that book last became unknown. | What you show is current, within the limits described in this section. |
+
+`perpsBookFeed` is sent only when the connection's word changes, and only to a connection that holds at least one Perps order book. `perpsBookSubscribed.feed` is the word right after the subscribe, and no `perpsBookFeed` frame repeats it. `ts` is the service time of the change in epoch milliseconds. Show a live indicator from `feed` and `perpsBookFeed`, not from the arrival of `perpsBook` frames: a quiet book sends none.
+
+A Perps book becomes unknown to the service when it is first held (the first connection to hold an instrument's book is answered with no `snapshot` element for it and `feed` `"interrupted"`, then receives its `perpsBook` frame, then `perpsBookFeed` `"live"` once every Perps book it holds has been sent), when the service's own reading of Perps order books stops delivering, when the source refuses that instrument's book, and when an update of that book reached the service in a form it could not read. The first `perpsBook` frame of a newly kept book arrives when the source next sends it; no time bound is promised for it. Until then, and while the source refuses an instrument's book, the word stays `"interrupted"` for the whole connection while the other books it holds keep being sent. The word does not say whether an interruption is passing or lasting: when it stays `"interrupted"` for long, send `unsubscribePerpsBook` and then `subscribePerpsBook` for the instruments without a book, and read them from REST meanwhile.
+
+When `unsubscribePerpsBook` lets go of the only book that kept the word at `"interrupted"` and the connection still holds others, `perpsBookFeed` `"live"` is sent before `perpsBookUnsubscribed`. Letting go of the last book sends no `perpsBookFeed`. `perpsBookFeed` is sent whatever the connection's buffer holds, while a `perpsBook` frame is skipped over the buffer threshold: a connection that is not reading fast enough can receive `"live"` without the fresh `perpsBook` frame, and the catch-up step above applies.
+
+When this deployment opens Perps market data but not live Perps order books, `subscribePerpsBook` is answered as for books the service cannot vouch for: the instruments are held and counted (without the check against live Perps prices above), `snapshot` is empty, `feed` is `"interrupted"`, and no `perpsBook` or `perpsBookFeed` frame follows. Read the book from REST then. When Perps market data is not open on this deployment, `subscribePerpsBook` is answered with an `error` frame whose `code` is `NOT_FOUND` and whose `details.reason` is `perps_not_open`, and `unsubscribePerpsBook` is answered with a `perpsBookUnsubscribed` frame with an empty `instrumentIds`.
+
+`GET /v1/perps/instruments/{instrumentId}/book` did not change and remains the way to read a Perps order book once; its levels carry `price` and `quantity` without `cumulative`. Read it for an initial value when a `snapshot` is empty.
+
+Perps order book holdings belong to one connection. After every reconnect send `subscribePerpsBook` again and replace your books with the new `snapshot`. While a new version of the service is being rolled out, an instance that predates these operations answers both with `VALIDATION_FAILED`: read the book from REST until a later connection accepts them.
+
 ## Crypto round frames
 
 The recurring crypto Up or Down rounds of `GET /v1/markets/rounds` (see **Crypto rounds** on the API reference home page) can be followed on the same connection:
@@ -431,6 +511,8 @@ Spot never decides a round. A round's `targetPrice`, its `polybolt_twap` estimat
 The service closes with **4029** when a connection limit is exceeded or when the client exceeds the frame-rate limit. It closes with **1011** when it rejects a connection, including a duplicate connection ID. It closes with **1001** during server shutdown or after the heartbeat timeout. It closes with **4008** when a client's `bufferedAmount` exceeds **1048576** bytes for **100** consecutive delivery attempts. This indicates a slow consumer; catch up on reads or reduce subscriptions before reconnecting.
 
 ## Changes
+
+2026-10-21: Perps order books: the `subscribePerpsBook` and `unsubscribePerpsBook` operations and the `perpsBookSubscribed`, `perpsBook`, `perpsBookFeed`, and `perpsBookUnsubscribed` frames (see **Perps order book frames**), with a per-connection limit of their own. `GET /v1/perps/instruments/{instrumentId}/book` did not change. Token, order book, Perps, round and reference operations and frames did not change: a connection that does not send the new operations receives exactly the frames it received before. During the rollout an older instance answers the new operations with `VALIDATION_FAILED`.
 
 2026-10-11: Round elements gain `outcomes[].bestAsk` and `volume`, on REST and the stream alike; `roundUpdate` is also sent when they change. An empty side of the book gives `null`, not `"1"`. No operation or other frame key changed.
 
