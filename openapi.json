@@ -25516,8 +25516,15 @@
                           "description": "Our cap on leverage. Null: no cap of ours — the slider's maximum is the instrument's own maximum leverage."
                         },
                         "maxOrderNotional": {
-                          "type": "string",
-                          "description": "Our cap on one order's notional (pUSD). \"0\" means orders are refused on this deployment."
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Our cap on one order's notional (pUSD). Null: no cap of ours — the instrument's own limits (minimum notional, maximum leverage and its risk tiers) still apply."
                         }
                       },
                       "required": [
@@ -29365,7 +29372,7 @@
             }
           },
           "400": {
-            "description": "error.code is VALIDATION_FAILED. error.details.reason is perps_leverage_invalid when leverage is absent, not a whole number from 1 to 1000, or above the leverage this order may use; perps_min_notional when the order is below the instrument's minimum notional; perps_order_notional_exceeded when margin × leverage is above the per-order cap (limits.maxOrderNotional of GET /v1/perps/account); perps_tpsl_invalid when takeProfit or stopLoss is not null and not { triggerPrice }, or its trigger price is on the wrong side (a long's take-profit at or below order.priceBound or stop-loss at or above the mark price; the mirror for a short) or has more places than the instrument's price step. error.details is omitted when the body, the idempotency-key header, instrumentId, side or margin is absent or malformed.",
+            "description": "error.code is VALIDATION_FAILED. error.details.reason is perps_leverage_invalid when leverage is absent, not a whole number from 1 to 1000, or above the leverage this order may use; perps_min_notional when the order is below the instrument's minimum notional; perps_order_notional_exceeded when the order's notional (its quantity at the higher of its limit price and the mark price) is above the per-order cap (limits.maxOrderNotional of GET /v1/perps/account; null there means no cap of ours); perps_tpsl_invalid when takeProfit or stopLoss is not null and not { triggerPrice }, or its trigger price is on the wrong side (a long's take-profit at or below order.priceBound or stop-loss at or above the mark price; the mirror for a short) or has more places than the instrument's price step. error.details is omitted when the body, the idempotency-key header, instrumentId, side or margin is absent or malformed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -29413,7 +29420,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "error.code is VALIDATION_FAILED. error.details.reason is perps_leverage_invalid when leverage is absent, not a whole number from 1 to 1000, or above the leverage this order may use; perps_min_notional when the order is below the instrument's minimum notional; perps_order_notional_exceeded when margin × leverage is above the per-order cap (limits.maxOrderNotional of GET /v1/perps/account); perps_tpsl_invalid when takeProfit or stopLoss is not null and not { triggerPrice }, or its trigger price is on the wrong side (a long's take-profit at or below order.priceBound or stop-loss at or above the mark price; the mirror for a short) or has more places than the instrument's price step. error.details is omitted when the body, the idempotency-key header, instrumentId, side or margin is absent or malformed."
+                  "description": "error.code is VALIDATION_FAILED. error.details.reason is perps_leverage_invalid when leverage is absent, not a whole number from 1 to 1000, or above the leverage this order may use; perps_min_notional when the order is below the instrument's minimum notional; perps_order_notional_exceeded when the order's notional (its quantity at the higher of its limit price and the mark price) is above the per-order cap (limits.maxOrderNotional of GET /v1/perps/account; null there means no cap of ours); perps_tpsl_invalid when takeProfit or stopLoss is not null and not { triggerPrice }, or its trigger price is on the wrong side (a long's take-profit at or below order.priceBound or stop-loss at or above the mark price; the mirror for a short) or has more places than the instrument's price step. error.details is omitted when the body, the idempotency-key header, instrumentId, side or margin is absent or malformed."
                 }
               }
             }
@@ -29473,7 +29480,7 @@
             }
           },
           "403": {
-            "description": "error.code is FORBIDDEN. error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/perps/orders routes require trade scope), or subbuilder_suspended when the builder API key's subbuilder is not active. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result. error.details.reason is perps_trading_paused when new Perps entries are closed for this subbuilder or this order, and perps_terms_outdated when termsVersion is not the current Perps terms version.",
+            "description": "error.code is FORBIDDEN. error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/perps/orders routes require trade scope), or subbuilder_suspended when the builder API key's subbuilder is not active. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result. error.details.reason is perps_trading_paused when new Perps entries are closed for this subbuilder, and perps_terms_outdated when termsVersion is not the current Perps terms version.",
             "content": {
               "application/json": {
                 "schema": {
@@ -29521,7 +29528,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "error.code is FORBIDDEN. error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/perps/orders routes require trade scope), or subbuilder_suspended when the builder API key's subbuilder is not active. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result. error.details.reason is perps_trading_paused when new Perps entries are closed for this subbuilder or this order, and perps_terms_outdated when termsVersion is not the current Perps terms version."
+                  "description": "error.code is FORBIDDEN. error.details.reason is api_key_scope_insufficient when the builder API key is below trade scope (the /v1/perps/orders routes require trade scope), or subbuilder_suspended when the builder API key's subbuilder is not active. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result. error.details.reason is perps_trading_paused when new Perps entries are closed for this subbuilder, and perps_terms_outdated when termsVersion is not the current Perps terms version."
                 }
               }
             }

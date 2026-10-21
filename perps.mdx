@@ -575,10 +575,10 @@ The scope, account, key-reuse and trading-not-ready answers are the same as the 
 | 400 | `VALIDATION_FAILED` | — | `POST` | the body is not a JSON object, `instrumentId`, `side` or `margin` is missing or malformed, or the `idempotency-key` header is missing, blank, over 200 characters or contains a comma |
 | 400 | `VALIDATION_FAILED` | `perps_leverage_invalid` | `POST` | `leverage` is not a whole number from 1 to 1000, or is above the leverage this order may use |
 | 400 | `VALIDATION_FAILED` | `perps_min_notional` | `POST` | the order is below the instrument's minimum notional |
-| 400 | `VALIDATION_FAILED` | `perps_order_notional_exceeded` | `POST` | margin × leverage is above the per-order cap (`limits.maxOrderNotional` on `GET /v1/perps/account`) |
+| 400 | `VALIDATION_FAILED` | `perps_order_notional_exceeded` | `POST` | the order's notional (its quantity at the higher of its limit price and the mark price) is above the per-order cap (`limits.maxOrderNotional` on `GET /v1/perps/account`; `null` there means no cap of ours, and the instrument's own limits still apply) |
 | 400 | `VALIDATION_FAILED` | `perps_tpsl_invalid` | `POST` | `takeProfit` or `stopLoss` is not `null` and not `{"triggerPrice": …}`, or its trigger price is on the wrong side of `priceBound` / the mark price, or has more places than the instrument's price step |
 | 403 | `FORBIDDEN` | `api_key_scope_insufficient` | all | the API key is below `trade` scope |
-| 403 | `FORBIDDEN` | `perps_trading_paused` | `POST` | new entries are closed for your builder account or for this order |
+| 403 | `FORBIDDEN` | `perps_trading_paused` | `POST` | new entries are closed for your builder account |
 | 403 | `FORBIDDEN` | `perps_terms_outdated` | `POST` | `termsVersion` was sent and is not the current Perps terms version |
 | 404 | `NOT_FOUND` | `perps_accounts_not_open` | all | Perps accounts are not open for the caller |
 | 404 | `NOT_FOUND` | `perps_account_not_found` | all | this end user has not opened a Perps account |
@@ -591,7 +591,7 @@ The scope, account, key-reuse and trading-not-ready answers are the same as the 
 | 409 | `CONFLICT` | `perps_cancel_only` | `POST` | the exchange takes no new orders (maintenance — `account.exchangeStatus` is `cancel_only`) |
 | 409 | `CONFLICT` | `perps_trading_not_ready` | `POST` | the end user's Perps account cannot trade yet (just opened, or its trading key is being replaced); retry later |
 | 429 | `RATE_LIMITED` | `perps_capacity` | `POST` | the end user placed too many orders in a short time, or this service's capacity for Perps orders is used; `Retry-After` is set when known |
-| 502 | `UPSTREAM_UNAVAILABLE` | `perps_unavailable` | `POST` | the order could not be placed just now; nothing was sent |
+| 502 | `UPSTREAM_UNAVAILABLE` | `perps_unavailable` | `POST` | the order could not be placed just now (the exchange status could not be read, or this service is not watching open positions at the moment); nothing was sent, closes are still served, and retrying later may succeed |
 | 502 | `UPSTREAM_UNAVAILABLE` | `perps_leverage_unverified` | `POST` | the leverage could not be set and checked on the exchange; nothing was placed |
 
 A refused request places nothing.
