@@ -21198,6 +21198,15 @@
               "type": "string"
             },
             "in": "query",
+            "name": "lang",
+            "required": false,
+            "description": "Same language tag as GET /v1/markets. Summaries contain no market outcomes or question translations; titles, teams and moneyline labels remain original."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
             "name": "limit",
             "required": false,
             "description": "Integer 1 through 100; default 25."
@@ -21273,7 +21282,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Lists games while a moneyline is in catalog scope: its start is within the lookback window and Gamma has not reported closed; ended games can remain, and omitted games may still be read by detail. A moneyline choice with active false or tokenId null should not be offered for ordering. Live games are reread about each minute; Gamma updates were observed slower than 30 seconds on 2026-09-27, and this response may be cached. Lines and totals/spreads prices refresh with the game fill cycle, normally 30 minutes; moneyline price comes from catalog synchronization. Gamma had no country field on 2026-09-27; use league and team fields.",
+            "description": "Lists games while a moneyline is in catalog scope: its start is within the lookback window and Gamma has not reported closed; ended games can remain, and omitted games may still be read by detail. A moneyline choice with active false or tokenId null should not be offered for ordering. Live games are reread about each minute; Gamma updates were observed slower than 30 seconds on 2026-09-27, and this response may be cached. Lines and totals/spreads prices refresh with the game fill cycle, normally 30 minutes; moneyline price comes from catalog synchronization. Gamma had no country field on 2026-09-27; use league and team fields. No market questions or outcomes[].outcome labels are present in summaries, so lang leaves the summary unchanged; it does not translate titles, teams or moneyline labels.",
             "content": {
               "application/json": {
                 "schema": {
@@ -21284,6 +21293,166 @@
                       "items": {
                         "type": "object",
                         "properties": {
+                          "lineCoverage": {
+                            "type": "object",
+                            "properties": {
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "complete",
+                                  "stale",
+                                  "unknown"
+                                ]
+                              },
+                              "observedAt": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "normalizerVersion": {
+                                "type": "string"
+                              },
+                              "unclassifiedCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "state",
+                              "observedAt",
+                              "normalizerVersion",
+                              "unclassifiedCount"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Successful-fill ingestion coverage, not orderability or historical line existence. Read first: only complete plus an absent segment means no currently visible such line; unknown/stale means loading/stale, even with no visible members. Ended games have no currently visible lines under the shared visibility rule, even if ingestion coverage is complete and historical memberships exist; a missing listed moneyline anchor also hides members. Missing fields on older images mean unknown."
+                          },
+                          "lineSegments": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "lineKind": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "moneyline",
+                                        "spread",
+                                        "total",
+                                        "winner",
+                                        "prop"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "period": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "full",
+                                            "half",
+                                            "quarter",
+                                            "set",
+                                            "map",
+                                            "game",
+                                            "round",
+                                            "inning",
+                                            "first_five_innings"
+                                          ]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "number": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "exclusiveMinimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "number"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "unit": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "marketCount": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "lineKind",
+                                "period",
+                                "unit",
+                                "marketCount"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "Visible markets grouped by lineKind, period (kind and number), and unit. Unclassified rows use null kind/period/unit (Other markets). Counts are markets, not outcomes; an empty array is not proof of absence unless coverage is complete."
+                          },
+                          "lineMarketCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991,
+                            "description": "Length of detail lineMarkets and sum of lineSegments marketCount in the same read snapshot. Separate from legacy marketCount."
+                          },
+                          "image": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Gamma event source image URL; null when absent. Not a synthesized or optimized URL."
+                          },
+                          "icon": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Gamma event source icon URL; null when absent. Separate from the league logo sportImage."
+                          },
                           "gameId": {
                             "type": "string",
                             "description": "The games[].gameId value from GET /v1/sports/games (the Gamma gameId)."
@@ -21351,7 +21520,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "Gamma event sport.image."
+                            "description": "Gamma event sport.image: the league logo from Gamma SportsMetadata.image; null when absent."
                           },
                           "title": {
                             "anyOf": [
@@ -21597,6 +21766,11 @@
                           }
                         },
                         "required": [
+                          "lineCoverage",
+                          "lineSegments",
+                          "lineMarketCount",
+                          "image",
+                          "icon",
                           "gameId",
                           "sport",
                           "leagueCode",
@@ -21632,7 +21806,7 @@
                     "total"
                   ],
                   "additionalProperties": false,
-                  "description": "Lists games while a moneyline is in catalog scope: its start is within the lookback window and Gamma has not reported closed; ended games can remain, and omitted games may still be read by detail. A moneyline choice with active false or tokenId null should not be offered for ordering. Live games are reread about each minute; Gamma updates were observed slower than 30 seconds on 2026-09-27, and this response may be cached. Lines and totals/spreads prices refresh with the game fill cycle, normally 30 minutes; moneyline price comes from catalog synchronization. Gamma had no country field on 2026-09-27; use league and team fields."
+                  "description": "Lists games while a moneyline is in catalog scope: its start is within the lookback window and Gamma has not reported closed; ended games can remain, and omitted games may still be read by detail. A moneyline choice with active false or tokenId null should not be offered for ordering. Live games are reread about each minute; Gamma updates were observed slower than 30 seconds on 2026-09-27, and this response may be cached. Lines and totals/spreads prices refresh with the game fill cycle, normally 30 minutes; moneyline price comes from catalog synchronization. Gamma had no country field on 2026-09-27; use league and team fields. No market questions or outcomes[].outcome labels are present in summaries, so lang leaves the summary unchanged; it does not translate titles, teams or moneyline labels."
                 }
               }
             }
@@ -21862,6 +22036,15 @@
         "parameters": [
           {
             "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "description": "Same language tag and projection as GET /v1/markets: localizes markets/lineMarkets outcome labels and adds translation or null. Does not translate game titles, teams, moneyline, groupItemTitle or normalization."
+          },
+          {
+            "schema": {
               "type": "string",
               "minLength": 1,
               "maxLength": 64
@@ -21888,12 +22071,172 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns a game even after it leaves the list. Moneyline may be separate Yes/No markets or outcomes in one market; its order has no meaning, so match label and tokenId. A moneyline choice with active false or tokenId null should not be offered for ordering. Live games are reread about each minute; Gamma updates were observed slower than 30 seconds on 2026-09-27, and this response may be cached. Lines and totals/spreads prices refresh with the game fill cycle, normally 30 minutes; moneyline price comes from catalog synchronization.",
+            "description": "Returns a game even after it leaves the list. Moneyline may be separate Yes/No markets or outcomes in one market; its order has no meaning, so match label and tokenId. A moneyline choice with active false or tokenId null should not be offered for ordering. Live games are reread about each minute; Gamma updates were observed slower than 30 seconds on 2026-09-27, and this response may be cached. Lines and totals/spreads prices refresh with the game fill cycle, normally 30 minutes; moneyline price comes from catalog synchronization. As on GET /v1/markets, lang localizes outcomes[].outcome labels in both markets and lineMarkets through the exact fixed dictionary, preserving token/price/order pairing, and adds translation or null when missing or source-mismatched; without lang translation is absent. The original question stays unchanged. Titles, teams, moneyline labels, groupItemTitle and normalization are not translated. No rules translation is supplied here.",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "lineCoverage": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "complete",
+                            "stale",
+                            "unknown"
+                          ]
+                        },
+                        "observedAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "normalizerVersion": {
+                          "type": "string"
+                        },
+                        "unclassifiedCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "observedAt",
+                        "normalizerVersion",
+                        "unclassifiedCount"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Successful-fill ingestion coverage, not orderability or historical line existence. Read first: only complete plus an absent segment means no currently visible such line; unknown/stale means loading/stale, even with no visible members. Ended games have no currently visible lines under the shared visibility rule, even if ingestion coverage is complete and historical memberships exist; a missing listed moneyline anchor also hides members. Missing fields on older images mean unknown."
+                    },
+                    "lineSegments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "lineKind": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "moneyline",
+                                  "spread",
+                                  "total",
+                                  "winner",
+                                  "prop"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "period": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "full",
+                                      "half",
+                                      "quarter",
+                                      "set",
+                                      "map",
+                                      "game",
+                                      "round",
+                                      "inning",
+                                      "first_five_innings"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "number": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "number"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "unit": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "marketCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "lineKind",
+                          "period",
+                          "unit",
+                          "marketCount"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "Visible markets grouped by lineKind, period (kind and number), and unit. Unclassified rows use null kind/period/unit (Other markets). Counts are markets, not outcomes; an empty array is not proof of absence unless coverage is complete."
+                    },
+                    "lineMarketCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Length of detail lineMarkets and sum of lineSegments marketCount in the same read snapshot. Separate from legacy marketCount."
+                    },
+                    "image": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Gamma event source image URL; null when absent. Not a synthesized or optimized URL."
+                    },
+                    "icon": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Gamma event source icon URL; null when absent. Separate from the league logo sportImage."
+                    },
                     "gameId": {
                       "type": "string",
                       "description": "The games[].gameId value from GET /v1/sports/games (the Gamma gameId)."
@@ -21961,7 +22304,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "Gamma event sport.image."
+                      "description": "Gamma event sport.image: the league logo from Gamma SportsMetadata.image; null when absent."
                     },
                     "title": {
                       "anyOf": [
@@ -22205,11 +22548,39 @@
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
                       "description": "When Gamma score and status were last observed."
                     },
-                    "markets": {
+                    "lineMarkets": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "properties": {
+                          "translation": {
+                            "description": "Absent without lang. With lang, a stored question translation or null when missing or source-mismatched. question itself stays original.",
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "lang": {
+                                    "type": "string"
+                                  },
+                                  "question": {
+                                    "type": "string"
+                                  },
+                                  "disclaimer": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "lang",
+                                  "question",
+                                  "disclaimer"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
                           "marketId": {
                             "type": "string",
                             "description": "Same Gamma market field id as GET /v1/markets marketId."
@@ -22262,7 +22633,350 @@
                               "properties": {
                                 "outcome": {
                                   "type": "string",
-                                  "description": "Same Gamma market outcome name as GET /v1/markets."
+                                  "description": "Same Gamma market outcome name as GET /v1/markets; with lang uses the same exact per-language dictionary. Unknown labels/languages stay original; tokenId and price remain on the same element."
+                                },
+                                "price": {
+                                  "type": "string",
+                                  "description": "Same catalog-synchronized Gamma market outcome price as GET /v1/markets."
+                                },
+                                "tokenId": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Same Gamma market outcome tokenId as GET /v1/markets; pass it unchanged to POST /v1/orders."
+                                }
+                              },
+                              "required": [
+                                "outcome",
+                                "price",
+                                "tokenId"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "Same Gamma market field outcomes as GET /v1/markets."
+                          },
+                          "syncedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                            "description": "Same catalog synchronization timestamp as GET /v1/markets syncedAt."
+                          },
+                          "protocolVersion": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "v1",
+                                  "v2"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Same Gamma market field version as GET /v1/markets protocolVersion: v1, v2, or null when the version is not known."
+                          },
+                          "icon": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Gamma market source icon URL, unchanged or null."
+                          },
+                          "image": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Gamma market source image URL, unchanged or null."
+                          },
+                          "normalization": {
+                            "type": "object",
+                            "properties": {
+                              "rawCode": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "lineKind": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "moneyline",
+                                      "spread",
+                                      "total",
+                                      "winner",
+                                      "prop"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "period": {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "full",
+                                          "half",
+                                          "quarter",
+                                          "set",
+                                          "map",
+                                          "game",
+                                          "round",
+                                          "inning",
+                                          "first_five_innings"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "number": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "exclusiveMinimum": 0,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "number"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "unit": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "statistic": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "subject": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "team",
+                                          "player"
+                                        ]
+                                      },
+                                      "label": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "label"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "threshold": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "operator": {
+                                        "type": "string",
+                                        "enum": [
+                                          "over_under",
+                                          "at_least",
+                                          "before"
+                                        ]
+                                      },
+                                      "value": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "operator",
+                                      "value"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "classified",
+                                  "unclassified"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "rawCode",
+                              "lineKind",
+                              "period",
+                              "unit",
+                              "statistic",
+                              "subject",
+                              "threshold",
+                              "status"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Server normalization of original English source text. Unclassified markets retain raw text and rawCode with null kind/period/unit; display under Other markets."
+                          }
+                        },
+                        "required": [
+                          "marketId",
+                          "question",
+                          "sportsMarketType",
+                          "line",
+                          "groupItemTitle",
+                          "active",
+                          "outcomes",
+                          "syncedAt",
+                          "protocolVersion",
+                          "icon",
+                          "image",
+                          "normalization"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "All visible active line memberships in one snapshot, without pagination or truncation. Superset contract independent of legacy markets; coverage describes ingestion, not trading availability."
+                    },
+                    "markets": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "translation": {
+                            "description": "Absent without lang. With lang, a stored question translation or null when missing or source-mismatched. question itself stays original.",
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "lang": {
+                                    "type": "string"
+                                  },
+                                  "question": {
+                                    "type": "string"
+                                  },
+                                  "disclaimer": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "lang",
+                                  "question",
+                                  "disclaimer"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "marketId": {
+                            "type": "string",
+                            "description": "Same Gamma market field id as GET /v1/markets marketId."
+                          },
+                          "question": {
+                            "type": "string",
+                            "description": "Same Gamma market field question as GET /v1/markets."
+                          },
+                          "sportsMarketType": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Same Gamma market field sportsMarketType as GET /v1/markets."
+                          },
+                          "line": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Same Gamma market field line as GET /v1/markets."
+                          },
+                          "groupItemTitle": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Same Gamma market field groupItemTitle as GET /v1/markets."
+                          },
+                          "active": {
+                            "type": "boolean",
+                            "description": "Same Gamma market field active as GET /v1/markets."
+                          },
+                          "outcomes": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "outcome": {
+                                  "type": "string",
+                                  "description": "Same Gamma market outcome name as GET /v1/markets; with lang uses the same exact per-language dictionary. Unknown labels/languages stay original; tokenId and price remain on the same element."
                                 },
                                 "price": {
                                   "type": "string",
@@ -22328,6 +23042,11 @@
                     }
                   },
                   "required": [
+                    "lineCoverage",
+                    "lineSegments",
+                    "lineMarketCount",
+                    "image",
+                    "icon",
                     "gameId",
                     "sport",
                     "leagueCode",
@@ -22346,10 +23065,11 @@
                     "marketCount",
                     "filledAt",
                     "statusObservedAt",
+                    "lineMarkets",
                     "markets"
                   ],
                   "additionalProperties": false,
-                  "description": "Returns a game even after it leaves the list. Moneyline may be separate Yes/No markets or outcomes in one market; its order has no meaning, so match label and tokenId. A moneyline choice with active false or tokenId null should not be offered for ordering. Live games are reread about each minute; Gamma updates were observed slower than 30 seconds on 2026-09-27, and this response may be cached. Lines and totals/spreads prices refresh with the game fill cycle, normally 30 minutes; moneyline price comes from catalog synchronization."
+                  "description": "Returns a game even after it leaves the list. Moneyline may be separate Yes/No markets or outcomes in one market; its order has no meaning, so match label and tokenId. A moneyline choice with active false or tokenId null should not be offered for ordering. Live games are reread about each minute; Gamma updates were observed slower than 30 seconds on 2026-09-27, and this response may be cached. Lines and totals/spreads prices refresh with the game fill cycle, normally 30 minutes; moneyline price comes from catalog synchronization. As on GET /v1/markets, lang localizes outcomes[].outcome labels in both markets and lineMarkets through the exact fixed dictionary, preserving token/price/order pairing, and adds translation or null when missing or source-mismatched; without lang translation is absent. The original question stays unchanged. Titles, teams, moneyline labels, groupItemTitle and normalization are not translated. No rules translation is supplied here."
                 }
               }
             }

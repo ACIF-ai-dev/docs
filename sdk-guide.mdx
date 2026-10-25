@@ -21,6 +21,10 @@ This page describes the published client; for HTTP-only usage, call the API as t
 
 Requirements: **Node.js 22 or newer**, ESM only. The client has no runtime dependencies and sends requests with the built-in `fetch`.
 
+## Sports contract types
+
+`tb.sports.listGames({ lang: "ko" })` and `tb.sports.getGame(gameId, { lang: "ko" })` expose the generated game summary/detail types. Read `lineCoverage` before interpreting `lineSegments`: unknown/stale or missing coverage is not “no lines”. `lineMarketCount` counts detail `lineMarkets`, not the unchanged legacy `markets`. The detail market arrays localize outcome labels and add `translation` or null with `lang`; display `translation?.question ?? question` and keep the disclaimer. Original questions, titles, teams, moneyline labels and normalization stay original. The introduction's **Browse sports games** section documents every field, grouping key, image source and complete/stale/unknown rule; the package README carries the same contract guidance.
+
 ## Two credentials, two handles
 
 A client constructed with your builder API key can reach the operations that need only that key:

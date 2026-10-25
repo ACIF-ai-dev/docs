@@ -243,7 +243,7 @@ Each market, in the list and from `GET /v1/markets/{marketId}`, carries `eventSt
 
 ## Protocol version
 
-Each market of `GET /v1/markets`, `GET /v1/markets/{marketId}`, and `GET /v1/events/{eventId}`, and each entry of `markets` in `GET /v1/sports/games/{gameId}`, carries `protocolVersion`: the Polymarket protocol version Gamma reports for the market in its `version` field, `"v1"`, `"v2"`, or `null`.
+Each market of `GET /v1/markets`, `GET /v1/markets/{marketId}`, and `GET /v1/events/{eventId}`, and each entry of `markets` and `lineMarkets` in `GET /v1/sports/games/{gameId}`, carries `protocolVersion`: the Polymarket protocol version Gamma reports for the market in its `version` field, `"v1"`, `"v2"`, or `null`.
 
 - **It reports what Gamma sent.** The value is `"v1"` or `"v2"` only when Gamma sent exactly that text. It is never derived from `tokenId` or from any other field, and it does not replace `tokenId`: pass `tokenId` unchanged to `POST /v1/orders`. It does not say whether an order on the market is accepted; the order endpoints decide that, and name `order_market_protocol_unsupported` when they refuse a market for its protocol version.
 - **`null` means unknown.** Gamma sent no version, sent a value other than `v1` or `v2`, this service could not read it when it last stored the market, or the market was last stored before this field existed. It is always `null` on a crypto round's market, which only `GET /v1/markets/{marketId}` serves. Handle `null` as an ordinary case and do not read it as `v1`.
@@ -527,6 +527,49 @@ curl "https://api.tobuilder.app/v1/sports/games?status=live" \
 A game is the Gamma `gameId` grouping: one game can arrive as several Gamma events, so group by `gameId`, not `event.id`. Pass a selected `moneyline[].tokenId` unchanged to `POST /v1/orders`; do not offer a choice whose `active` is false or whose `tokenId` is null — the order route makes the final decision.
 
 Use `status` to determine game state. `period` and `elapsed` are display strings, not state values. This API rereads live games about once a minute, subject to response caching; use a faster live-data source if that freshness is not suitable. On 2026-09-27, Gamma updates were observed slower than 30 seconds. Ended games can remain in the list briefly. Gamma had no country field on that date, so use league and team fields where they fit your product.
+
+### Lines, props and coverage
+
+Both `GET /v1/sports/games` items and `GET /v1/sports/games/{gameId}` include:
+
+| Field | How to read it |
+| --- | --- |
+| `lineCoverage.state` | `complete`, `stale`, or `unknown`: successful-fill ingestion coverage, **not** trading availability. Only `complete` plus an absent segment means there is no currently visible line in that segment. Empty segments with `unknown` or `stale` mean loading or stale coverage, not “no lines”; do not silently fall back to moneyline-only. Treat missing fields from an older server image as unknown too. |
+| `lineCoverage.observedAt` | ISO timestamp of the successful fill, or `null` when coverage is missing or incompatible. |
+| `lineCoverage.normalizerVersion` | Version of the server's line classification, independent of the ingestion version. |
+| `lineCoverage.unclassifiedCount` | Number of visible markets the normalizer could not classify. They are still returned. |
+| `lineSegments` | Visible markets grouped by **all** of `lineKind`, `period.kind`, `period.number`, and `unit`. Each segment's `marketCount` counts markets, not outcomes or players. Null kind/period/unit is the “Other markets” group. |
+| `lineMarketCount` | Sum of segment counts and length of detail `lineMarkets`, from the same snapshot. Separate from legacy `marketCount`, which still counts only detail `markets`. |
+| `image`, `icon` | Gamma **event** source URLs, or `null`. Not synthesized or optimized URLs. `sportImage` is the league logo; `teams[].logo` is the team logo. No player image is supplied. |
+
+Visible lines are active markets retained as memberships of a not-ended game with a listed active moneyline anchor. Ended games and games without that anchor have no currently visible lines even when historical memberships exist and ingestion coverage is complete. A detail can still return the game after it leaves the list. The new line snapshot is not atomic with the legacy `markets`, `moneyline`, or `marketCount` reads, and separately cached list/detail requests can differ as data changes.
+
+Detail `lineMarkets` contains **all** visible memberships without pagination or truncation, including props and unknown codes, independently of the legacy `markets` filter. Each item has `marketId`, original `question`, `sportsMarketType`, numeric legacy `line`, original `groupItemTitle`, `active`, `outcomes` (label, probability-string `price`, nullable `tokenId`), `syncedAt`, `protocolVersion`, market source `icon`/`image` (or `null`), and `normalization`. Legacy `markets` and `moneyline` keep their existing selection and meanings; `marketCount` is not a count of every sports line. Lines refresh with the game-fill cycle, not a live price feed.
+
+`normalization` is computed from original English source text **before** any language projection:
+
+| Field | Meaning |
+| --- | --- |
+| `rawCode` | Original `sportsMarketType`, or `null`. |
+| `lineKind` | `moneyline`, `spread`, `total`, `winner`, `prop`, or `null`. |
+| `period` | `{kind, number}`. Kind is `full`, `half`, `quarter`, `set`, `map`, `game`, `round`, `inning`, `first_five_innings`, or `null`; number is a positive integer or `null`. Keep a game distinct from an esports map, and set/quarter numbers distinct. This is not the game's scoreboard `period` string. |
+| `unit`, `statistic` | Normalized unit/statistic strings, or `null`; not translated display labels. |
+| `subject` | `{kind: "team" | "player", label: string}` or `null`; source label only, no invented player identifier. |
+| `threshold` | `{operator: "over_under" | "at_least" | "before", value: string}` or `null`. Value is source text, not a floating-point calculation or the legacy numeric `line`. |
+| `status` | `classified` or `unclassified`. Unclassified rows keep the raw question, group title and code, with null `lineKind`, `period.kind`, `period.number`, `unit`, `statistic`, `subject` and `threshold`; show them generically under “Other markets”, never drop them. |
+
+### Sports language projection
+
+The two game reads accept the same lowercase `lang` tag as the market reads, for example `ko`. On detail, **both** `markets[]` and `lineMarkets[]` follow `GET /v1/markets`: `outcomes[].outcome` uses the exact per-language dictionary (Korean equivalents of `Yes` and `No` for `ko`), leaving an unknown label or a language without a dictionary unchanged. No matching of team names or array positions is used; ids, token/price pairs and element order stay unchanged.
+
+With `lang`, each market also has `translation: {lang, question, disclaimer}` or `null` if no translation of the **current source question** is stored. Without `lang`, that field is absent. The original `question` is never overwritten: display `translation.question` when non-null and otherwise `question`, and preserve the disclaimer. A null question translation does not disable the outcome dictionary. Translation-store errors fail the read rather than masquerading as a successful English fallback.
+
+`lang` does **not** translate game/event titles, teams, league names, `moneyline[].label`, `groupItemTitle`, raw codes, or any `normalization` value. The list contains no market outcomes/questions, so `lang` leaves the summary unchanged and adds no game-level `translation`. `GET /v1/sports` is a classification/count rail with no language projection. Sports detail does not supply `rules` or `rules.translation`; use the market detail route when you need those. Invalid tags (including uppercase `KO`) return `VALIDATION_FAILED`, as on market reads; `ko-kr` is a distinct tag, not an alias for `ko`.
+
+```bash
+curl "https://api.tobuilder.app/v1/sports/games/GAMMA_GAME_ID?lang=ko" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
 
 ## Crypto rounds
 
