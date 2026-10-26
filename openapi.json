@@ -17395,7 +17395,7 @@
                                   "type": "integer",
                                   "minimum": -9007199254740991,
                                   "maximum": 9007199254740991,
-                                  "description": "The time of the price, in milliseconds since the Unix epoch. The source reports whole seconds, so the last three digits are 000."
+                                  "description": "The time of the price, in milliseconds since the Unix epoch. Historical source points report whole seconds; an appended live point uses the book read time."
                                 },
                                 "price": {
                                   "type": "string",
@@ -17408,7 +17408,7 @@
                               ],
                               "additionalProperties": false
                             },
-                            "description": "Past prices in ascending ts order, with at most one point per ts and at most 1000 points (the most recent ones when the source has more). An empty array is a normal answer: the source has no price for this outcome in the range, as for a new market. A point the service cannot read as a time and a probability from 0 to 1 is left out."
+                            "description": "Past prices in ascending ts order, with at most one point per ts and at most 1000 points (the most recent ones when the source has more). The newest point may be a live two-sided CLOB book midpoint, including on wide spreads, appended only when newer than the historical tail. This is not the last-trade fallback Polymarket may display on wide spreads. Live reads are shared across ranges and callers for 15 seconds; an unavailable live price leaves the historical series unchanged. An empty array is a normal answer when neither source has a price. A point the service cannot read as a time and a probability from 0 to 1 is left out."
                           }
                         },
                         "required": [
@@ -19205,7 +19205,7 @@
                                   "type": "integer",
                                   "minimum": -9007199254740991,
                                   "maximum": 9007199254740991,
-                                  "description": "The time of the price, in milliseconds since the Unix epoch. The source reports whole seconds, so the last three digits are 000."
+                                  "description": "The time of the price, in milliseconds since the Unix epoch. Historical source points report whole seconds; an appended live point uses the book read time."
                                 },
                                 "price": {
                                   "type": "string",
@@ -19218,7 +19218,7 @@
                               ],
                               "additionalProperties": false
                             },
-                            "description": "Past prices of the first outcome in ascending ts order, with at most one point per ts and at most 1000 points (the most recent ones when the source has more). An empty array with status ok is a normal answer: the source has no price for it in the range, as for a new market. A point the service cannot read as a time and a probability from 0 to 1 is left out."
+                            "description": "Past prices of the first outcome in ascending ts order, with at most one point per ts and at most 1000 points (the most recent ones when the source has more). The newest point may be a live two-sided CLOB book midpoint, including on wide spreads, appended only when newer than the historical tail. This is not the last-trade fallback Polymarket may display on wide spreads. Live reads are shared across ranges and callers for 15 seconds; an unavailable live price leaves the historical series unchanged. An empty array with status ok is a normal answer when neither source has a price. A point the service cannot read as a time and a probability from 0 to 1 is left out."
                           }
                         },
                         "required": [
