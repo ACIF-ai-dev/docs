@@ -15861,6 +15861,27 @@
                         }
                       ]
                     },
+                    "resolution": {
+                      "type": "string",
+                      "enum": [
+                        "open",
+                        "pending",
+                        "resolved",
+                        "void"
+                      ],
+                      "description": "Required, never null. open means not known closed and still trading; pending means closed but no final UMA result is known (including proposed, disputed, unknown status or a closed market with no stored resolution row); resolved means a final single winner is known; void means final with no single winner (a non-neg-risk binary split payout; the usual 50-50 void redeems 0.50 per share). Read from stored data, not live; pending can last days. Independent of active and endDate."
+                    },
+                    "winningOutcome": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The final winning label, one of this market's outcomes[].outcome, non-null only when resolution is resolved; null on open, pending and void. The stored winner is final once set. Outcome labels follow lang in the same way as outcomes[].outcome. A void is never a fake outcome label."
+                    },
                     "volume": {
                       "anyOf": [
                         {
@@ -15967,6 +15988,8 @@
                     "eventStartTime",
                     "cryptoFamilies",
                     "protocolVersion",
+                    "resolution",
+                    "winningOutcome",
                     "volume",
                     "marketStartDate",
                     "rules"
@@ -19597,7 +19620,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns one event and the markets of it that this service serves, possibly from cache. Those are the markets its catalog lists (the catalog keeps markets above a lifetime volume threshold) and, when the event is in a weekly or monthly group of which the catalog lists a market, the event's other open markets, taken in so that every expiry in expiries opens here; GET /v1/markets does not list those. A market of the event that is neither is not included here, although GET /v1/markets/{marketId} can still return it by its identifier. The markets are ordered by marketId, at most 200; truncated is true when the event has more such markets than that, and those past the first 200 are not returned. expiries holds the open expiries of the question this event asks, for chips that switch between them: each item's eventId opens on this route. Each market has the keys of GET /v1/markets/{marketId}, rules included, with the same meaning. event.endDate is the latest endDate among the returned markets: when the event ends, as far as this service knows. lang applies to each market as on GET /v1/markets/{marketId}: it localizes outcomes[].outcome labels and adds translation and rules.translation, each a translation or null. Crypto round markets are not served here.",
+            "description": "Returns one event and the markets of it that this service serves, possibly from cache. Those are the markets its catalog lists (the catalog keeps markets above a lifetime volume threshold) and, when the event is in a weekly or monthly group of which the catalog lists a market, the event's other open markets, taken in so that every expiry in expiries opens here; GET /v1/markets does not list those. The markets schema also describes fresh crypto intake and previously openable closed members retained for 14 days from worker-confirmed closure. A market outside those eligible sets is not included here, although GET /v1/markets/{marketId} can still return it by its identifier. The markets are ordered openable first, then retained closed members fill the remainder, with each group ordered by marketId (compared as text), at most 200; truncated is true when the combined eligible openable and retained member count exceeds that, and those past the first 200 are not returned. expiries holds the open expiries of the question this event asks, for chips that switch between them: each item's eventId opens on this route. Each market has the keys of GET /v1/markets/{marketId}, rules included, with the same meaning. event.endDate is the latest endDate among the returned markets: when the event ends, as far as this service knows. lang applies to each market as on GET /v1/markets/{marketId}: it localizes outcomes[].outcome labels and adds translation and rules.translation, each a translation or null. Crypto round markets are not served here.",
             "content": {
               "application/json": {
                 "schema": {
@@ -19619,7 +19642,7 @@
                               "type": "null"
                             }
                           ],
-                          "description": "The event's slug as stored with its markets: that of the first market by marketId that has one. Null when none of them has one."
+                          "description": "The event's slug as stored with its markets: that of the first returned market that has one, in openable-first then text marketId order. Null when none of them has one."
                         },
                         "title": {
                           "anyOf": [
@@ -19630,7 +19653,7 @@
                               "type": "null"
                             }
                           ],
-                          "description": "The event's title as stored with its markets: that of the first market by marketId that has one. Null when none of them has one."
+                          "description": "The event's title as stored with its markets: that of the first returned market that has one, in openable-first then text marketId order. Null when none of them has one."
                         },
                         "endDate": {
                           "anyOf": [
@@ -20102,6 +20125,27 @@
                               }
                             ]
                           },
+                          "resolution": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "pending",
+                              "resolved",
+                              "void"
+                            ],
+                            "description": "Required, never null. open means not known closed and still trading; pending means closed but no final UMA result is known (including proposed, disputed, unknown status or a closed market with no stored resolution row); resolved means a final single winner is known; void means final with no single winner (a non-neg-risk binary split payout; the usual 50-50 void redeems 0.50 per share). Read from stored data, not live; pending can last days. Independent of active and endDate."
+                          },
+                          "winningOutcome": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The final winning label, one of this market's outcomes[].outcome, non-null only when resolution is resolved; null on open, pending and void. The stored winner is final once set. Outcome labels follow lang in the same way as outcomes[].outcome. A void is never a fake outcome label."
+                          },
                           "volume": {
                             "anyOf": [
                               {
@@ -20208,17 +20252,19 @@
                           "eventStartTime",
                           "cryptoFamilies",
                           "protocolVersion",
+                          "resolution",
+                          "winningOutcome",
                           "volume",
                           "marketStartDate",
                           "rules"
                         ],
                         "additionalProperties": false
                       },
-                      "description": "The markets of the event that this service serves: those its catalog lists; when the event is in a weekly or monthly group of which the catalog lists a market, the event's open markets taken in for its expiries; and, when the event's markets are crypto markets this service read from Polymarket's crypto events within the last 15 minutes, those that are active and whose endDate is null or later than now (the markets GET /v1/markets returns with eventTag, seriesRecurrence, or cryptoFamily). Ordered by marketId (compared as text), at most 200. Each has the keys of GET /v1/markets/{marketId}, rules included."
+                      "description": "The markets of the event that this service serves: those its catalog lists; when the event is in a weekly or monthly group of which the catalog lists a market, the event's open markets taken in for its expiries; and, when the event's markets are crypto markets this service read from Polymarket's crypto events within the last 15 minutes, those that are active and whose endDate is null or later than now (the markets GET /v1/markets returns with eventTag, seriesRecurrence, or cryptoFamily). Also includes previously openable members confirmed closed by the worker, for 14 days from first confirmed closure (not extended by refresh); never-served or merely disappeared members are not retained. Ordered by openable members first, then retained closed members filling the remainder of at most 200 slots; each group is ordered by marketId (compared as text). With no retained members the order is unchanged. truncated indicates whether the combined eligible openable and retained member count exceeds the returned count. Use resolution: open for trading members, pending/resolved/void for closed members, not active or endDate. Each has the keys of GET /v1/markets/{marketId}, rules included. List, search, price-history siblings and rounds membership are unchanged."
                     },
                     "truncated": {
                       "type": "boolean",
-                      "description": "True when this service serves more than 200 markets of this event, so that markets holds only the first 200 by marketId; false when markets holds them all."
+                      "description": "True when the combined eligible openable and retained member count exceeds 200, so that markets holds only the first 200 in openable-first then text marketId order; false when markets holds them all."
                     },
                     "expiries": {
                       "type": "object",
@@ -20348,7 +20394,7 @@
                     "expiries"
                   ],
                   "additionalProperties": false,
-                  "description": "Returns one event and the markets of it that this service serves, possibly from cache. Those are the markets its catalog lists (the catalog keeps markets above a lifetime volume threshold) and, when the event is in a weekly or monthly group of which the catalog lists a market, the event's other open markets, taken in so that every expiry in expiries opens here; GET /v1/markets does not list those. A market of the event that is neither is not included here, although GET /v1/markets/{marketId} can still return it by its identifier. The markets are ordered by marketId, at most 200; truncated is true when the event has more such markets than that, and those past the first 200 are not returned. expiries holds the open expiries of the question this event asks, for chips that switch between them: each item's eventId opens on this route. Each market has the keys of GET /v1/markets/{marketId}, rules included, with the same meaning. event.endDate is the latest endDate among the returned markets: when the event ends, as far as this service knows. lang applies to each market as on GET /v1/markets/{marketId}: it localizes outcomes[].outcome labels and adds translation and rules.translation, each a translation or null. Crypto round markets are not served here."
+                  "description": "Returns one event and the markets of it that this service serves, possibly from cache. Those are the markets its catalog lists (the catalog keeps markets above a lifetime volume threshold) and, when the event is in a weekly or monthly group of which the catalog lists a market, the event's other open markets, taken in so that every expiry in expiries opens here; GET /v1/markets does not list those. The markets schema also describes fresh crypto intake and previously openable closed members retained for 14 days from worker-confirmed closure. A market outside those eligible sets is not included here, although GET /v1/markets/{marketId} can still return it by its identifier. The markets are ordered openable first, then retained closed members fill the remainder, with each group ordered by marketId (compared as text), at most 200; truncated is true when the combined eligible openable and retained member count exceeds that, and those past the first 200 are not returned. expiries holds the open expiries of the question this event asks, for chips that switch between them: each item's eventId opens on this route. Each market has the keys of GET /v1/markets/{marketId}, rules included, with the same meaning. event.endDate is the latest endDate among the returned markets: when the event ends, as far as this service knows. lang applies to each market as on GET /v1/markets/{marketId}: it localizes outcomes[].outcome labels and adds translation and rules.translation, each a translation or null. Crypto round markets are not served here."
                 }
               }
             }
