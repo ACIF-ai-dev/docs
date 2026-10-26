@@ -526,6 +526,8 @@ curl "https://api.tobuilder.app/v1/sports/games?status=live" \
 
 A game is the Gamma `gameId` grouping: one game can arrive as several Gamma events, so group by `gameId`, not `event.id`. Pass a selected `moneyline[].tokenId` unchanged to `POST /v1/orders`; do not offer a choice whose `active` is false or whose `tokenId` is null — the order route makes the final decision.
 
+List and detail game objects include `eventId` (the stored Gamma main event id) and `eventSlug` (the stored slug of an active, listed moneyline on that event, or `null` when none carries one); `eventSlug` matches the value space of `/v1/users/positions` and neither field changes with `lang`.
+
 Use `status` to determine game state. `period` and `elapsed` are display strings, not state values. This API rereads live games about once a minute, subject to response caching; use a faster live-data source if that freshness is not suitable. On 2026-09-27, Gamma updates were observed slower than 30 seconds. Ended games can remain in the list briefly. Gamma had no country field on that date, so use league and team fields where they fit your product.
 
 ### Lines, props and coverage

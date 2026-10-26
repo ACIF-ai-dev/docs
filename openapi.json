@@ -21622,6 +21622,21 @@
                             "maximum": 9007199254740991,
                             "description": "Length of detail lineMarkets and sum of lineSegments marketCount in the same read snapshot. Separate from legacy marketCount."
                           },
+                          "eventId": {
+                            "type": "string",
+                            "description": "Gamma main event id stored for this game."
+                          },
+                          "eventSlug": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Gamma main event slug from a stored active, listed moneyline market on this event; null when none carries one. Same event slug value space as GET /v1/users/positions eventSlug; not translated by lang."
+                          },
                           "image": {
                             "anyOf": [
                               {
@@ -21960,6 +21975,8 @@
                           "lineCoverage",
                           "lineSegments",
                           "lineMarketCount",
+                          "eventId",
+                          "eventSlug",
                           "image",
                           "icon",
                           "gameId",
@@ -22405,6 +22422,21 @@
                       "minimum": 0,
                       "maximum": 9007199254740991,
                       "description": "Length of detail lineMarkets and sum of lineSegments marketCount in the same read snapshot. Separate from legacy marketCount."
+                    },
+                    "eventId": {
+                      "type": "string",
+                      "description": "Gamma main event id stored for this game."
+                    },
+                    "eventSlug": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Gamma main event slug from a stored active, listed moneyline market on this event; null when none carries one. Same event slug value space as GET /v1/users/positions eventSlug; not translated by lang."
                     },
                     "image": {
                       "anyOf": [
@@ -23236,6 +23268,8 @@
                     "lineCoverage",
                     "lineSegments",
                     "lineMarketCount",
+                    "eventId",
+                    "eventSlug",
                     "image",
                     "icon",
                     "gameId",
