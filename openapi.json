@@ -10827,6 +10827,39 @@
                     },
                     "createdAt": {
                       "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The CLOB's placement status for this order as it answered the submission: matched (the order matched at placement — for a FOK or FAK market order, the fill), delayed (the market imposes a matching delay and the order was queued; whether it fills is not decided yet), or live (the order rests on the book). Treat any other value as not matched. null when the service did not keep the CLOB's answer: an order stored before this field existed, or one recorded after a failure without that answer."
+                    },
+                    "makingAmount": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Decimal string. The amount of the maker asset the CLOB said fills committed at placement, as the CLOB wrote it (for a BUY, USDC spent; for a SELL, shares sold); 0 when the order did not match. null exactly when status is null. GET /v1/orders/fills remains authoritative for fills."
+                    },
+                    "takingAmount": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Decimal string. The amount of the taker asset the CLOB said fills received at placement, as the CLOB wrote it (for a BUY, shares bought; for a SELL, USDC received); 0 when the order did not match. null exactly when status is null. GET /v1/orders/fills remains authoritative for fills."
                     }
                   },
                   "required": [
@@ -10837,7 +10870,10 @@
                     "side",
                     "price",
                     "size",
-                    "createdAt"
+                    "createdAt",
+                    "status",
+                    "makingAmount",
+                    "takingAmount"
                   ],
                   "additionalProperties": false,
                   "description": "The previously stored limit order record replayed for the same Idempotency-Key; this request did not submit another order to the CLOB."
@@ -10880,6 +10916,39 @@
                     },
                     "createdAt": {
                       "type": "string"
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The CLOB's placement status for this order as it answered the submission: matched (the order matched at placement — for a FOK or FAK market order, the fill), delayed (the market imposes a matching delay and the order was queued; whether it fills is not decided yet), or live (the order rests on the book). Treat any other value as not matched. null when the service did not keep the CLOB's answer: an order stored before this field existed, or one recorded after a failure without that answer."
+                    },
+                    "makingAmount": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Decimal string. The amount of the maker asset the CLOB said fills committed at placement, as the CLOB wrote it (for a BUY, USDC spent; for a SELL, shares sold); 0 when the order did not match. null exactly when status is null. GET /v1/orders/fills remains authoritative for fills."
+                    },
+                    "takingAmount": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Decimal string. The amount of the taker asset the CLOB said fills received at placement, as the CLOB wrote it (for a BUY, shares bought; for a SELL, USDC received); 0 when the order did not match. null exactly when status is null. GET /v1/orders/fills remains authoritative for fills."
                     }
                   },
                   "required": [
@@ -10890,7 +10959,10 @@
                     "side",
                     "price",
                     "size",
-                    "createdAt"
+                    "createdAt",
+                    "status",
+                    "makingAmount",
+                    "takingAmount"
                   ],
                   "additionalProperties": false,
                   "description": "A newly submitted limit order record, including the CLOB order ID and the normalized order fields stored by this service."
@@ -15789,6 +15861,30 @@
                         }
                       ]
                     },
+                    "volume": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Gamma's lifetime market trading volume, not its 24-hour volume, as a non-negative decimal string. Read at syncedAt, not live. Null when Gamma omits it, supplies an invalid or over-64-character value, or no catalog value has been stored (including round-only markets). Parse as a decimal, never a floating-point number."
+                    },
+                    "marketStartDate": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The market's own Gamma startDate, served as marketStartDate: an ISO 8601 UTC instant. Separate from eventStartTime, gameStartTime and endDate; never filled from them. Null when absent, invalid, or not stored (including round-only markets). Read at syncedAt. There is no public startDate key."
+                    },
                     "rules": {
                       "type": "object",
                       "properties": {
@@ -15871,6 +15967,8 @@
                     "eventStartTime",
                     "cryptoFamilies",
                     "protocolVersion",
+                    "volume",
+                    "marketStartDate",
                     "rules"
                   ],
                   "additionalProperties": false,
@@ -19547,6 +19645,26 @@
                           ],
                           "description": "When the event ends: the latest endDate among the markets returned, as an ISO 8601 UTC timestamp. Null when none of them has an endDate."
                         },
+                        "translation": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "title": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "title"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The machine-translated event title in lang. Null when no language was requested, no translation is stored, or its source title no longer matches event.title. The original title is unchanged."
+                        },
                         "underlying": {
                           "anyOf": [
                             {
@@ -19574,6 +19692,7 @@
                         "slug",
                         "title",
                         "endDate",
+                        "translation",
                         "underlying"
                       ],
                       "additionalProperties": false,
@@ -19983,6 +20102,30 @@
                               }
                             ]
                           },
+                          "volume": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Gamma's lifetime market trading volume, not its 24-hour volume, as a non-negative decimal string. Read at syncedAt, not live. Null when Gamma omits it, supplies an invalid or over-64-character value, or no catalog value has been stored (including round-only markets). Parse as a decimal, never a floating-point number."
+                          },
+                          "marketStartDate": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The market's own Gamma startDate, served as marketStartDate: an ISO 8601 UTC instant. Separate from eventStartTime, gameStartTime and endDate; never filled from them. Null when absent, invalid, or not stored (including round-only markets). Read at syncedAt. There is no public startDate key."
+                          },
                           "rules": {
                             "type": "object",
                             "properties": {
@@ -20065,6 +20208,8 @@
                           "eventStartTime",
                           "cryptoFamilies",
                           "protocolVersion",
+                          "volume",
+                          "marketStartDate",
                           "rules"
                         ],
                         "additionalProperties": false

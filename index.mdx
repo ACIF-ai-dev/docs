@@ -723,9 +723,14 @@ curl -X POST https://api.tobuilder.app/v1/orders \
   "side": "BUY",
   "price": "0.42",
   "size": "10",
-  "createdAt": "2026-09-13T00:00:01.000Z"
+  "createdAt": "2026-09-13T00:00:01.000Z",
+  "status": "live",
+  "makingAmount": "0",
+  "takingAmount": "0"
 }
 ```
+
+These three fields are the stored placement snapshot, also returned on an idempotent replay (200), not the order's current fill state. `status` is an open string: recognized values are `matched`, `delayed`, and `live`; treat any other value as not matched. It is null when no placement answer was retained (including legacy rows). `makingAmount` and `takingAmount` are decimal strings from that answer, or null when status is null. Use `GET /v1/orders/fills` for fills.
 
 A market order is a different route with a different body — a BUY needs `amount` and `maxPrice`, a SELL needs `shares` and `minPrice` — and it needs **a different idempotency key**:
 
