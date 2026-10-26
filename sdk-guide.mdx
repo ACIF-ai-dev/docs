@@ -150,6 +150,8 @@ const marketOrder = await tb.orders.placeMarket(
 
 A FOK or FAK order the market killed without a fill rejects with `TobuilderApiError` whose `status` is `409` and `reason` is `order_market_not_filled`; `details.kind` says `fok_killed` or `fak_no_match`, and nothing was placed.
 
+Both not-filled wire shapes release the attempt, so the same key can start a new submission. A market POST answered by the CLOB with exactly HTTP 400 still rejects with `status` 502 and `reason` `order_market_post_upstream_rejected`, but also releases the key. Its `details.rejectionClass` is `insufficient_balance` (the venue's balance / allowance sentence), `below_minimum` (the minimum-size refusal when the minimum read failed), or `rejected` (another 400). No balance pre-check is performed. Other 4xx/5xx market POST answers remain unknown and omit `rejectionClass`; limit orders are unchanged.
+
 A market BUY whose amount, after the fees taken out of `maxSpend`, stays below the market's $1 minimum rejects with `TobuilderApiError` whose `status` is `400` and `reason` is `order_market_amount_below_minimum`; `details.minimumAmount` is an `amount` (a pUSD decimal string with two decimals, sent with `maxSpend` equal to it at the same `maxPrice`) that reaches it with one cent of margin, and nothing was placed.
 
 The header name comes from the generated contract types rather than a string you typed: if the contract renames it, the call stops compiling instead of quietly losing idempotency.
