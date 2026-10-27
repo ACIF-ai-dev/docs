@@ -530,6 +530,8 @@ A game is the Gamma `gameId` grouping: one game can arrive as several Gamma even
 
 List and detail game objects include `eventId` (the stored Gamma main event id) and `eventSlug` (the slug of a stored active, listed moneyline on the main event, otherwise any stored market of that event, moneyline first then market id ascending, or `null` when no stored market of that event carries one); `eventSlug` matches the value space of `/v1/users/positions` and neither field changes with `lang`.
 
+Their `volume` is the sum of Gamma lifetime trading volume over every stored market on the main event or linked to the game, each counted once including closed and delisted markets, as a decimal string (parse as a decimal, not a floating-point number), or `null` when none carries a volume; null stored volumes are omitted, the values reflect each market's `syncedAt` rather than live trading, and the sum is independent of `marketCount` and `lang`.
+
 Use `status` to determine game state. `period` and `elapsed` are display strings, not state values. This API rereads live games about once a minute, subject to response caching; use a faster live-data source if that freshness is not suitable. On 2026-09-27, Gamma updates were observed slower than 30 seconds. Ended games can remain in the list briefly. Gamma had no country field on that date, so use league and team fields where they fit your product.
 
 ### Lines, props and coverage

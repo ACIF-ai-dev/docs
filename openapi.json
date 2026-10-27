@@ -21982,6 +21982,17 @@
                             "maximum": 9007199254740991,
                             "description": "Count of the detail markets array."
                           },
+                          "volume": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Sum of Gamma lifetime (not 24-hour) trading volume over every stored market on the main event or linked to this game, each counted once, including closed and delisted markets; not limited to the markets counted by marketCount. Non-negative decimal string, read at each market's syncedAt, not live and may lag; markets with null stored volume are omitted. Null when no stored member market carries a volume. Parse as a decimal, never a floating-point number."
+                          },
                           "filledAt": {
                             "type": "string",
                             "format": "date-time",
@@ -22019,6 +22030,7 @@
                           "teams",
                           "moneyline",
                           "marketCount",
+                          "volume",
                           "filledAt",
                           "statusObservedAt"
                         ],
@@ -22783,6 +22795,17 @@
                       "maximum": 9007199254740991,
                       "description": "Count of the detail markets array."
                     },
+                    "volume": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Sum of Gamma lifetime (not 24-hour) trading volume over every stored market on the main event or linked to this game, each counted once, including closed and delisted markets; not limited to the markets counted by marketCount. Non-negative decimal string, read at each market's syncedAt, not live and may lag; markets with null stored volume are omitted. Null when no stored member market carries a volume. Parse as a decimal, never a floating-point number."
+                    },
                     "filledAt": {
                       "type": "string",
                       "format": "date-time",
@@ -23312,6 +23335,7 @@
                     "teams",
                     "moneyline",
                     "marketCount",
+                    "volume",
                     "filledAt",
                     "statusObservedAt",
                     "lineMarkets",
