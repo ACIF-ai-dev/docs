@@ -254,6 +254,8 @@ Each market of `GET /v1/markets`, `GET /v1/markets/{marketId}`, and `GET /v1/eve
 
 `GET /v1/markets/{marketId}` carries `rules`: the market's rules text and the link to its settlement source, as Gamma publishes them. `GET /v1/markets` does not carry it.
 
+Market detail and every market of `GET /v1/events/{eventId}` also carry `gameId`: the stored sports game key used by `GET /v1/sports/games`, unchanged by `lang`, or `null` when no link is stored (including non-sports and round-only markets); list items omit it, and `GET /v1/sports/games/{gameId}` may still return 404 for an unlisted game.
+
 ```bash
 curl "https://api.tobuilder.app/v1/markets/0x9a1c-example" \
   -H "Authorization: Bearer $TOBUILDER_API_KEY"

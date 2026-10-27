@@ -15861,6 +15861,17 @@
                         }
                       ]
                     },
+                    "gameId": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The stored sports game link (markets.game_id), unchanged: the gameId used by GET /v1/sports/games. Null when no link is stored, including non-sports and round-only markets. A stored link does not guarantee the game is listed; GET /v1/sports/games/{gameId} may still return 404 for an unlisted game."
+                    },
                     "resolution": {
                       "type": "string",
                       "enum": [
@@ -15988,6 +15999,7 @@
                     "eventStartTime",
                     "cryptoFamilies",
                     "protocolVersion",
+                    "gameId",
                     "resolution",
                     "winningOutcome",
                     "volume",
@@ -20125,6 +20137,17 @@
                               }
                             ]
                           },
+                          "gameId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The stored sports game link (markets.game_id), unchanged: the gameId used by GET /v1/sports/games. Null when no link is stored, including non-sports and round-only markets. A stored link does not guarantee the game is listed; GET /v1/sports/games/{gameId} may still return 404 for an unlisted game."
+                          },
                           "resolution": {
                             "type": "string",
                             "enum": [
@@ -20252,6 +20275,7 @@
                           "eventStartTime",
                           "cryptoFamilies",
                           "protocolVersion",
+                          "gameId",
                           "resolution",
                           "winningOutcome",
                           "volume",
