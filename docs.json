@@ -37,6 +37,7 @@
             "group": "Users",
             "pages": [
               "GET /v1/me",
+              "GET /v1/me/ledger",
         "GET /v1/me/setup",
               "POST /v1/users/link",
               "GET /v1/users/wallet",

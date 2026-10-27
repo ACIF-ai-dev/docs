@@ -4027,6 +4027,558 @@
         }
       }
     },
+    "/v1/me/ledger": {
+      "get": {
+        "summary": "Read the end user's activity ledger",
+        "description": "A wallet-wide history of trades, redemptions, credited deposits, sent/bridging/completed withdrawals and recorded cancels. Newest first by timestamp, then activity/deposit/withdraw/cancel source rank and source key. 20 rows per page. Trade/redemption activity is read live (100 rows per read, at most five reads per request); a thin or tied window exceeding this bound returns 502, never a silent partial page. Deposit and cancel history is limited to locally observed events; old unmeasured deposits have null amounts. Sports references use our gameId, other markets eventSlug. Ambiguous market references are null without guessing; upstream titles are retained, while local rows without an unambiguous title have null descriptions. No profiles or source payloads are exposed.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "description": "Absent, empty or all: every kind. prediction: bet, cashout, cancel. settlement: settle, refund. cashflow: deposit, withdraw."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "cursor",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": [],
+            "endUserToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Up to 20 activity rows and an opaque continuation cursor, or an empty rows array and null cursor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rows": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "bet",
+                              "settle",
+                              "cashout",
+                              "deposit",
+                              "withdraw",
+                              "cancel",
+                              "refund"
+                            ]
+                          },
+                          "amount": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Signed plain USD collateral decimal, without a leading plus. Gross trade amounts exclude fees; this history is not a balance or P&L total. Null only for a deposit without a measured received USD amount, never zero or source-token quantity."
+                          },
+                          "ref": {
+                            "anyOf": [
+                              {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "matchId": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "matchId"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "eventSlug": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "eventSlug"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "txHash": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "txHash"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "description": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "amount",
+                          "ref",
+                          "description",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "nextCursor": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Opaque versioned cursor bound to builder, end user and type. Return unchanged; it remains usable across API restarts and replicas. It is a pagination hint, not an authentication token or signature: edits to a valid boundary only move within the authenticated user's own data. State is bounded to 500 emitted keys at one timestamp and 32768 encoded characters; exceeding either bound returns 502 ledger_scan_limit, never an unusable continuation. Null is the end. Events arriving after a timestamp has been passed are not backfilled into the traversal."
+                    }
+                  },
+                  "required": [
+                    "rows",
+                    "nextCursor"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Up to 20 activity rows and an opaque continuation cursor, or an empty rows array and null cursor."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input. error.details.reason is ledger_type_invalid, ledger_query_invalid (unknown/duplicate query key), or ledger_cursor_invalid (malformed payload, invalid boundary, invalid binding digest, foreign identity or changed type). This cursor is not signed; editing its boundary only moves within the caller's own data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Invalid input. error.details.reason is ledger_type_invalid, ledger_query_invalid (unknown/duplicate query key), or ledger_cursor_invalid (malformed payload, invalid boundary, invalid binding digest, foreign identity or changed type). This cursor is not signed; editing its boundary only moves within the caller's own data."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "error.code is FORBIDDEN and error.details.reason is subbuilder_suspended when the builder is suspended. All API key scopes can read this end-user-authenticated route. Retrying unchanged credentials does not resolve this refusal. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is FORBIDDEN and error.details.reason is subbuilder_suspended when the builder is suspended. All API key scopes can read this end-user-authenticated route. Retrying unchanged credentials does not resolve this refusal. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The end user's Polymarket Deposit Wallet is not yet provisioned (error.details.reason: wallet_not_provisioned). Complete POST /v1/onboarding, then retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The end user's Polymarket Deposit Wallet is not yet provisioned (error.details.reason: wallet_not_provisioned). Complete POST /v1/onboarding, then retry."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Ledger storage unavailable or another server-side failure; no partial page. An ambiguous market association does not fail the page: only that row's reference is null. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Ledger storage unavailable or another server-side failure; no partial page. An ambiguous market association does not fail the page: only that row's reference is null. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Activity unavailable, invalid, wallet-mismatched or bounded scan exhausted. error.details.reason is ledger_upstream_failed, ledger_wallet_mismatch, ledger_page_invalid, ledger_item_invalid or ledger_scan_limit. No partial page or upstream error text is returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Activity unavailable, invalid, wallet-mismatched or bounded scan exhausted. error.details.reason is ledger_upstream_failed, ledger_wallet_mismatch, ledger_page_invalid, ledger_item_invalid or ledger_scan_limit. No partial page or upstream error text is returned."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/stream/tickets": {
       "post": {
         "summary": "Issue an end-user stream ticket",
