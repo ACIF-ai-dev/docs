@@ -21659,7 +21659,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "Gamma main event slug from a stored active, listed moneyline market on this event; null when none carries one. Same event slug value space as GET /v1/users/positions eventSlug; not translated by lang."
+                            "description": "Gamma main event slug from a stored active, listed moneyline, otherwise any stored market of the main event (moneyline first, then market id ascending); null when no stored market of that event carries one. Same event slug value space as GET /v1/users/positions eventSlug; not translated by lang."
                           },
                           "image": {
                             "anyOf": [
@@ -22460,7 +22460,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "Gamma main event slug from a stored active, listed moneyline market on this event; null when none carries one. Same event slug value space as GET /v1/users/positions eventSlug; not translated by lang."
+                      "description": "Gamma main event slug from a stored active, listed moneyline, otherwise any stored market of the main event (moneyline first, then market id ascending); null when no stored market of that event carries one. Same event slug value space as GET /v1/users/positions eventSlug; not translated by lang."
                     },
                     "image": {
                       "anyOf": [
