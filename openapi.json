@@ -22370,6 +22370,106 @@
                             ],
                             "description": "The Gamma event field elapsed is a sport-specific display string; NHL was observed as remaining time on 2026-09-27, so do not interpret it."
                           },
+                          "periodScores": {
+                            "anyOf": [
+                              {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "home": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "away": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "tiebreak": {
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "home": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991
+                                            },
+                                            "away": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991
+                                            }
+                                          },
+                                          "required": [
+                                            "home",
+                                            "away"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "home",
+                                    "away",
+                                    "tiebreak"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Tennis sets parsed from the stored Gamma score display string, in Gamma order, with tiebreak counts or null. Null unless the whole tennis string parses; null for other sports. Home follows teams[].side home, including tiebreaks (measured 2026-10-28)."
+                          },
+                          "seriesScore": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "home": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "away": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "home",
+                                  "away"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Esports maps won parsed from the second | segment of the stored Gamma score display string; the first segment is never exposed here. Null unless the whole esports string parses; null for other sports. Home follows teams[].side home (measured 2026-10-28)."
+                          },
+                          "bestOf": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Esports best-of count parsed from Bo<n>, the third | segment of the stored Gamma score display string. Null unless the whole esports string parses; null for other sports. The associated seriesScore home follows teams[].side home (measured 2026-10-28)."
+                          },
                           "finishedAt": {
                             "anyOf": [
                               {
@@ -22578,6 +22678,9 @@
                           "score",
                           "period",
                           "elapsed",
+                          "periodScores",
+                          "seriesScore",
+                          "bestOf",
                           "finishedAt",
                           "teams",
                           "moneyline",
@@ -23182,6 +23285,106 @@
                         }
                       ],
                       "description": "The Gamma event field elapsed is a sport-specific display string; NHL was observed as remaining time on 2026-09-27, so do not interpret it."
+                    },
+                    "periodScores": {
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "home": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "away": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "tiebreak": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "home": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "away": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "home",
+                                      "away"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "home",
+                              "away",
+                              "tiebreak"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Tennis sets parsed from the stored Gamma score display string, in Gamma order, with tiebreak counts or null. Null unless the whole tennis string parses; null for other sports. Home follows teams[].side home, including tiebreaks (measured 2026-10-28)."
+                    },
+                    "seriesScore": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "home": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "away": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "home",
+                            "away"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Esports maps won parsed from the second | segment of the stored Gamma score display string; the first segment is never exposed here. Null unless the whole esports string parses; null for other sports. Home follows teams[].side home (measured 2026-10-28)."
+                    },
+                    "bestOf": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Esports best-of count parsed from Bo<n>, the third | segment of the stored Gamma score display string. Null unless the whole esports string parses; null for other sports. The associated seriesScore home follows teams[].side home (measured 2026-10-28)."
                     },
                     "finishedAt": {
                       "anyOf": [
@@ -23883,6 +24086,9 @@
                     "score",
                     "period",
                     "elapsed",
+                    "periodScores",
+                    "seriesScore",
+                    "bestOf",
                     "finishedAt",
                     "teams",
                     "moneyline",
