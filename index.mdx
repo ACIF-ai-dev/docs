@@ -55,6 +55,8 @@ Like issuance, rotation returns the new plaintext key exactly once. If it is los
 
 ## Get an end-user token
 
+Favourites belong to one end user within one builder. `GET /v1/me/favorites` returns saved leagues, teams and games, newest first within each kind, retaining identifiers with null display fields if a target disappears. Save or remove an item with idempotent `PUT` or `DELETE /v1/me/favorites/{kind}/{id}`, where kind is `leagues`, `teams` or `games`; both return 204. The cap is 200 per kind per user. These operations require the builder key and end-user token, with the same identity resolution and refusals as the ledger. League reads carry no favourite flag: read favourites separately to mark your UI.
+
 User-facing operations under `/v1/users/*`, `/v1/deposit/*`, `/v1/withdrawals/*`, `/v1/perps/account`, `/v1/perps/transfers`, `/v1/perps/order-preview`, `/v1/perps/orders`, and `/v1/perps/positions` need the builder key plus an `x-end-user-token` header. The header value is that end user's Privy access token.
 
 Your frontend obtains the token by signing the user in through the single Privy app that tobuilder provides for this integration; your tobuilder administrator gives you the app id. Before login, send every frontend origin — including a development origin such as `http://localhost:<port>` — to your tobuilder administrator so it can be registered in Privy's allowed origins. Login fails for an unregistered origin; that is registration state, not a bug. Send the origin again when the domain changes.
@@ -520,6 +522,8 @@ curl "https://api.tobuilder.app/v1/events/123456/underlying/price-history?range=
 - **Rate limits.** This read counts against the per-minute limit and, for a `trade` key, the hourly budget. It can also answer 429 `perps_capacity` when the service's own budget for reading Perps market data is spent (with `Retry-After`), and 502 `perps_unavailable` or `perps_rate_limited` when the provider cannot be read.
 
 ## Browse sports games
+
+Read a stored league with `GET /v1/sports/leagues/{leagueSlug}` using a game's `leagueSlug`. It returns the league identity, logo, sport and listed upcoming/live game counts, without a per-user favourite flag. `standingsSource: "team_record"` identifies standings derived from each team's latest observed `W-L` or `W-L-D` record, not an official table; teams with unparsable records are omitted and `standings` is empty when no record parses. `region` is `null` for now. An unknown slug returns 404 with `error.details.reason: "league_not_found"`; malformed slugs return 400. As on the game list, `lang` does not translate league titles or team fields.
 
 ```bash
 curl "https://api.tobuilder.app/v1/sports/games?status=live" \
