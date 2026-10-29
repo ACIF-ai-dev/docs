@@ -22470,6 +22470,17 @@
                             ],
                             "description": "Esports best-of count parsed from Bo<n>, the third | segment of the stored Gamma score display string. Null unless the whole esports string parses; null for other sports. The associated seriesScore home follows teams[].side home (measured 2026-10-28)."
                           },
+                          "fightMethod": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Raw upstream text after the single | of the stored Gamma mma score; open set, not translated. Null unless the whole mma string parses; null for other sports. No round information exists upstream (measured 2026-10-29)."
+                          },
                           "finishedAt": {
                             "anyOf": [
                               {
@@ -22681,6 +22692,7 @@
                           "periodScores",
                           "seriesScore",
                           "bestOf",
+                          "fightMethod",
                           "finishedAt",
                           "teams",
                           "moneyline",
@@ -23386,6 +23398,17 @@
                       ],
                       "description": "Esports best-of count parsed from Bo<n>, the third | segment of the stored Gamma score display string. Null unless the whole esports string parses; null for other sports. The associated seriesScore home follows teams[].side home (measured 2026-10-28)."
                     },
+                    "fightMethod": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Raw upstream text after the single | of the stored Gamma mma score; open set, not translated. Null unless the whole mma string parses; null for other sports. No round information exists upstream (measured 2026-10-29)."
+                    },
                     "finishedAt": {
                       "anyOf": [
                         {
@@ -24089,6 +24112,7 @@
                     "periodScores",
                     "seriesScore",
                     "bestOf",
+                    "fightMethod",
                     "finishedAt",
                     "teams",
                     "moneyline",

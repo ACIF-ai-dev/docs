@@ -534,7 +534,7 @@ Their `volume` is the sum of Gamma lifetime trading volume over every stored mar
 
 Use `status` to determine game state. `period` and `elapsed` are display strings, not state values. This API rereads live games about once a minute, subject to response caching; use a faster live-data source if that freshness is not suitable. On 2026-09-27, Gamma updates were observed slower than 30 seconds. Ended games can remain in the list briefly. Gamma had no country field on that date, so use league and team fields where they fit your product.
 
-On both game lists and detail, `periodScores` contains tennis sets in Gamma order (including tiebreaks), while `seriesScore` contains esports maps won and `bestOf` its best-of count; each is null unless the whole stored Gamma `score` string parses for that sport, and `home` follows `teams[].side: "home"` (measured 2026-10-28), not team array order.
+On both game lists and detail, `periodScores` contains tennis sets in Gamma order (including tiebreaks), while `seriesScore` contains esports maps won and `bestOf` its best-of count; each is null unless the whole stored Gamma `score` string parses for that sport, and `home` follows `teams[].side: "home"` (measured 2026-10-28), not team array order; `fightMethod` is the mma result method as raw upstream text (open set, not translated), null unless the whole mma score parses and null for other sports, with no round information available upstream (measured 2026-10-29).
 
 ### Lines, props and coverage
 
