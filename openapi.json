@@ -23355,7 +23355,31 @@
     "/v1/markets/rounds": {
       "get": {
         "summary": "List crypto rounds",
+        "description": "The default request reads only this instance's memory and returns up to five past rounds unchanged. past above 5 (up to 50) or pastWindow=today requires asset and extends the past list with stored resolved rounds, newest first, deduplicated by condition id with memory taking precedence. today uses endDate at or after 00:00 Asia/Seoul on the service clock and returns at most 288 resolved past rounds. Stored rounds have bestAsk null. Rows without required display fields are omitted, so the list can be shorter than requested immediately after the migration. No request causes an upstream read. Stored reads are cached per pair and selection for at most 30 seconds.",
         "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 50
+            },
+            "in": "query",
+            "name": "past",
+            "required": false,
+            "description": "Number of past rounds, 0 to 50; default 5. Values above 5 require asset and extend memory with stored resolved rounds, newest first. Stored rounds have bestAsk null; the list can be shorter than requested right after the migration because old rows lack display fields. Cannot be combined with pastWindow."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "today"
+              ]
+            },
+            "in": "query",
+            "name": "pastWindow",
+            "required": false,
+            "description": "today selects resolved past rounds whose endDate is at or after 00:00 Asia/Seoul of the request day (service clock), newest first, at most 288. Requires asset; cannot be combined with past. Extends memory with stored resolved rounds; bestAsk is null and the list can be shorter right after the migration."
+          },
           {
             "schema": {
               "type": "string",
@@ -23722,7 +23746,7 @@
                             "description": "Up to 2 rounds that start after current, soonest first. Only rounds this service has already read are listed, so the list can be shorter."
                           },
                           "past": {
-                            "maxItems": 5,
+                            "maxItems": 288,
                             "type": "array",
                             "items": {
                               "type": "object",
@@ -23859,7 +23883,7 @@
                               ],
                               "additionalProperties": false
                             },
-                            "description": "Up to 5 rounds that ended before current started, newest first. Only rounds this service has already read are listed, so the list can be shorter."
+                            "description": "By default up to 5 rounds that ended before current started, newest first. past can request up to 50, or pastWindow=today up to 288 resolved rounds of the current KST day. Longer lists extend memory with stored resolved rounds; bestAsk is null. Only complete stored rows are listed, so the list can be shorter than requested right after the migration."
                           }
                         },
                         "required": [
@@ -23886,7 +23910,7 @@
             }
           },
           "400": {
-            "description": "While crypto rounds are open, an asset that is not 1 to 10 upper-case letters or digits, an interval other than 5m (matched exactly and case-sensitive), a repeated asset or interval, or an asset and interval that select no pair this deployment carries produce error.code VALIDATION_FAILED with error.details omitted. While they are not open, each of these is answered with the 404 rounds_not_open instead.",
+            "description": "While crypto rounds are open, an asset that is not 1 to 10 upper-case letters or digits, an interval other than 5m (matched exactly and case-sensitive), a repeated asset or interval, or an asset and interval that select no pair this deployment carries produce error.code VALIDATION_FAILED with error.details omitted. The same error is returned for past outside integer 0–50, a pastWindow other than today, repeated history parameters, past with pastWindow, or a missing asset with past above 5 or pastWindow. While they are not open, each of these is answered with the 404 rounds_not_open instead.",
             "content": {
               "application/json": {
                 "schema": {
@@ -23934,7 +23958,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "While crypto rounds are open, an asset that is not 1 to 10 upper-case letters or digits, an interval other than 5m (matched exactly and case-sensitive), a repeated asset or interval, or an asset and interval that select no pair this deployment carries produce error.code VALIDATION_FAILED with error.details omitted. While they are not open, each of these is answered with the 404 rounds_not_open instead."
+                  "description": "While crypto rounds are open, an asset that is not 1 to 10 upper-case letters or digits, an interval other than 5m (matched exactly and case-sensitive), a repeated asset or interval, or an asset and interval that select no pair this deployment carries produce error.code VALIDATION_FAILED with error.details omitted. The same error is returned for past outside integer 0–50, a pastWindow other than today, repeated history parameters, past with pastWindow, or a missing asset with past above 5 or pastWindow. While they are not open, each of these is answered with the 404 rounds_not_open instead."
                 }
               }
             }
