@@ -23042,7 +23042,7 @@
                             "type": "integer",
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991,
-                            "description": "Count of listed, active, non-game markets of this event in the same Gamma series."
+                            "description": "Count of listed, active, non-game markets of this series-linked or league-specific-tag-linked event."
                           },
                           "volume24h": {
                             "anyOf": [
@@ -23066,7 +23066,7 @@
                         ],
                         "additionalProperties": false
                       },
-                      "description": "Up to 20 stored non-game events in the same Gamma series as leagueSlug, using only listed AND active markets with game_id null. Unlinked game events are excluded: any stored market with the same event_id and a non-null sports_market_type excludes the event, regardless of series or listed/active state. No upstream read; titles stay original. Ordered by numeric volume24h descending, nulls last, then eventId ascending. Empty array when none."
+                      "description": "Up to 20 stored non-game events in the same Gamma series as leagueSlug OR carrying a league-specific tag: a tag carried by this league's game markets and by no other league's game markets, comparing tag slugs case-insensitively. Events tagged pop-culture are excluded. Uses only listed AND active markets with game_id null. Unlinked game events are excluded: any stored market with the same event_id and a non-null sports_market_type excludes the event, regardless of series or listed/active state. Each event appears once. No upstream read; titles stay original. Ordered by numeric volume24h descending, nulls last, then eventId ascending. Empty array when none."
                     },
                     "slug": {
                       "type": "string",
