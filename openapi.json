@@ -26360,7 +26360,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Original stored text only. Visible non-ended games with a listed moneyline and their teams/leagues. Cached for 30 seconds; no upstream requests.",
+            "description": "Original stored text only. Visible non-ended games with a listed moneyline and their teams/leagues. Cached for 30 seconds; no upstream requests. Games more than 3 hours past kickoff with no live or ended evidence are omitted from lists and counts; stored status and reads by game id are unchanged. Games with unknown kickoff are retained.",
             "content": {
               "application/json": {
                 "schema": {
@@ -26568,7 +26568,7 @@
                     "hasMore"
                   ],
                   "additionalProperties": false,
-                  "description": "Original stored text only. Visible non-ended games with a listed moneyline and their teams/leagues. Cached for 30 seconds; no upstream requests."
+                  "description": "Original stored text only. Visible non-ended games with a listed moneyline and their teams/leagues. Cached for 30 seconds; no upstream requests. Games more than 3 hours past kickoff with no live or ended evidence are omitted from lists and counts; stored status and reads by game id are unchanged. Games with unknown kickoff are retained."
                 }
               }
             }
@@ -26839,7 +26839,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Visible games and their teams/leagues ranked independently by stored 24 h volume. Null volumes omitted. No search logs or upstream requests. Cached for 30 seconds.",
+            "description": "Visible games and their teams/leagues ranked independently by stored 24 h volume. Null volumes omitted. No search logs or upstream requests. Cached for 30 seconds. Games more than 3 hours past kickoff with no live or ended evidence are omitted from lists and counts; stored status and reads by game id are unchanged. Games with unknown kickoff are retained.",
             "content": {
               "application/json": {
                 "schema": {
@@ -27407,7 +27407,7 @@
                     "leagues"
                   ],
                   "additionalProperties": false,
-                  "description": "Visible games and their teams/leagues ranked independently by stored 24 h volume. Null volumes omitted. No search logs or upstream requests. Cached for 30 seconds."
+                  "description": "Visible games and their teams/leagues ranked independently by stored 24 h volume. Null volumes omitted. No search logs or upstream requests. Cached for 30 seconds. Games more than 3 hours past kickoff with no live or ended evidence are omitted from lists and counts; stored status and reads by game id are unchanged. Games with unknown kickoff are retained."
                 }
               }
             }
@@ -27673,7 +27673,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Stored league identity and listed game counts, with record-derived standings. No per-user favourite flag. No upstream requests; region is always null. This body has no outcomes[].outcome labels; lang leaves the original league title and team fields unchanged.",
+            "description": "Stored league identity and listed game counts, with record-derived standings. No per-user favourite flag. No upstream requests; region is always null. This body has no outcomes[].outcome labels; lang leaves the original league title and team fields unchanged. Games more than 3 hours past kickoff with no live or ended evidence are omitted from lists and counts; stored status and reads by game id are unchanged. Games with unknown kickoff are retained.",
             "content": {
               "application/json": {
                 "schema": {
@@ -27925,7 +27925,7 @@
                     "standingsSource"
                   ],
                   "additionalProperties": false,
-                  "description": "Stored league identity and listed game counts, with record-derived standings. No per-user favourite flag. No upstream requests; region is always null. This body has no outcomes[].outcome labels; lang leaves the original league title and team fields unchanged."
+                  "description": "Stored league identity and listed game counts, with record-derived standings. No per-user favourite flag. No upstream requests; region is always null. This body has no outcomes[].outcome labels; lang leaves the original league title and team fields unchanged. Games more than 3 hours past kickoff with no live or ended evidence are omitted from lists and counts; stored status and reads by game id are unchanged. Games with unknown kickoff are retained."
                 }
               }
             }
@@ -28224,7 +28224,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Counts listed games only; unclassified games combine into one sport null item. The response may be cached.",
+            "description": "Counts listed games only; unclassified games combine into one sport null item. The response may be cached. Games more than 3 hours past kickoff with no live or ended evidence are omitted from lists and counts; stored status and reads by game id are unchanged. Games with unknown kickoff are retained.",
             "content": {
               "application/json": {
                 "schema": {
@@ -28276,7 +28276,7 @@
                     "sports"
                   ],
                   "additionalProperties": false,
-                  "description": "Counts listed games only; unclassified games combine into one sport null item. The response may be cached."
+                  "description": "Counts listed games only; unclassified games combine into one sport null item. The response may be cached. Games more than 3 hours past kickoff with no live or ended evidence are omitted from lists and counts; stored status and reads by game id are unchanged. Games with unknown kickoff are retained."
                 }
               }
             }
@@ -28539,7 +28539,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Lists games while a moneyline is in catalog scope: its start is within the lookback window and Gamma has not reported closed; ended games can remain, and omitted games may still be read by detail. A moneyline choice with active false or tokenId null should not be offered for ordering. Live games are reread about each minute; Gamma updates were observed slower than 30 seconds on 2026-09-27, and this response may be cached. Lines and totals/spreads prices refresh with the game fill cycle, normally 30 minutes; live or started-not-ended games' moneyline price refreshes about each minute from the live refresh, otherwise from catalog synchronization. Gamma had no country field on 2026-09-27; use league and team fields. No market questions or outcomes[].outcome labels are present in summaries, so lang leaves the summary unchanged; it does not translate titles, teams or moneyline labels.",
+            "description": "Lists games while a moneyline is in catalog scope: its start is within the lookback window and Gamma has not reported closed; ended games can remain, and omitted games may still be read by detail. A moneyline choice with active false or tokenId null should not be offered for ordering. Live games are reread about each minute; Gamma updates were observed slower than 30 seconds on 2026-09-27, and this response may be cached. Lines and totals/spreads prices refresh with the game fill cycle, normally 30 minutes; live or started-not-ended games' moneyline price refreshes about each minute from the live refresh, otherwise from catalog synchronization. Gamma had no country field on 2026-09-27; use league and team fields. No market questions or outcomes[].outcome labels are present in summaries, so lang leaves the summary unchanged; it does not translate titles, teams or moneyline labels. Games more than 3 hours past kickoff with no live or ended evidence are omitted from lists and counts; stored status and reads by game id are unchanged. Games with unknown kickoff are retained.",
             "content": {
               "application/json": {
                 "schema": {
@@ -29199,7 +29199,7 @@
                       "type": "integer",
                       "minimum": -9007199254740991,
                       "maximum": 9007199254740991,
-                      "description": "Total listed games matching the filters before pagination."
+                      "description": "Total listed games matching the filters before pagination. Games more than 3 hours past kickoff without live or ended evidence are omitted."
                     }
                   },
                   "required": [
@@ -29207,7 +29207,7 @@
                     "total"
                   ],
                   "additionalProperties": false,
-                  "description": "Lists games while a moneyline is in catalog scope: its start is within the lookback window and Gamma has not reported closed; ended games can remain, and omitted games may still be read by detail. A moneyline choice with active false or tokenId null should not be offered for ordering. Live games are reread about each minute; Gamma updates were observed slower than 30 seconds on 2026-09-27, and this response may be cached. Lines and totals/spreads prices refresh with the game fill cycle, normally 30 minutes; live or started-not-ended games' moneyline price refreshes about each minute from the live refresh, otherwise from catalog synchronization. Gamma had no country field on 2026-09-27; use league and team fields. No market questions or outcomes[].outcome labels are present in summaries, so lang leaves the summary unchanged; it does not translate titles, teams or moneyline labels."
+                  "description": "Lists games while a moneyline is in catalog scope: its start is within the lookback window and Gamma has not reported closed; ended games can remain, and omitted games may still be read by detail. A moneyline choice with active false or tokenId null should not be offered for ordering. Live games are reread about each minute; Gamma updates were observed slower than 30 seconds on 2026-09-27, and this response may be cached. Lines and totals/spreads prices refresh with the game fill cycle, normally 30 minutes; live or started-not-ended games' moneyline price refreshes about each minute from the live refresh, otherwise from catalog synchronization. Gamma had no country field on 2026-09-27; use league and team fields. No market questions or outcomes[].outcome labels are present in summaries, so lang leaves the summary unchanged; it does not translate titles, teams or moneyline labels. Games more than 3 hours past kickoff with no live or ended evidence are omitted from lists and counts; stored status and reads by game id are unchanged. Games with unknown kickoff are retained."
                 }
               }
             }
