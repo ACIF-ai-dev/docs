@@ -29,7 +29,7 @@ A key's scope decides which route prefixes it may call. Scopes are cumulative â€
 
 | Scope | Adds | Use it for |
 |---|---|---|
-| `bot-read` | `/v1/markets`, `/v1/me`, `/v1/sports`, `/v1/perps/instruments`, `/v1/events` | reading market data and checking the key itself |
+| `bot-read` | `/v1/markets`, `/v1/me`, `/v1/sports`, `/v1/perps/instruments`, `/v1/events`, `/v1/traders` | reading public market/trader data and checking the key itself |
 | `bot-link` | `/v1/users`, `/v1/onboarding`, `/v1/webhooks/endpoints` | linking your users, onboarding their wallets, and registering or rotating webhook endpoints |
 | `trade` | `/v1/deposit`, `/v1/orders`, `/v1/withdrawals`, `/v1/webhooks/deliveries`, `/v1/stream`, `/v1/perps/account`, `/v1/perps/transfers`, `/v1/perps/order-preview`, `/v1/perps/orders`, `/v1/perps/positions` | deposits, order flow, withdrawals, webhook delivery operations, the streaming surface, Perps accounts, Perps transfers, the Perps order preview, Perps orders, and closing Perps positions |
 
