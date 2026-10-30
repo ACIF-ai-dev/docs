@@ -61,7 +61,7 @@
           },
           {
             "group": "Sports",
-            "pages": ["GET /v1/sports", "GET /v1/sports/games", "GET /v1/sports/games/{gameId}", "GET /v1/sports/leagues/{leagueSlug}"]
+            "pages": ["GET /v1/sports", "GET /v1/sports/games", "GET /v1/sports/games/{gameId}", "GET /v1/sports/leagues/{leagueSlug}", "GET /v1/sports/search", "GET /v1/sports/search/trending"]
           },
           {
             "group": "Perps",

@@ -22947,6 +22947,1347 @@
         }
       }
     },
+    "/v1/sports/search": {
+      "get": {
+        "summary": "Search stored sports games, teams and leagues",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "description": "Required 1–64 character original-language substring, case insensitive. Percent, underscore and backslash are literal. No translated-name dictionary."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "game",
+                "team",
+                "league"
+              ]
+            },
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "description": "Restrict to this identity kind; omitted means all three kinds."
+          },
+          {
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Maximum items, default 20, maximum 20."
+          },
+          {
+            "schema": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "description": "Zero-based offset into the stable combined ordering."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Original stored text only. Visible non-ended games with a listed moneyline and their teams/leagues. Cached for 30 seconds; no upstream requests.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "game",
+                              "team",
+                              "league"
+                            ],
+                            "description": "Identity kind."
+                          },
+                          "gameId": {
+                            "description": "Stored game identity, for games only.",
+                            "type": "string"
+                          },
+                          "teamId": {
+                            "description": "Stored team identity, for teams only.",
+                            "type": "string"
+                          },
+                          "leagueSlug": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Stored league slug, or null."
+                          },
+                          "name": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Original stored display name; never translated."
+                          },
+                          "sportCode": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Stored sport code, or null."
+                          },
+                          "volume24h": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Sum of stored member 24 h volumes as a decimal string, null when unavailable."
+                          },
+                          "startTime": {
+                            "description": "Game start time, ISO timestamp or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "live": {
+                            "description": "Stored live flag for games.",
+                            "anyOf": [
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "teams": {
+                            "description": "Game team names and logos, in stored order.",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "logo": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "logo"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "logo": {
+                            "description": "Team logo, or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "abbreviation": {
+                            "description": "Team abbreviation, or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "title": {
+                            "description": "Original league title, or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "image": {
+                            "description": "League image, or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "leagueSlug",
+                          "name",
+                          "sportCode",
+                          "volume24h"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "Visible identities ordered by 24 h volume descending (null last), kind league/team/game, then id. Teams and leagues deduplicate by identity with latest visible display fields."
+                    },
+                    "limit": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "Applied page size."
+                    },
+                    "offset": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "Applied offset."
+                    },
+                    "hasMore": {
+                      "type": "boolean",
+                      "description": "Whether another matching identity exists after this page."
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "limit",
+                    "offset",
+                    "hasMore"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Original stored text only. Visible non-ended games with a listed moneyline and their teams/leagues. Cached for 30 seconds; no upstream requests."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query syntax or values produce error.code VALIDATION_FAILED with error.details omitted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Invalid query syntax or values produce error.code VALIDATION_FAILED with error.details omitted."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/sports through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/sports through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sports/search/trending": {
+      "get": {
+        "summary": "List trending sports identities by stored 24 hour volume",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "game",
+                "team",
+                "league"
+              ]
+            },
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "description": "Restrict to this identity kind; omitted means all three kinds."
+          },
+          {
+            "schema": {
+              "default": 10,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Maximum items per kind, default 10, maximum 20."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visible games and their teams/leagues ranked independently by stored 24 h volume. Null volumes omitted. No search logs or upstream requests. Cached for 30 seconds.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "games": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "game",
+                              "team",
+                              "league"
+                            ],
+                            "description": "Identity kind."
+                          },
+                          "gameId": {
+                            "description": "Stored game identity, for games only.",
+                            "type": "string"
+                          },
+                          "teamId": {
+                            "description": "Stored team identity, for teams only.",
+                            "type": "string"
+                          },
+                          "leagueSlug": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Stored league slug, or null."
+                          },
+                          "name": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Original stored display name; never translated."
+                          },
+                          "sportCode": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Stored sport code, or null."
+                          },
+                          "volume24h": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Sum of stored member 24 h volumes as a decimal string, null when unavailable."
+                          },
+                          "startTime": {
+                            "description": "Game start time, ISO timestamp or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "live": {
+                            "description": "Stored live flag for games.",
+                            "anyOf": [
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "teams": {
+                            "description": "Game team names and logos, in stored order.",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "logo": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "logo"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "logo": {
+                            "description": "Team logo, or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "abbreviation": {
+                            "description": "Team abbreviation, or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "title": {
+                            "description": "Original league title, or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "image": {
+                            "description": "League image, or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "rank": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991,
+                            "description": "One-based rank within this kind, by 24 h volume descending then id."
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "leagueSlug",
+                          "name",
+                          "sportCode",
+                          "volume24h",
+                          "rank"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "Ranked visible games; empty when another type is requested."
+                    },
+                    "teams": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "game",
+                              "team",
+                              "league"
+                            ],
+                            "description": "Identity kind."
+                          },
+                          "gameId": {
+                            "description": "Stored game identity, for games only.",
+                            "type": "string"
+                          },
+                          "teamId": {
+                            "description": "Stored team identity, for teams only.",
+                            "type": "string"
+                          },
+                          "leagueSlug": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Stored league slug, or null."
+                          },
+                          "name": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Original stored display name; never translated."
+                          },
+                          "sportCode": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Stored sport code, or null."
+                          },
+                          "volume24h": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Sum of stored member 24 h volumes as a decimal string, null when unavailable."
+                          },
+                          "startTime": {
+                            "description": "Game start time, ISO timestamp or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "live": {
+                            "description": "Stored live flag for games.",
+                            "anyOf": [
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "teams": {
+                            "description": "Game team names and logos, in stored order.",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "logo": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "logo"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "logo": {
+                            "description": "Team logo, or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "abbreviation": {
+                            "description": "Team abbreviation, or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "title": {
+                            "description": "Original league title, or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "image": {
+                            "description": "League image, or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "rank": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991,
+                            "description": "One-based rank within this kind, by 24 h volume descending then id."
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "leagueSlug",
+                          "name",
+                          "sportCode",
+                          "volume24h",
+                          "rank"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "Ranked teams of visible games, deduplicated by teamId."
+                    },
+                    "leagues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "game",
+                              "team",
+                              "league"
+                            ],
+                            "description": "Identity kind."
+                          },
+                          "gameId": {
+                            "description": "Stored game identity, for games only.",
+                            "type": "string"
+                          },
+                          "teamId": {
+                            "description": "Stored team identity, for teams only.",
+                            "type": "string"
+                          },
+                          "leagueSlug": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Stored league slug, or null."
+                          },
+                          "name": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Original stored display name; never translated."
+                          },
+                          "sportCode": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Stored sport code, or null."
+                          },
+                          "volume24h": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Sum of stored member 24 h volumes as a decimal string, null when unavailable."
+                          },
+                          "startTime": {
+                            "description": "Game start time, ISO timestamp or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "live": {
+                            "description": "Stored live flag for games.",
+                            "anyOf": [
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "teams": {
+                            "description": "Game team names and logos, in stored order.",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "logo": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "logo"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "logo": {
+                            "description": "Team logo, or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "abbreviation": {
+                            "description": "Team abbreviation, or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "title": {
+                            "description": "Original league title, or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "image": {
+                            "description": "League image, or null.",
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "rank": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991,
+                            "description": "One-based rank within this kind, by 24 h volume descending then id."
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "leagueSlug",
+                          "name",
+                          "sportCode",
+                          "volume24h",
+                          "rank"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "Ranked leagues of visible games, deduplicated by slug."
+                    }
+                  },
+                  "required": [
+                    "games",
+                    "teams",
+                    "leagues"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Visible games and their teams/leagues ranked independently by stored 24 h volume. Null volumes omitted. No search logs or upstream requests. Cached for 30 seconds."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query syntax or values produce error.code VALIDATION_FAILED with error.details omitted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Invalid query syntax or values produce error.code VALIDATION_FAILED with error.details omitted."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/sports through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/sports through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/sports/leagues/{leagueSlug}": {
       "get": {
         "summary": "Get a sports league",
