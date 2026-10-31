@@ -23355,8 +23355,17 @@
     "/v1/markets/rounds": {
       "get": {
         "summary": "List crypto rounds",
-        "description": "The default request reads only this instance's memory and returns up to five past rounds unchanged. past above 5 (up to 50) or pastWindow=today requires asset and extends the past list with stored resolved rounds, newest first, deduplicated by condition id with memory taking precedence. today uses endDate at or after 00:00 Asia/Seoul on the service clock and returns at most 288 resolved past rounds. Stored rounds have bestAsk null. Rows without required display fields are omitted, so the list can be shorter than requested immediately after the migration. No request causes an upstream read. Stored reads are cached per pair and selection for at most 30 seconds.",
+        "description": "The default request reads only this instance's memory and returns up to five past rounds unchanged. past above 5 (up to 50) or pastWindow=today requires asset and extends the past list with stored resolved rounds, newest first, deduplicated by condition id with memory taking precedence. today uses endDate at or after 00:00 Asia/Seoul on the service clock and returns at most 288 resolved past rounds. Stored rounds have bestAsk null. Rows without required display fields are omitted, so the list can be shorter than requested immediately after the migration. No request causes an upstream read. Stored reads are cached per pair and selection for at most 30 seconds. mine=true instead returns up to ten most recent stored past rounds whose outcome tokens this builder's end user has a BUY order on. X-End-User-Token is required only for mine=true and ignored otherwise. mine cannot be combined with past or pastWindow. Mine reads are not cached or shared across users.",
         "parameters": [
+          {
+            "schema": {
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "mine",
+            "required": false,
+            "description": "true selects at most 10 most recent stored past rounds whose outcome tokens this builder's end user has a BUY order on, newest first. Requires X-End-User-Token; cannot be combined with past or pastWindow. Without mine=true the token is ignored and behaviour is unchanged. Stored rounds have bestAsk null; no upstream reads."
+          },
           {
             "schema": {
               "type": "integer",
@@ -23415,6 +23424,10 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "bearerAuth": [],
+            "endUserToken": []
           }
         ],
         "responses": {
@@ -23910,7 +23923,7 @@
             }
           },
           "400": {
-            "description": "While crypto rounds are open, an asset that is not 1 to 10 upper-case letters or digits, an interval other than 5m (matched exactly and case-sensitive), a repeated asset or interval, or an asset and interval that select no pair this deployment carries produce error.code VALIDATION_FAILED with error.details omitted. The same error is returned for past outside integer 0–50, a pastWindow other than today, repeated history parameters, past with pastWindow, or a missing asset with past above 5 or pastWindow. While they are not open, each of these is answered with the 404 rounds_not_open instead.",
+            "description": "While crypto rounds are open, an asset that is not 1 to 10 upper-case letters or digits, an interval other than 5m (matched exactly and case-sensitive), a repeated asset or interval, or an asset and interval that select no pair this deployment carries produce error.code VALIDATION_FAILED with error.details omitted. The same error is returned for past outside integer 0–50, a pastWindow other than today, repeated history parameters, past with pastWindow, or a missing asset with past above 5 or pastWindow. mine must be true or false, cannot be repeated, and cannot be combined with past or pastWindow. While they are not open, each of these is answered with the 404 rounds_not_open instead.",
             "content": {
               "application/json": {
                 "schema": {
@@ -23958,13 +23971,13 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "While crypto rounds are open, an asset that is not 1 to 10 upper-case letters or digits, an interval other than 5m (matched exactly and case-sensitive), a repeated asset or interval, or an asset and interval that select no pair this deployment carries produce error.code VALIDATION_FAILED with error.details omitted. The same error is returned for past outside integer 0–50, a pastWindow other than today, repeated history parameters, past with pastWindow, or a missing asset with past above 5 or pastWindow. While they are not open, each of these is answered with the 404 rounds_not_open instead."
+                  "description": "While crypto rounds are open, an asset that is not 1 to 10 upper-case letters or digits, an interval other than 5m (matched exactly and case-sensitive), a repeated asset or interval, or an asset and interval that select no pair this deployment carries produce error.code VALIDATION_FAILED with error.details omitted. The same error is returned for past outside integer 0–50, a pastWindow other than today, repeated history parameters, past with pastWindow, or a missing asset with past above 5 or pastWindow. mine must be true or false, cannot be repeated, and cannot be combined with past or pastWindow. While they are not open, each of these is answered with the 404 rounds_not_open instead."
                 }
               }
             }
           },
           "401": {
-            "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key.",
+            "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key. For mine=true, X-End-User-Token is required and verified using the same end-user authentication as the user routes; missing or invalid tokens return UNAUTHORIZED. Without mine=true the token is ignored.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24012,13 +24025,13 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key."
+                  "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key. For mine=true, X-End-User-Token is required and verified using the same end-user authentication as the user routes; missing or invalid tokens return UNAUTHORIZED. Without mine=true the token is ignored."
                 }
               }
             }
           },
           "403": {
-            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/markets through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended.",
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/markets through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended. For mine=true: This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24066,7 +24079,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/markets through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended."
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes (bot-read, bot-link, and trade) include /v1/markets through the scope ladder, so this response is not caused by scope; a subbuilder whose status is not active receives it with error.details.reason: subbuilder_suspended. For mine=true: This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result."
                 }
               }
             }
@@ -24175,6 +24188,60 @@
                   ],
                   "additionalProperties": false,
                   "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. Only the key's per-minute limit applies to this operation: it is not counted against a trade key's hourly budget and is not rejected when that budget is exhausted, so trade_hourly_limit_exceeded is never returned here. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Stored history or participation storage failed; no partial response. For mine=true: error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Stored history or participation storage failed; no partial response. For mine=true: error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
                 }
               }
             }
