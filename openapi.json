@@ -4946,6 +4946,17 @@
                       ],
                       "description": "Current positions value in USDC as a decimal string; null means unknown, not zero."
                     },
+                    "lifetimeVolumeUsdc": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Lifetime both-sides traded volume in USD from Polymarket, as an exact decimal string, independent of period and category; null when unknown, and zero for a wallet with no trades."
+                    },
                     "predictionsCount": {
                       "anyOf": [
                         {
@@ -5114,6 +5125,7 @@
                     "verified",
                     "standing",
                     "positionsValue",
+                    "lifetimeVolumeUsdc",
                     "predictionsCount",
                     "biggestWin",
                     "pnlSeries"
