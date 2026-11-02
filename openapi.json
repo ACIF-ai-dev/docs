@@ -27909,13 +27909,13 @@
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991,
-                          "description": "Listed games with scheduled status."
+                          "description": "Listed games with scheduled status: neither ended nor Gamma live, excluding known kickoffs within the last 3 hours (both edges inclusive)."
                         },
                         "live": {
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991,
-                          "description": "Listed games with live status; ended takes precedence."
+                          "description": "Listed games with live status: Gamma live or a known kickoff within the last 3 hours (both edges inclusive); ended takes precedence."
                         }
                       },
                       "required": [
@@ -28605,7 +28605,7 @@
             "in": "query",
             "name": "status",
             "required": false,
-            "description": "One of scheduled, live, ended."
+            "description": "One of scheduled, live, ended. Ended takes precedence; live includes Gamma live evidence or a known kickoff within the last 3 hours (both edges inclusive). Scheduled excludes those games."
           },
           {
             "schema": {
@@ -28928,7 +28928,7 @@
                               "live",
                               "ended"
                             ],
-                            "description": "Derived from Gamma event ended then live; otherwise scheduled, which can persist while synchronization or Gamma is delayed."
+                            "description": "Derived at read time: ended takes precedence, then Gamma live, then inferred live when the known kickoff is between now minus 3 hours and now (both edges inclusive); otherwise scheduled. Stored live and ended evidence is unchanged."
                           },
                           "score": {
                             "anyOf": [
@@ -29856,7 +29856,7 @@
                         "live",
                         "ended"
                       ],
-                      "description": "Derived from Gamma event ended then live; otherwise scheduled, which can persist while synchronization or Gamma is delayed."
+                      "description": "Derived at read time: ended takes precedence, then Gamma live, then inferred live when the known kickoff is between now minus 3 hours and now (both edges inclusive); otherwise scheduled. Stored live and ended evidence is unchanged."
                     },
                     "score": {
                       "anyOf": [
