@@ -8067,7 +8067,8 @@
                               {
                                 "type": "null"
                               }
-                            ]
+                            ],
+                            "description": "Derived at read time: ended takes precedence, then Gamma live, then inferred live when the known kickoff is between now minus 3 hours and now (both edges inclusive); otherwise scheduled. Stored live and ended evidence is unchanged."
                           }
                         },
                         "required": [
