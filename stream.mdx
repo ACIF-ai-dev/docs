@@ -3,6 +3,88 @@ title: "Stream"
 description: "Subscribe to token-level market events over WebSocket"
 ---
 
+## Sports game frames
+
+Hold public games by the `gameId` returned by `GET /v1/sports/games` on the same authenticated `/v1/stream` connection:
+
+```json
+{"op":"subscribeGames","gameIds":["game-id"]}
+```
+
+```json
+{"op":"unsubscribeGames","gameIds":["game-id"]}
+```
+
+Both operations accept **1–200** game IDs, each a string of **1–128** characters. A connection may hold **200** distinct games total, independently of tokens, books, rounds and Perps. Duplicates count once. A process may hold **2000** distinct game IDs across all connections; shared IDs use one slot. Exceeding either cumulative bound refuses the entire operation with `RATE_LIMITED`, `details.reason` `games_subscription_limit` or `games_process_limit`, and keeps the connection open. Malformed or oversized arrays receive `VALIDATION_FAILED` without changing holdings. Existing connection, frame-size, frame-rate and backpressure limits still apply.
+
+```json
+{"type":"gamesSubscribed","gameIds":["game-id"],"snapshot":[]}
+```
+
+```json
+{"type":"gameUpdate","gameId":"game-id","status":"live","score":"1-0","period":"1H","elapsed":"23","periodScores":null,"seriesScore":null,"finishedAt":null,"statusObservedAt":"2026-11-04T12:00:00.000Z"}
+```
+
+```json
+{"type":"gamesUnsubscribed","gameIds":["game-id"]}
+```
+
+`gamesSubscribed.gameIds` contains only newly held IDs; `gamesUnsubscribed.gameIds` contains only IDs actually released, in request order with duplicates removed. The snapshot contains the most recently evaluated public live subset for those newly held IDs (the same keys as `gameUpdate`, without `type`). Unknown, not-listed, or not-yet-evaluated IDs have no snapshot row. Their first readable state arrives as `gameUpdate` on the next successful evaluation. A snapshot can be up to one evaluation old, longer during a DB outage; it is not a synchronous REST fetch. An ID outside the public listing condition emits nothing, and disappears from snapshots on the next successful evaluation. This sends no deletion frame and does not release its holding: if it becomes public again its state arrives once more.
+
+| Field | Meaning and null semantics (identical to the sports games REST item) |
+|---|---|
+| `gameId` | Stored public game identity; never null. |
+| `status` | `scheduled`, `live`, or `ended`; ended evidence wins, then live evidence, then kickoff infers live for the inclusive three-hour window. Never null. |
+| `score` | Original stored Gamma display score; null when unknown. |
+| `period` | Original stored period label; null when unknown. |
+| `elapsed` | Original stored elapsed display text, not a numeric duration; null when unknown. |
+| `periodScores` | Tennis sets in source order, `{home,away,tiebreak}`; `tiebreak` is `{home,away}` or null when absent. Whole field null for unsupported sports or unreadable/missing scores. |
+| `seriesScore` | Esports series `{home,away}` map wins; null for unsupported sports or unreadable/missing scores. |
+| `finishedAt` | Stored finish time as ISO 8601 UTC text; null when unknown, even if status is ended. |
+| `statusObservedAt` | ISO 8601 UTC time of the worker's latest stored status observation; never null. Not the frame time and does not alone cause an update. |
+
+Only held IDs are evaluated, once every **2000 ms** in one batched DB read for the process, with no upstream call. A compared field changing sends the entire live subset, including a clock-only scheduled-to-live change with no DB write; otherwise no frame is sent. `statusObservedAt` is carried but excluded from comparison. Stored changes arrive after the worker refresh cycle plus the stream tick (plus DB read time); the tick is not an upstream freshness guarantee. A DB failure is logged, retains last-seen values and sockets, and retries on the next tick without fabricated frames. Unsubscribe and disconnect release holdings; reconnect requires a new subscription. Backpressure may drop updates, so use REST to reconcile after a gap.
+
+Without a DB reader, `subscribeGames` receives `NOT_FOUND` with `details.reason: games_not_open`. Older images reject these new operations with `VALIDATION_FAILED`; all pre-existing operations and frame shapes are unchanged. This is a raw WebSocket JSON contract, not an SDK method.
+
+Tenant fairness: one builder may hold at most **400 distinct game IDs across all its connections**, shared IDs counted once for that builder. More receives `RATE_LIMITED` with `details.reason: games_subbuilder_limit`; the request holds nothing new. This preserves process capacity for other builders. `currentSubscriptions` in limit errors describes only the requesting connection or builder, never the process-wide total.
+
+## Own ticket frames
+
+These are prediction tickets (one matched BUY order), not the **stream auth tickets** issued by `POST /v1/stream/tickets`. Your backend issues a stream auth ticket **with `userId` set to the stored `users.id`**; the resulting `/v1/stream?ticket=…` connection can subscribe only to that builder and user's prediction tickets. An API-key connection or a stream auth ticket without a user receives `FORBIDDEN`, `details.reason: tickets_identity_required`. No client frame accepts a user or builder identity.
+
+```json
+{"op":"subscribeTickets","lang":"ko"}
+```
+
+```json
+{"op":"unsubscribeTickets"}
+```
+
+`lang` is optional and has the same exact lowercase language-tag validation and outcome-label localization as `GET /v1/me/tickets`. The operations accept only the shown keys. A connection holds one language; repeating the same subscription is idempotent. To change language, unsubscribe first (`VALIDATION_FAILED`, `details.reason: tickets_already_subscribed` otherwise). Other connections of the same user can use another language.
+
+```json
+{"type":"ticketsSubscribed"}
+```
+
+```json
+{"type":"ticketUpdate","ticket":{"id":"ticket-id","kind":"single","placedAt":"2026-11-03T00:00:00.000Z","status":"won","totalOdds":"2.000000","stake":"5","payout":"10","soldProceeds":null,"legs":[{"matchId":null,"tokenId":"11","marketId":"market-id","title":"\ud648 \uc2b9\ub9ac?","startAt":null,"sport":null,"country":null,"league":null,"home":null,"away":null,"market":{"type":null,"line":null,"title":"\ud648 \uc2b9\ub9ac?"},"pick":"\uc608","odds":"2.000000","score":null,"status":"won"}]}}
+```
+
+```json
+{"type":"ticketsUnsubscribed"}
+```
+
+`ticketsSubscribed` is an acknowledgment, **not a snapshot**. The first successful read establishes a baseline and emits no ticket frames. Thereafter a new ticket or any changed item field sends exactly one `ticketUpdate` per successful evaluation, with `ticket` in the **same complete item shape and values as `GET /v1/me/tickets` for the same `lang`**, not a status-only delta. No change means no frame. All statuses are read, so a live ticket's won/lost/sold/void transition is not lost to a live-only filter. There is no status/date/page filter on this subscription. A ticket disappearing from the reader's window sends no deletion frame.
+
+The feed is DB-only, with a **5000 ms** minimum between cycle starts and at most **2** concurrent ticket reads. Distinct (builder, user) identities are limited to **1000 per process**, **500 per builder**, shared across that user's connections. Operators can lower these limits through `STREAM_MAX_TICKET_USERS_PER_PROCESS` (1–1000) and `STREAM_MAX_TICKET_USERS_PER_SUBBUILDER` (1–500); neither accepts zero or a value above its default. The existing **3 sockets per user** remains unchanged, as does the default **500 ticket connections per builder**. At capacity the entire subscription is refused with an `error` frame: `RATE_LIMITED`, `details.reason: tickets_process_limit` or `tickets_subbuilder_limit`. This does not evict anyone or close the socket. Without a reader it receives `NOT_FOUND`, `details.reason: tickets_not_open`. Unsubscribe/disconnect release holdings and stop reads for an identity with no subscribers. Both game and ticket queries have a **3000 ms statement deadline**, on a separate three-connection feed pool; a failed/deadlined read logs, keeps the socket and previous baseline, emits nothing, and retries on a later tick. A whole-read **7000 ms** watchdog also prevents an unresolved read from pinning later evaluations. Slow cycles skip overlapping ticks; delivery takes seconds and can take longer with many users or long histories. This is not an ingestion or delivery SLA; REST remains the reconciliation source.
+
+The source window is the **newest 5000 orders** for this builder/user, before FIFO SELL attribution, with no lower date bound. Older BUYs and SELLs fall outside it; reaching the cap is logged. Pagination never limits the stream to REST's first 20/100 items. Catalogue and fill gaps are unchanged from REST: An order whose market is not in the catalogue does not appear; ambiguous references, crypto-intake markets and 5m/15m crypto rounds are omitted. A limit order appears only once its matched fills are stored; this list's absence of an order is no evidence that it did not fill. A filled limit SELL likewise does not reduce a ticket until its fills are stored. This endpoint does not ingest fills and promises no ingestion deadline. Matched market-order submission totals can appear before stored fills. Won/lost/void may lag venue resolution and are observations, not resolution timestamps or wallet-credit evidence.
+
+The same **1000 process / 500 builder** bounds apply to distinct (builder, user, lang) read slots: a second language uses a second slot; connections sharing an identity and language share one. Languages cannot multiply the read budget. Two ticket workers bound concurrent DB work even at full capacity, not delivery time. Large changed windows may burst frames; a slow or disconnected client must reconcile with REST.
+
+On reconnect obtain a new stream auth ticket, re-read REST (all required pages), and resubscribe. There is **no replay**; changes before the new baseline or dropped under backpressure are not recovered by WS. The existing slow-reader limits apply. Older images reject these new operations with `VALIDATION_FAILED`; every previous operation/frame and the REST response remain unchanged. This is an additive raw WebSocket contract, not a new SDK method.
+
 ## Connect
 
 Upgrade `GET /v1/stream` to WebSocket and send your builder API key as a Bearer credential:
