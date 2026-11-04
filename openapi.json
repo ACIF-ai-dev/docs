@@ -9169,6 +9169,835 @@
         }
       }
     },
+    "/v1/me/tickets": {
+      "get": {
+        "summary": "Read the end user's prediction tickets",
+        "description": "DB-only read, with no Polymarket, Gamma or Data API request. One ticket per BUY order with matched shares, always single today. Reads at most the newest 5000 orders for this builder and user, then attributes SELL shares FIFO before date/status/page filters. An order whose market is not in the catalogue does not appear; ambiguous references, crypto-intake markets and 5m/15m crypto rounds are omitted. A limit order appears only once its matched fills are stored; this list's absence of an order is no evidence that it did not fill. A filled limit SELL likewise does not reduce a ticket until its fills are stored. This endpoint does not ingest fills and promises no ingestion deadline. Matched market-order submission totals can appear before stored fills. Won/lost/void may lag venue resolution and are observations, not resolution timestamps or wallet-credit evidence. Partial sales retain their proceeds and only remaining shares receive a result payout. A scheduled game's ticket is live and its leg todo.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "live",
+                "won",
+                "lost",
+                "sold",
+                "void"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Omitted means all statuses, including void."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "today",
+                "week",
+                "month",
+                "recent"
+              ]
+            },
+            "in": "query",
+            "name": "range",
+            "required": false,
+            "description": "Rolling 24 hours, 7 days, 30 days, or no lower bound; omitted is recent. Cannot combine with from/to."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "description": "Inclusive placedAt lower bound, RFC3339 instant with zone."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "description": "Exclusive placedAt upper bound, RFC3339 instant with zone."
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Page size from 1 to 100, default 20."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "description": "Opaque continuation from the same identity, filters, language and limit; malformed/tampered cursors return 400."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z]{2}(-[a-z0-9]{2,8})?$"
+            },
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "description": "Exact lowercase language tag, as on sports game reads; ko localizes Yes/No. No upstream translation call."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": [],
+            "endUserToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matched prediction tickets and opaque continuation; empty items with null nextCursor is the end. With lang the ticket pick uses the same exact dictionary as sports markets' outcomes[].outcome; untranslated labels stay original.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Opaque stable ticket identifier, safe to show/copy and not derived from a wallet."
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "single",
+                              "combo"
+                            ],
+                            "description": "Always single with exactly one leg today; combo is reserved."
+                          },
+                          "placedAt": {
+                            "type": "string",
+                            "description": "BUY order creation instant (RFC3339), not fill time or resolution time."
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "live",
+                              "won",
+                              "lost",
+                              "sold",
+                              "void"
+                            ],
+                            "description": "live until a known token result, won/lost/void from stored final prices, or sold when all matched shares were sold FIFO."
+                          },
+                          "totalOdds": {
+                            "type": "string",
+                            "description": "Matched shares divided by matched stake, HALF_UP at six decimals; display rounding is the consumer's choice."
+                          },
+                          "stake": {
+                            "type": "string",
+                            "description": "Matched BUY cost in collateral units (USDC/pUSD), plain decimal string; excludes the unfilled remainder."
+                          },
+                          "payout": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Plain decimal collateral units: won remaining shares times 1; void remaining shares times final token price; sold sale proceeds. Null for live/lost. Not evidence of a redemption or wallet credit."
+                          },
+                          "soldProceeds": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "FIFO-attributed sale proceeds in collateral units, plain decimal string. Set for any sold shares, including partly sold live/won/lost/void; null when no share sold."
+                          },
+                          "legs": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "matchId": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Sports gameId for joining public game frames; null for non-game markets."
+                                },
+                                "tokenId": {
+                                  "type": "string",
+                                  "description": "The order's CTF token identifier as a decimal string, unchanged for selling or joining positions."
+                                },
+                                "marketId": {
+                                  "type": "string",
+                                  "description": "Unambiguous catalogue market identifier, as exposed by sports game market reads."
+                                },
+                                "title": {
+                                  "type": "string",
+                                  "description": "Original game title, otherwise the market question translated for lang when a source-matched translation exists, otherwise original question."
+                                },
+                                "startAt": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Game kickoff as an RFC3339 instant; null for non-game or unknown kickoff."
+                                },
+                                "sport": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Same sport kind as sports games; null when unknown or not a sports market."
+                                },
+                                "country": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "League country: ISO 3166-1 alpha-2, INT for international, or null when unknown/non-game."
+                                },
+                                "league": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "name": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ],
+                                          "description": "Original league name; null when unknown."
+                                        },
+                                        "logo": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ],
+                                          "description": "League image URL; null when unknown."
+                                        }
+                                      },
+                                      "required": [
+                                        "name",
+                                        "logo"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Stored game league; null for non-game or unknown league."
+                                },
+                                "home": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "teamId": {
+                                          "type": "string",
+                                          "description": "Gamma team identifier, not a wallet identifier."
+                                        },
+                                        "name": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ],
+                                          "description": "Original team name; null when not stored."
+                                        },
+                                        "logo": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ],
+                                          "description": "Team image URL; null when not stored."
+                                        }
+                                      },
+                                      "required": [
+                                        "teamId",
+                                        "name",
+                                        "logo"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Stored home team; null for non-game or unknown home assignment."
+                                },
+                                "away": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "teamId": {
+                                          "type": "string",
+                                          "description": "Gamma team identifier, not a wallet identifier."
+                                        },
+                                        "name": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ],
+                                          "description": "Original team name; null when not stored."
+                                        },
+                                        "logo": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ],
+                                          "description": "Team image URL; null when not stored."
+                                        }
+                                      },
+                                      "required": [
+                                        "teamId",
+                                        "name",
+                                        "logo"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Stored away team; null for non-game or unknown away assignment."
+                                },
+                                "market": {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Stored sportsMarketType; null when unknown/non-sports."
+                                    },
+                                    "line": {
+                                      "anyOf": [
+                                        {
+                                          "type": "number"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Stored line with the same numeric value, sign and units as sports game markets; null when inapplicable or unknown."
+                                    },
+                                    "title": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Original groupItemTitle, otherwise translated question for lang when source-matched, otherwise original question. Null only if neither display field is available. As on sports game reads, groupItemTitle is not translated."
+                                    }
+                                  },
+                                  "required": [
+                                    "type",
+                                    "line",
+                                    "title"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "Stored market display metadata, never an upstream request."
+                                },
+                                "pick": {
+                                  "type": "string",
+                                  "description": "Outcome label localized by the sports games exact dictionary for lang; otherwise original label."
+                                },
+                                "odds": {
+                                  "type": "string",
+                                  "description": "Matched shares divided by matched stake, rounded HALF_UP to six decimal places; not a probability."
+                                },
+                                "score": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Same stored score string as sports games; null for non-game or unavailable score."
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "todo",
+                                    "live",
+                                    "won",
+                                    "lost",
+                                    "void"
+                                  ],
+                                  "description": "todo for a scheduled game, live otherwise until a stored token result. won/lost/void reports the result even when the ticket is sold. May lag venue resolution; absent final token price stays live."
+                                }
+                              },
+                              "required": [
+                                "matchId",
+                                "tokenId",
+                                "marketId",
+                                "title",
+                                "startAt",
+                                "sport",
+                                "country",
+                                "league",
+                                "home",
+                                "away",
+                                "market",
+                                "pick",
+                                "odds",
+                                "score",
+                                "status"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "Exactly one leg today; future combo tickets may have more."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "placedAt",
+                          "status",
+                          "totalOdds",
+                          "stake",
+                          "payout",
+                          "soldProceeds",
+                          "legs"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "Matched BUY tickets, newest placedAt first, then stable id ascending; filtered only after FIFO attribution."
+                    },
+                    "nextCursor": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Opaque continuation for the same identity and query; null at the end. Results may change as fills and stored resolutions arrive."
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Matched prediction tickets and opaque continuation; empty items with null nextCursor is the end. With lang the ticket pick uses the same exact dictionary as sports markets' outcomes[].outcome; untranslated labels stay original."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed/duplicate/unknown query, conflicting range and from/to, invalid date interval or cursor. error.details.reason is tickets_query_invalid or tickets_cursor_invalid. Cursor is a checked pagination hint, not a signed authorization token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Malformed/duplicate/unknown query, conflicting range and from/to, invalid date interval or cursor. error.details.reason is tickets_query_invalid or tickets_cursor_invalid. Cursor is a checked pagination hint, not a signed authorization token."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "This endpoint requires two authentication credentials: Authorization: Bearer <builder API key> and x-end-user-token: <end-user token>. The end-user token is the end user's Privy access token or, for the tobuilder-hosted Telegram bot, a token issued by the tobuilder bot gateway. Both are required. End-user token validation failures include the failure reason in error.details.reason, and both token kinds use the same reasons. Builder API key authentication failures may omit error.details entirely. Possible reasons: end_user_token_missing means the x-end-user-token header is missing or empty and indicates a client bug; token_expired means the token has expired and the client should refresh the token and retry; token_audience_mismatch means the token audience does not match the audience this server expects, including a gateway-issued token with no audience, and the client must sign in again; token_invalid means the token is invalid for another reason and the client must sign in again; end_user_auth_unavailable means server-side end-user token verification is not configured, so retrying will not change the result and this is an operational issue."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "error.code is FORBIDDEN and error.details.reason is subbuilder_suspended when the builder is suspended. All API key scopes can use this end-user-authenticated route. Retrying unchanged credentials does not resolve this refusal. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is FORBIDDEN and error.details.reason is subbuilder_suspended when the builder is suspended. All API key scopes can use this end-user-authenticated route. Retrying unchanged credentials does not resolve this refusal. This response is also returned with error.details.reason end_user_subbuilder_mismatch when x-end-user-token is a valid token issued by the tobuilder bot gateway for a different subbuilder than the builder API key's; Privy access tokens never produce this reason, and retrying with the same credentials produces the same result."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The end user's Polymarket Deposit Wallet is not yet provisioned (error.details.reason: wallet_not_provisioned). Complete POST /v1/onboarding, then retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The end user's Polymarket Deposit Wallet is not yet provisioned (error.details.reason: wallet_not_provisioned). Complete POST /v1/onboarding, then retry."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Ticket storage unavailable or another server-side failure; no partial response. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Ticket storage unavailable or another server-side failure; no partial response. error.details.reason is privy_verification_unavailable or gateway_jwks_unavailable when the end-user token could not be verified because its verifier was temporarily unavailable (for a gateway-issued token, the gateway's signing keys could not be fetched or read); this happens before the handler runs, so nothing was changed and retrying may succeed."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/stream/tickets": {
       "post": {
         "summary": "Issue an end-user stream ticket",

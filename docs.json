@@ -39,6 +39,7 @@
               "GET /v1/me",
               "GET /v1/me/ledger",
               "GET /v1/me/favorites",
+              "GET /v1/me/tickets",
               "PUT /v1/me/favorites/{kind}/{id}",
               "DELETE /v1/me/favorites/{kind}/{id}",
         "GET /v1/me/setup",
