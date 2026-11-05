@@ -4754,7 +4754,8 @@
             },
             "in": "query",
             "name": "period",
-            "required": false
+            "required": false,
+            "description": "Leaderboard standing window; defaults to month. Finite windows are marked equity change net of flows; all is realized-only lifetime. Does not select the profile's cumulative pnlSeries range."
           },
           {
             "schema": {
@@ -4780,7 +4781,8 @@
             },
             "in": "query",
             "name": "range",
-            "required": false
+            "required": false,
+            "description": "Cumulative pnlSeries chart range, independent of standing's period and category; defaults to 1M. 1D uses dayStart; ALL covers the whole history. For canonical lifetime PnL use the last non-null pnlSeries.points[].pnlUsdc with range=ALL, not changeUsdc or standing.pnl."
           },
           {
             "schema": {
@@ -4933,7 +4935,8 @@
                         {
                           "type": "null"
                         }
-                      ]
+                      ],
+                      "description": "Leaderboard standing for the request's period and category; period defaults to month. Null when unranked in that window and category. standing.pnl is not lifetime PnL unless period=all was explicitly sent; all is realized-only lifetime, unlike pnlSeries, which includes unrealized PnL."
                     },
                     "positionsValue": {
                       "anyOf": [
@@ -5112,7 +5115,8 @@
                         "parts",
                         "points"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": false,
+                      "description": "Separate cumulative position PnL (realized plus unrealized), independent of standing's period and category and not rebased to the range start. For a trader card's canonical lifetime PnL, request range=ALL and use the last non-null points[].pnlUsdc. If there is no non-null point, show unknown; never fall back to standing.pnl. changeUsdc is the change across the requested range, not lifetime PnL. The series need not equal the realized-only period=all leaderboard figure. The newest point can be up to about an hour behind the request; asOf gives its time."
                     }
                   },
                   "required": [
