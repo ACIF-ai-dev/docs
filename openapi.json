@@ -30421,6 +30421,10 @@
                                   "type": "string",
                                   "description": "Gamma moneyline market id."
                                 },
+                                "hasQuote": {
+                                  "type": "boolean",
+                                  "description": "Whether the stored book evidence offers a usable two-sided quote for the market this choice comes from. False means price is not a price anyone offers; the client should not present it as odds. All outcomes of one market share this value. Moneyline evidence updates with catalog synchronization, not the live price refresh: the default wait after a completed catalog pass is 60 seconds, plus the next pass duration; failures can extend staleness, so this is not a freshness guarantee. The detail CLOB display overlay does not change this stored-evidence value."
+                                },
                                 "active": {
                                   "type": "boolean",
                                   "description": "The Gamma market field active of the market this choice comes from. Treat a choice as not orderable when active is false or tokenId is null; active true is not a guarantee, and POST /v1/orders makes the final decision."
@@ -30455,6 +30459,7 @@
                               },
                               "required": [
                                 "marketId",
+                                "hasQuote",
                                 "active",
                                 "tokenId",
                                 "price",
@@ -31349,6 +31354,10 @@
                             "type": "string",
                             "description": "Gamma moneyline market id."
                           },
+                          "hasQuote": {
+                            "type": "boolean",
+                            "description": "Whether the stored book evidence offers a usable two-sided quote for the market this choice comes from. False means price is not a price anyone offers; the client should not present it as odds. All outcomes of one market share this value. Moneyline evidence updates with catalog synchronization, not the live price refresh: the default wait after a completed catalog pass is 60 seconds, plus the next pass duration; failures can extend staleness, so this is not a freshness guarantee. The detail CLOB display overlay does not change this stored-evidence value."
+                          },
                           "active": {
                             "type": "boolean",
                             "description": "The Gamma market field active of the market this choice comes from. Treat a choice as not orderable when active is false or tokenId is null; active true is not a guarantee, and POST /v1/orders makes the final decision."
@@ -31383,6 +31392,7 @@
                         },
                         "required": [
                           "marketId",
+                          "hasQuote",
                           "active",
                           "tokenId",
                           "price",
@@ -31775,6 +31785,10 @@
                       "items": {
                         "type": "object",
                         "properties": {
+                          "hasQuote": {
+                            "type": "boolean",
+                            "description": "Whether the stored book evidence offers a usable two-sided quote. False means price is not a price anyone offers; the client should not present it as odds. Moneyline evidence updates with catalog synchronization, not the live price refresh: the default wait after a completed catalog pass is 60 seconds, plus the next pass duration; failures can extend staleness, so this is not a freshness guarantee. The detail CLOB display overlay does not change this stored-evidence value."
+                          },
                           "translation": {
                             "description": "Absent without lang. With lang, a stored question translation or null when missing or source-mismatched. question itself stays original.",
                             "anyOf": [
@@ -31905,6 +31919,7 @@
                           }
                         },
                         "required": [
+                          "hasQuote",
                           "marketId",
                           "question",
                           "sportsMarketType",
