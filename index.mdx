@@ -589,6 +589,10 @@ curl "https://api.tobuilder.app/v1/sports/games/GAMMA_GAME_ID?lang=ko" \
 
 ## Crypto rounds
 
+**Your settled rounds.** Add `mine=true` and `X-End-User-Token` to select up to ten most recent stored past rounds per pair on whose tokens this builder's end user has a BUY order. This selection is not cached or shared across users, cannot be combined with `past` or `pastWindow`, and makes no upstream request. Each returned `past` round includes `mine`, with exactly `positions`, `cost`, `proceeds`, `payout` and `pnl`. Each position has `outcome`, `tokenId`, `shares` and `cost`.
+
+`positions` contains tokens with positive matched BUY cost, in the round's outcomes order. Each position's `shares` is the amount still held after SELLs, while `cost` is the original matched BUY cost, including shares later sold. `cost` on `mine` sums those position costs. `proceeds` counts SELL proceeds only as allocated by FIFO against earlier BUYs on the same token. `payout` is the remaining winning-token shares at one per share, from the stored resolution; it is not proof of a wallet redemption. `pnl` equals `proceeds + payout - cost`. All amounts are plain decimal strings: use decimal arithmetic, not floating point. Fill rows supersede submission totals, failed fills are excluded, and an unmatched BUY alone gives `positions: []` and zero totals. A storage failure returns 500 with no partial result. Without `mine=true`, no `mine` key is present and the response is unchanged. During a rollout an older image can answer without `mine`; wait for the new version to be live before consuming these results.
+
 ```bash
 curl "https://api.tobuilder.app/v1/markets/rounds?asset=BTC&interval=5m" \
   -H "Authorization: Bearer $TOBUILDER_API_KEY"

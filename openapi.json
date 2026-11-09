@@ -24725,6 +24725,68 @@
                                     }
                                   ],
                                   "description": "The round market's cumulative traded volume in USDC, as a non-negative plain decimal string from this service's last read of the round. Null when Polymarket sent none or an invalid non-negative decimal. It may have more decimal places than a currency and remains set after the round ends."
+                                },
+                                "mine": {
+                                  "description": "Present on every past round only with mine=true: the caller's settled result from stored orders, fills and resolution; never present otherwise.",
+                                  "type": "object",
+                                  "properties": {
+                                    "positions": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "outcome": {
+                                            "type": "string",
+                                            "description": "With mine=true only: the token's label in the round's outcomes."
+                                          },
+                                          "tokenId": {
+                                            "type": "string",
+                                            "description": "With mine=true only: the round outcome's token ID."
+                                          },
+                                          "shares": {
+                                            "type": "string",
+                                            "description": "With mine=true only: matched BUY shares still held after FIFO SELL allocation, as a plain decimal string."
+                                          },
+                                          "cost": {
+                                            "type": "string",
+                                            "description": "With mine=true only: the original matched BUY cost on this token, including shares later sold, as a plain decimal string."
+                                          }
+                                        },
+                                        "required": [
+                                          "outcome",
+                                          "tokenId",
+                                          "shares",
+                                          "cost"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "description": "With mine=true only: tokens with positive matched BUY cost, in round outcomes order; empty if no BUY matched."
+                                    },
+                                    "cost": {
+                                      "type": "string",
+                                      "description": "With mine=true only: sum of positions[].cost, as a plain decimal string."
+                                    },
+                                    "proceeds": {
+                                      "type": "string",
+                                      "description": "With mine=true only: SELL proceeds allocated by FIFO against earlier BUYs on this round's tokens, as a plain decimal string; zero if none."
+                                    },
+                                    "payout": {
+                                      "type": "string",
+                                      "description": "With mine=true only: remaining winning-token shares redeemable at one per share, as a plain decimal string; zero if none."
+                                    },
+                                    "pnl": {
+                                      "type": "string",
+                                      "description": "With mine=true only: proceeds plus payout minus cost, as a signed plain decimal string."
+                                    }
+                                  },
+                                  "required": [
+                                    "positions",
+                                    "cost",
+                                    "proceeds",
+                                    "payout",
+                                    "pnl"
+                                  ],
+                                  "additionalProperties": false
                                 }
                               },
                               "required": [
