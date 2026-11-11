@@ -24249,13 +24249,15 @@
             "schema": {
               "type": "string",
               "enum": [
-                "5m"
+                "5m",
+                "15m",
+                "1h"
               ]
             },
             "in": "query",
             "name": "interval",
             "required": false,
-            "description": "The length of the rounds; 5m (five minutes) is the only value. Without it every interval is returned. The value is matched exactly and case-sensitive: any other value, or a repeated interval, is VALIDATION_FAILED. An asset and interval that together select no pair this deployment carries are VALIDATION_FAILED too."
+            "description": "The length of the rounds; 5m (five minutes), 15m (fifteen minutes), and 1h (one hour) are the values. Without it every interval is returned. The value is matched exactly and case-sensitive: any other value, or a repeated interval, is VALIDATION_FAILED. An asset and interval that together select no pair this deployment carries are VALIDATION_FAILED too."
           },
           {
             "schema": {
@@ -24278,7 +24280,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns the recurring short-window crypto Up or Down rounds this deployment carries, one entry per asset and interval: the current round, up to 2 next rounds, soonest first, and up to 5 past rounds, newest first. A round is one market with two outcome tokens, and eventStartTime and endDate are its window. These markets are not in GET /v1/markets: outcomes[].bestAsk and volume are snapshots from the service's last read of the round; subscribe to outcomes[].tokenId on /v1/stream for live prices, trades, and resolution. This service reads the rounds from Polymarket on its own schedule, never because of a request, and each instance of the service keeps its own copy, so fetchedAt says when a pair was last read and next and past can be shorter than their limits, for example right after a start. targetPrice is usually null while a round is live and is filled around or after its end; a non-null targetPrice with targetPriceSource polymarket, and a non-null winningOutcome, are final, so do not overwrite them with a null from a later response. This endpoint never returns polybolt_twap; /v1/stream can carry it from a round's start until Polymarket publishes its value, so the two can differ. state unavailable means the pair's current round has not been read yet; when every requested pair is unavailable the answer is a 502 instead.",
+            "description": "Returns the recurring short-window crypto Up or Down rounds this deployment carries, one entry per asset and interval: the current round, up to 2 next rounds, soonest first, and up to 5 past rounds, newest first. A round is one market with two outcome tokens, and eventStartTime and endDate are its window. These markets are not in GET /v1/markets: outcomes[].bestAsk and volume are snapshots from the service's last read of the round; subscribe to outcomes[].tokenId on /v1/stream for live prices, trades, and resolution. This service reads the rounds from Polymarket on its own schedule, never because of a request, and each instance of the service keeps its own copy, so fetchedAt says when a pair was last read and next and past can be shorter than their limits, for example right after a start. For 5m, targetPrice is usually null while a round is live and is filled around or after its end. For 15m and 1h it is Polymarket-only after the start, with 1h targets published from the start when available; a non-null targetPrice with targetPriceSource polymarket, and a non-null winningOutcome, are final, so do not overwrite them with a null from a later response. This endpoint never returns polybolt_twap; for 5m only, /v1/stream can carry it from a round's start until Polymarket publishes its value, so the two can differ. state unavailable means the pair's current round has not been read yet; when every requested pair is unavailable the answer is a 502 instead.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24296,7 +24298,9 @@
                           "interval": {
                             "type": "string",
                             "enum": [
-                              "5m"
+                              "5m",
+                              "15m",
+                              "1h"
                             ],
                             "description": "The length of the rounds."
                           },
@@ -24369,7 +24373,7 @@
                                         "type": "null"
                                       }
                                     ],
-                                    "description": "The price the round resolves against, as Polymarket publishes it, in US dollars as a plain decimal string with no exponent, kept exactly as published: this endpoint never computes, estimates, or rounds it. /v1/stream can carry a live estimate instead (see targetPriceSource). It is usually null while the round is live and is filled around or after its end. Null means it is not known: not published yet (always so before the round starts), not published within 20 minutes of the end, or published as something other than a positive decimal; the response does not say which. Once non-null with targetPriceSource polymarket it is final: a later response, possibly from another instance of this service, can still carry null for a short while, so do not overwrite a value you have seen with a later null. Parse it as a decimal, not as a floating-point number."
+                                    "description": "The price the round resolves against, as Polymarket publishes it, in US dollars as a plain decimal string with no exponent, kept exactly as published: this endpoint never computes, estimates, or rounds it. /v1/stream can carry a live estimate for 5m only (see targetPriceSource). For 5m it is usually null while the round is live and is filled around or after its end. For 15m and 1h only a valid Polymarket price is used after the start; 1h can have its target published from the start. Null means it is not known: not published yet (always so before the round starts), not published within 20 minutes of the end, or published as something other than a positive decimal; the response does not say which. Once non-null with targetPriceSource polymarket it is final: a later response, possibly from another instance of this service, can still carry null for a short while, so do not overwrite a value you have seen with a later null. Parse it as a decimal, not as a floating-point number."
                                   },
                                   "targetPriceSource": {
                                     "anyOf": [
@@ -24384,7 +24388,7 @@
                                         "type": "null"
                                       }
                                     ],
-                                    "description": "Where targetPrice came from; null exactly when targetPrice is null. polymarket is the value Polymarket published for the round. polybolt_twap is a live estimate carried only on /v1/stream round frames (see the stream guide's Reference price frames); this endpoint never returns it."
+                                    "description": "Where targetPrice came from; null exactly when targetPrice is null. polymarket is the value Polymarket published for the round. polybolt_twap is a live estimate carried only on /v1/stream round frames for 5m only (see the stream guide's Reference price frames); this endpoint never returns it. 15m and 1h targets are Polymarket-only on REST and stream; 1h resolves on the Binance hourly candle, not the reference TWAP."
                                   },
                                   "outcomes": {
                                     "type": "array",
@@ -24513,7 +24517,7 @@
                                       "type": "null"
                                     }
                                   ],
-                                  "description": "The price the round resolves against, as Polymarket publishes it, in US dollars as a plain decimal string with no exponent, kept exactly as published: this endpoint never computes, estimates, or rounds it. /v1/stream can carry a live estimate instead (see targetPriceSource). It is usually null while the round is live and is filled around or after its end. Null means it is not known: not published yet (always so before the round starts), not published within 20 minutes of the end, or published as something other than a positive decimal; the response does not say which. Once non-null with targetPriceSource polymarket it is final: a later response, possibly from another instance of this service, can still carry null for a short while, so do not overwrite a value you have seen with a later null. Parse it as a decimal, not as a floating-point number."
+                                  "description": "The price the round resolves against, as Polymarket publishes it, in US dollars as a plain decimal string with no exponent, kept exactly as published: this endpoint never computes, estimates, or rounds it. /v1/stream can carry a live estimate for 5m only (see targetPriceSource). For 5m it is usually null while the round is live and is filled around or after its end. For 15m and 1h only a valid Polymarket price is used after the start; 1h can have its target published from the start. Null means it is not known: not published yet (always so before the round starts), not published within 20 minutes of the end, or published as something other than a positive decimal; the response does not say which. Once non-null with targetPriceSource polymarket it is final: a later response, possibly from another instance of this service, can still carry null for a short while, so do not overwrite a value you have seen with a later null. Parse it as a decimal, not as a floating-point number."
                                 },
                                 "targetPriceSource": {
                                   "anyOf": [
@@ -24528,7 +24532,7 @@
                                       "type": "null"
                                     }
                                   ],
-                                  "description": "Where targetPrice came from; null exactly when targetPrice is null. polymarket is the value Polymarket published for the round. polybolt_twap is a live estimate carried only on /v1/stream round frames (see the stream guide's Reference price frames); this endpoint never returns it."
+                                  "description": "Where targetPrice came from; null exactly when targetPrice is null. polymarket is the value Polymarket published for the round. polybolt_twap is a live estimate carried only on /v1/stream round frames for 5m only (see the stream guide's Reference price frames); this endpoint never returns it. 15m and 1h targets are Polymarket-only on REST and stream; 1h resolves on the Binance hourly candle, not the reference TWAP."
                                 },
                                 "outcomes": {
                                   "type": "array",
@@ -24653,7 +24657,7 @@
                                       "type": "null"
                                     }
                                   ],
-                                  "description": "The price the round resolves against, as Polymarket publishes it, in US dollars as a plain decimal string with no exponent, kept exactly as published: this endpoint never computes, estimates, or rounds it. /v1/stream can carry a live estimate instead (see targetPriceSource). It is usually null while the round is live and is filled around or after its end. Null means it is not known: not published yet (always so before the round starts), not published within 20 minutes of the end, or published as something other than a positive decimal; the response does not say which. Once non-null with targetPriceSource polymarket it is final: a later response, possibly from another instance of this service, can still carry null for a short while, so do not overwrite a value you have seen with a later null. Parse it as a decimal, not as a floating-point number."
+                                  "description": "The price the round resolves against, as Polymarket publishes it, in US dollars as a plain decimal string with no exponent, kept exactly as published: this endpoint never computes, estimates, or rounds it. /v1/stream can carry a live estimate for 5m only (see targetPriceSource). For 5m it is usually null while the round is live and is filled around or after its end. For 15m and 1h only a valid Polymarket price is used after the start; 1h can have its target published from the start. Null means it is not known: not published yet (always so before the round starts), not published within 20 minutes of the end, or published as something other than a positive decimal; the response does not say which. Once non-null with targetPriceSource polymarket it is final: a later response, possibly from another instance of this service, can still carry null for a short while, so do not overwrite a value you have seen with a later null. Parse it as a decimal, not as a floating-point number."
                                 },
                                 "targetPriceSource": {
                                   "anyOf": [
@@ -24668,7 +24672,7 @@
                                       "type": "null"
                                     }
                                   ],
-                                  "description": "Where targetPrice came from; null exactly when targetPrice is null. polymarket is the value Polymarket published for the round. polybolt_twap is a live estimate carried only on /v1/stream round frames (see the stream guide's Reference price frames); this endpoint never returns it."
+                                  "description": "Where targetPrice came from; null exactly when targetPrice is null. polymarket is the value Polymarket published for the round. polybolt_twap is a live estimate carried only on /v1/stream round frames for 5m only (see the stream guide's Reference price frames); this endpoint never returns it. 15m and 1h targets are Polymarket-only on REST and stream; 1h resolves on the Binance hourly candle, not the reference TWAP."
                                 },
                                 "outcomes": {
                                   "type": "array",
@@ -24825,13 +24829,13 @@
                     "data"
                   ],
                   "additionalProperties": false,
-                  "description": "Returns the recurring short-window crypto Up or Down rounds this deployment carries, one entry per asset and interval: the current round, up to 2 next rounds, soonest first, and up to 5 past rounds, newest first. A round is one market with two outcome tokens, and eventStartTime and endDate are its window. These markets are not in GET /v1/markets: outcomes[].bestAsk and volume are snapshots from the service's last read of the round; subscribe to outcomes[].tokenId on /v1/stream for live prices, trades, and resolution. This service reads the rounds from Polymarket on its own schedule, never because of a request, and each instance of the service keeps its own copy, so fetchedAt says when a pair was last read and next and past can be shorter than their limits, for example right after a start. targetPrice is usually null while a round is live and is filled around or after its end; a non-null targetPrice with targetPriceSource polymarket, and a non-null winningOutcome, are final, so do not overwrite them with a null from a later response. This endpoint never returns polybolt_twap; /v1/stream can carry it from a round's start until Polymarket publishes its value, so the two can differ. state unavailable means the pair's current round has not been read yet; when every requested pair is unavailable the answer is a 502 instead."
+                  "description": "Returns the recurring short-window crypto Up or Down rounds this deployment carries, one entry per asset and interval: the current round, up to 2 next rounds, soonest first, and up to 5 past rounds, newest first. A round is one market with two outcome tokens, and eventStartTime and endDate are its window. These markets are not in GET /v1/markets: outcomes[].bestAsk and volume are snapshots from the service's last read of the round; subscribe to outcomes[].tokenId on /v1/stream for live prices, trades, and resolution. This service reads the rounds from Polymarket on its own schedule, never because of a request, and each instance of the service keeps its own copy, so fetchedAt says when a pair was last read and next and past can be shorter than their limits, for example right after a start. For 5m, targetPrice is usually null while a round is live and is filled around or after its end. For 15m and 1h it is Polymarket-only after the start, with 1h targets published from the start when available; a non-null targetPrice with targetPriceSource polymarket, and a non-null winningOutcome, are final, so do not overwrite them with a null from a later response. This endpoint never returns polybolt_twap; for 5m only, /v1/stream can carry it from a round's start until Polymarket publishes its value, so the two can differ. state unavailable means the pair's current round has not been read yet; when every requested pair is unavailable the answer is a 502 instead."
                 }
               }
             }
           },
           "400": {
-            "description": "While crypto rounds are open, an asset that is not 1 to 10 upper-case letters or digits, an interval other than 5m (matched exactly and case-sensitive), a repeated asset or interval, or an asset and interval that select no pair this deployment carries produce error.code VALIDATION_FAILED with error.details omitted. The same error is returned for past outside integer 0–50, a pastWindow other than today, repeated history parameters, past with pastWindow, or a missing asset with past above 5 or pastWindow. mine must be true or false, cannot be repeated, and cannot be combined with past or pastWindow. While they are not open, each of these is answered with the 404 rounds_not_open instead.",
+            "description": "While crypto rounds are open, an asset that is not 1 to 10 upper-case letters or digits, an interval other than 5m, 15m, or 1h (matched exactly and case-sensitive), a repeated asset or interval, or an asset and interval that select no pair this deployment carries produce error.code VALIDATION_FAILED with error.details omitted. The same error is returned for past outside integer 0–50, a pastWindow other than today, repeated history parameters, past with pastWindow, or a missing asset with past above 5 or pastWindow. mine must be true or false, cannot be repeated, and cannot be combined with past or pastWindow. While they are not open, each of these is answered with the 404 rounds_not_open instead.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24879,7 +24883,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "While crypto rounds are open, an asset that is not 1 to 10 upper-case letters or digits, an interval other than 5m (matched exactly and case-sensitive), a repeated asset or interval, or an asset and interval that select no pair this deployment carries produce error.code VALIDATION_FAILED with error.details omitted. The same error is returned for past outside integer 0–50, a pastWindow other than today, repeated history parameters, past with pastWindow, or a missing asset with past above 5 or pastWindow. mine must be true or false, cannot be repeated, and cannot be combined with past or pastWindow. While they are not open, each of these is answered with the 404 rounds_not_open instead."
+                  "description": "While crypto rounds are open, an asset that is not 1 to 10 upper-case letters or digits, an interval other than 5m, 15m, or 1h (matched exactly and case-sensitive), a repeated asset or interval, or an asset and interval that select no pair this deployment carries produce error.code VALIDATION_FAILED with error.details omitted. The same error is returned for past outside integer 0–50, a pastWindow other than today, repeated history parameters, past with pastWindow, or a missing asset with past above 5 or pastWindow. mine must be true or false, cannot be repeated, and cannot be combined with past or pastWindow. While they are not open, each of these is answered with the 404 rounds_not_open instead."
                 }
               }
             }
