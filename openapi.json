@@ -29884,6 +29884,15 @@
               "type": "string"
             },
             "in": "query",
+            "name": "teamIds",
+            "required": false,
+            "description": "Comma-separated list of 1–20 non-empty Gamma team ids, each at most 64 characters. Matches any stored teams[].teamId; combines with other filters by AND. Duplicates collapse and order does not matter. Next game of a team: teamIds=<id>&status=scheduled&limit=1."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
             "name": "sport",
             "required": false,
             "description": "One of soccer, baseball, basketball, football, hockey, tennis, esports, mma; the same values as GET /v1/sports sport."
