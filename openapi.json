@@ -687,7 +687,29 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "The upstream's total cost for this position in USDC, which the upstream documents as including entry fees, written as a plain decimal; initialValue is the cost without those fees. Null means the upstream did not provide a readable value; this is not zero. A client may label a position as a hit when realizedPnl plus cashPnl is at least 0.01 × totalCostUsdc, and should treat any of the three being null as unknown, not as a hit; this service does not apply that rule, and status is not computed from totalCostUsdc."
+                            "description": "The upstream's total cost for this position in USDC, which the upstream documents as including entry fees, written as a plain decimal; initialValue is the cost without those fees. Null means the upstream did not provide a readable value; this is not zero. A client may label a position as a hit when realizedPnl plus cashPnl is at least 0.01 × totalCostUsdc, and should treat any of the three being null as unknown, not as a hit; this service does not apply that rule, and status is not computed from totalCostUsdc. On closed positions the upstream has been seen to report a value that does not include the entry cost, so clients should not use this field as the cost of a closed position."
+                          },
+                          "totalSize": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The upstream's total_size for this position in tokens, written as a plain decimal. Null means unavailable, not zero. On a closed position with size 0, a client can use avgPrice × totalSize as the entry cost in USDC."
+                          },
+                          "percentRealizedPnl": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The upstream's percent_realized_pnl for this position in percent, written as a plain decimal (92.3 means 92.3%). Passed through, not recomputed. Null means unavailable, not zero."
                           },
                           "status": {
                             "type": "string",
@@ -730,6 +752,8 @@
                           "endDate",
                           "realizedPnl",
                           "totalCostUsdc",
+                          "totalSize",
+                          "percentRealizedPnl",
                           "status",
                           "firstBuyAt"
                         ],
@@ -5772,6 +5796,28 @@
                               }
                             ],
                             "description": "Fee-inclusive total position cost in USDC as a decimal string; null means unavailable, not zero. No local order history or derived win status is used for this public read."
+                          },
+                          "totalSize": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The upstream's total_size for this position in tokens, written as a plain decimal. Null means unavailable, not zero. On a closed position with size 0, a client can use avgPrice × totalSize as the entry cost in USDC."
+                          },
+                          "percentRealizedPnl": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The upstream's percent_realized_pnl for this position in percent, written as a plain decimal (92.3 means 92.3%). Passed through, not recomputed. Null means unavailable, not zero."
                           }
                         },
                         "required": [
@@ -5792,7 +5838,9 @@
                           "redeemable",
                           "endDate",
                           "realizedPnl",
-                          "totalCostUsdc"
+                          "totalCostUsdc",
+                          "totalSize",
+                          "percentRealizedPnl"
                         ],
                         "additionalProperties": false
                       }
