@@ -75,11 +75,14 @@ Operations that act on behalf of one of your end users need a second credential,
 
 ## Rate limits
 
+Phase 324 adds two more read-only exceptions: `GET /v1/events` and `GET /v1/events/by-slug/{slug}`. They use only the per-minute budget, just like event detail. The baseline seventeen-read inventory below remains for reference; including these additions there are nineteen exempt reads plus prewarm (twenty operations). These additions override the baseline's “every other request” and “nothing else” wording; no price-history operation is newly exempt.
+
 Three budgets apply, and all of them are fixed windows rather than sliding ones. Stream ticket issuance (`POST /v1/stream/tickets`) is counted only against the third. Seventeen reads and the order prewarm, `GET /v1/markets`, `GET /v1/markets/{marketId}`, `GET /v1/markets/rounds`, `GET /v1/events/{eventId}`, `GET /v1/perps/account`, `GET /v1/perps/account/positions`, `GET /v1/perps/account/orders`, `GET /v1/perps/account/history`, `GET /v1/perps/account/pnl`, `GET /v1/perps/order-preview`, `GET /v1/perps/orders/{orderId}`, `GET /v1/perps/transfers`, `GET /v1/perps/transfers/{transferId}`, `GET /v1/withdrawals/verification`, `GET /v1/orders`, `GET /v1/orders/fills`, `GET /v1/orders/events` and `POST /v1/orders/prewarm`, are counted only against the first. Every other request is counted against the first and, when the key is a `trade` key, the second; the two apply independently.
 
 **Per key, per minute.** Every request except stream ticket issuance is counted against the key's own per-minute limit. `GET /v1/me` reports that limit as `rateLimitPerMinute`. Responses that reach the limiter carry `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset`.
 
 **Per account, per hour, for `trade` keys.** A `trade`-scope key is additionally limited to 600 requests per hour by default, counted per builder account in a window that resets at the top of the hour. Seventeen reads and the order prewarm are outside this budget: `GET /v1/markets`, `GET /v1/markets/{marketId}`, `GET /v1/markets/rounds`, `GET /v1/events/{eventId}`, `GET /v1/perps/account`, `GET /v1/perps/account/positions`, `GET /v1/perps/account/orders`, `GET /v1/perps/account/history`, `GET /v1/perps/account/pnl`, `GET /v1/perps/order-preview`, `GET /v1/perps/orders/{orderId}`, `GET /v1/perps/transfers`, `GET /v1/perps/transfers/{transferId}`, `GET /v1/withdrawals/verification`, `GET /v1/orders`, `GET /v1/orders/fills`, `GET /v1/orders/events` and `POST /v1/orders/prewarm` are not counted against it and are not rejected when it is exhausted, so an account whose orders this budget is refusing can still read its market list, its open orders and its fills; the per-minute limit still applies to all eighteen. Nothing else under `/v1/markets`, `/v1/events`, `/v1/perps`, `/v1/withdrawals` or `/v1/orders` is outside it — a market's order book and fee preview, the three price histories (a market's, an event's, and an event's underlying coin's), the Perps market-data reads, `POST /v1/perps/account`, `POST /v1/perps/transfers`, `POST /v1/perps/orders`, `POST /v1/withdrawals/verification/telegram-link`, `GET /v1/orders/{orderId}` and every other `/v1/orders` operation, order submission included, count. `POST /v1/perps/positions/{instrumentId}/close` counts too but is never rejected by this budget: an end user can always leave a position. Every other request except stream ticket issuance counts against the budget — including the other GET requests, and including the requests that are themselves rejected with 429 by this budget. A tight retry loop therefore spends the budget it is waiting for. Exceeding it returns **429** with `error.details.reason` set to `trade_hourly_limit_exceeded`.
+The Phase 324 exceptions `GET /v1/events` and `GET /v1/events/by-slug/{slug}` additionally sit outside this hourly budget. They do not change the baseline operations listed above; the current total is nineteen reads and prewarm, all twenty subject to the per-minute limit.
 
 **Stream tickets, per account, per minute.** `POST /v1/stream/tickets` has its own budget of 600 ticket requests per minute by default, shared by every key of the builder account, in a window that resets at the start of each minute. Issuing tickets therefore does not spend the per-minute or hourly budget your orders use. Every ticket request that reaches this budget counts — including requests rejected with 429 and requests the operation then rejects, such as an unknown `userId`. Its responses carry `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset` for this budget. Exceeding it returns **429** with `error.details.reason` set to `stream_ticket_limit_exceeded`.
 
@@ -245,6 +248,8 @@ Each market, in the list and from `GET /v1/markets/{marketId}`, carries `eventSt
 
 ## Protocol version
 
+`GET /v1/events/by-slug/{slug}` also carries `protocolVersion` on each market, because it reuses the same event detail response unchanged. `GET /v1/events` summaries have no markets or protocolVersion field.
+
 Each market of `GET /v1/markets`, `GET /v1/markets/{marketId}`, and `GET /v1/events/{eventId}`, and each entry of `markets` and `lineMarkets` in `GET /v1/sports/games/{gameId}`, carries `protocolVersion`: the Polymarket protocol version Gamma reports for the market in its `version` field, `"v1"`, `"v2"`, or `null`.
 
 - **It reports what Gamma sent.** The value is `"v1"` or `"v2"` only when Gamma sent exactly that text. It is never derived from `tokenId` or from any other field, and it does not replace `tokenId`: pass `tokenId` unchanged to `POST /v1/orders`. It does not say whether an order on the market is accepted; the order endpoints decide that, and name `order_market_protocol_unsupported` when they refuse a market for its protocol version.
@@ -279,6 +284,32 @@ The example is abridged to the market's `rules`.
 - **`description` is plain text.** Show it as text; do not render it as HTML or markdown. `\n` breaks a line, and one or more of them separate paragraphs. It is Gamma's whole text, in English, not a summary. `null` means Gamma sent none or an empty one, the text is longer than 10,000 characters (it is not cut), or the market was last stored before this field existed.
 - **`resolutionSource` is a link.** When it is not `null`, it is an absolute `https` URL of the source the market settles against; use it only as a link. Many markets have none, so expect `null` often and show nothing in its place.
 - **`rules.translation`.** With `lang`, `rules` also carries `translation`: a translation of `description` into that language, or `null` when none of the current text is stored. When it is `null`, show `description`. It does not depend on the question's `translation`.
+
+### Discover stored events and resolve slugs
+
+`GET /v1/events` returns `{items, next, scope:"stored", syncedAt}`. Each item has `{id, slug, title, endDate, marketCount, volume24h}`. This is the **stored catalogue**, not every Polymarket event: only matching active listed members participate, and `marketCount` excludes unlisted detail-only members. Null slug/title means no matching member stores one. `syncedAt` is the latest matching member sync, null for an empty list, not an upstream freshness guarantee.
+
+| Query | Bound and meaning |
+| --- | --- |
+| `limit` | 1–50, default 20; events, not markets |
+| `cursor` | Opaque, at most 1,024 characters; use the returned `next` unchanged |
+| `sort` | `volume24h` (default) or `ending`; `newest` returns 400 until B3 |
+| `tag` | 1–100 ASCII letters/digits/dot/underscore/hyphen; exact case-sensitive stored `tags[].slug` containment, not a category enum |
+| `game` | `true` or `false`; matching members with or without a stored game ID |
+| `lang` | Existing language validator; summary titles remain original in this phase |
+
+`volume24h` is **always null** until B3 stores event metadata; that sort therefore ties every event by its text ID. `ending` uses Gamma's event end time from the latest synced matching member (marketId text tie-break), null last, then event ID as text. This is intentionally not detail's latest market endDate. No end time on that snapshot means null, never zero.
+
+First pages are cached for 30 seconds (empty lists 5 seconds). Continuations re-read a generation over the complete filtered catalogue and the requested page in **one database statement**. A changed generation, filter/order/limit, expired or evicted cursor returns **409 CONFLICT**: restart without a cursor, never append a restarted page to the previous traversal. Cursors expire five minutes after the first page and are process-local; a restart or another replica can also return 409. A successful continuation never silently skips or repeats events after a catalogue change. No upstream is called.
+
+`GET /v1/events/by-slug/{slug}` accepts 1–200 ASCII letters/digits/hyphen/underscore and optional `lang`. It resolves stored eligible detail members, including detail-only members, and returns the **same bytes and shape** as `GET /v1/events/{eventId}` for that event/language through the same detail builder/cache. Missing slug → 404; multiple distinct eligible IDs → 409, never an arbitrary event. Resolution is cached 30 seconds, absence 5 seconds; ambiguity is not cached as absence. No upstream fallback. Both new reads use the same builder auth, optional `x-end-user-ip`, per-minute rate limit and error envelope as event detail.
+
+```bash
+curl "https://api.tobuilder.app/v1/events?limit=20&sort=ending&tag=politics&game=false" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+curl "https://api.tobuilder.app/v1/events/by-slug/fed-decision-in-december?lang=ko" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
 
 `GET /v1/events/{eventId}` returns one event and the markets of it that the service serves, each with the keys of `GET /v1/markets/{marketId}`, `rules` included, and the event's other expiries. `eventId` is the `event.id` of a market; use this read for an event screen that shows all of its choices.
 
