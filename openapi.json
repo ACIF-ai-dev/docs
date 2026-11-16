@@ -28976,6 +28976,381 @@
         }
       }
     },
+    "/v1/categories": {
+      "get": {
+        "summary": "List category candidates",
+        "description": "Gamma tag candidates, not Polymarket's website menu. Item order has no menu meaning. No query parameters or localization. Reads one stored snapshot with a 30-second in-process cache and zero upstream calls per request; refreshed about hourly. No snapshot, empty snapshot or a snapshot older than 6 hours returns 503 categories_unavailable, never a successful empty list.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-end-user-ip",
+            "required": false,
+            "description": "Optional. The end user's IP address as observed by the calling builder's own gateway, forwarded on that end user's behalf. The value is a single IP address, never a list: X-Forwarded-For style chains are not part of this contract and are rejected as malformed. The header is optional and its absence is normal — no operation requires it, and no request is rejected or altered because it is missing. A malformed value (longer than 64 characters, or not a syntactically valid IPv4 or IPv6 address) is ignored: the request proceeds exactly as if the header were absent, and the server logs one warning carrying only a reason code (too_long or invalid_syntax) and the value's length — never the value itself, which is untrusted input. Normalization is the sender's responsibility: send IPv6 addresses in compressed lowercase standard form with any zone identifier removed. This server does not re-normalize — a valid but un-normalized value is accepted and kept byte for byte as received, so two spellings of one address stay two distinct values here. Only the syntax is validated; whether the value really is the end user's address rests on the assumption that the authenticated caller supplies it faithfully, which this server cannot check. The value is not currently used for geo-gating, rate limiting, or any other decision."
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Complete stored Gamma tag candidate snapshot, sorted by numeric id with no menu meaning. Flags have upstream-undocumented meanings; activeEventsCount may be null. The worker refreshes about hourly; the API makes zero upstream calls.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^\\d+$",
+                            "description": "Upstream Gamma tag id as a decimal string."
+                          },
+                          "slug": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100,
+                                "pattern": "^[A-Za-z0-9._-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Non-null only when usable unchanged as GET /v1/events?tag= (1–100 ASCII letters/digits/dot/underscore/hyphen, case kept); otherwise null."
+                          },
+                          "label": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Bounded plain text label, no HTML; null when absent or unusable. Not localized."
+                          },
+                          "forceShow": {
+                            "anyOf": [
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Upstream Gamma flag; its meaning is undocumented. Null when absent or unusable; not a navigation instruction."
+                          },
+                          "forceHide": {
+                            "anyOf": [
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Upstream Gamma flag; its meaning is undocumented. Null when absent or unusable; not a navigation instruction."
+                          },
+                          "isCarousel": {
+                            "anyOf": [
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Upstream Gamma flag; its meaning is undocumented. Null when absent or unusable; not a navigation instruction."
+                          },
+                          "activeEventsCount": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Upstream active-event count, or null when absent or unusable; never defaulted to zero."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "slug",
+                          "label",
+                          "forceShow",
+                          "forceHide",
+                          "isCarousel",
+                          "activeEventsCount"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "Gamma tag candidates, not Polymarket's website menu. Ascending numeric id; item order has no menu meaning."
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "gamma-tags"
+                      ]
+                    },
+                    "scope": {
+                      "type": "string",
+                      "enum": [
+                        "taxonomy-candidates"
+                      ]
+                    },
+                    "fetchedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "description": "Completion time of the stored walk. Refreshed about hourly by the worker; not the request time."
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "source",
+                    "scope",
+                    "fetchedAt"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Complete stored Gamma tag candidate snapshot, sorted by numeric id with no menu meaning. Flags have upstream-undocumented meanings; activeEventsCount may be null. The worker refreshes about hourly; the API makes zero upstream calls."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Builder API key authentication failed. error.code is UNAUTHORIZED and error.details is omitted when the Authorization header is missing, malformed, empty, or does not identify a configured key."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes include categories, so a suspended subbuilder is refused with error.details.reason subbuilder_suspended, not because of scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The builder API key scope is insufficient (error.details.reason: api_key_scope_insufficient). The route is gated by its URL prefix before the handler runs, so retrying the same request with the same key will not change the result. All API key scopes include categories, so a suspended subbuilder is refused with error.details.reason subbuilder_suspended, not because of scope."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "API-key rate limiting can reject this request with error.code RATE_LIMITED. If the per-minute limiter is unavailable, error.details is omitted and RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After are absent. If the per-minute limit is exceeded, error.details is omitted and all four headers are present. If a trade key's hourly counter is unavailable, error.details is omitted, RateLimit-Limit, RateLimit-Remaining, and RateLimit-Reset are present, and Retry-After is absent. If a trade key exceeds its hourly limit, error.details.reason is trade_hourly_limit_exceeded and all four headers are present. Consumers must not assume every 429 response includes Retry-After."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Category snapshot is unavailable. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is categories_unavailable when no usable snapshot exists, it is older than 6 hours, or storage cannot be read. No successful empty list or upstream fallback; no Retry-After guarantee.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Category snapshot is unavailable. error.code is UPSTREAM_UNAVAILABLE and error.details.reason is categories_unavailable when no usable snapshot exists, it is older than 6 hours, or storage cannot be read. No successful empty list or upstream fallback; no Retry-After guarantee."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/sports/{sport}/leagues": {
       "get": {
         "summary": "List listed sports leagues grouped by country",

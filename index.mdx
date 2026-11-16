@@ -29,7 +29,7 @@ A key's scope decides which route prefixes it may call. Scopes are cumulative â€
 
 | Scope | Adds | Use it for |
 |---|---|---|
-| `bot-read` | `/v1/markets`, `/v1/me`, `/v1/sports`, `/v1/perps/instruments`, `/v1/events`, `/v1/traders` | reading public market/trader data and checking the key itself |
+| `bot-read` | `/v1/markets`, `/v1/me`, `/v1/sports`, `/v1/perps/instruments`, `/v1/events`, `/v1/traders`, `/v1/categories` | reading public market/trader data and checking the key itself |
 | `bot-link` | `/v1/users`, `/v1/onboarding`, `/v1/webhooks/endpoints` | linking your users, onboarding their wallets, and registering or rotating webhook endpoints |
 | `trade` | `/v1/deposit`, `/v1/orders`, `/v1/withdrawals`, `/v1/webhooks/deliveries`, `/v1/stream`, `/v1/perps/account`, `/v1/perps/transfers`, `/v1/perps/order-preview`, `/v1/perps/orders`, `/v1/perps/positions` | deposits, order flow, withdrawals, webhook delivery operations, the streaming surface, Perps accounts, Perps transfers, the Perps order preview, Perps orders, and closing Perps positions |
 
@@ -286,6 +286,40 @@ The example is abridged to the market's `rules`.
 - **`rules.translation`.** With `lang`, `rules` also carries `translation`: a translation of `description` into that language, or `null` when none of the current text is stored. When it is `null`, show `description`. It does not depend on the question's `translation`.
 
 ### Discover stored events and resolve slugs
+
+#### Read category candidates
+
+`GET /v1/categories` takes no query parameters and returns
+`{items, source:"gamma-tags", scope:"taxonomy-candidates", fetchedAt}`.
+These are **Gamma tag candidates, not Polymarket's website menu**. Items sort by
+numeric `id` ascending; that order has **no menu meaning**. No menu order,
+top-level category assertion, related-tag expansion or ingest widening is implied.
+
+Each item contains `id` (decimal string), nullable `slug` and plain-text `label`,
+nullable booleans `forceShow`, `forceHide`, `isCarousel`, and nullable non-negative
+integer `activeEventsCount`. Flag meanings are upstream-undocumented, not
+navigation instructions. Unknown counts stay null, never default to zero.
+Labels are not localized and should be rendered as text. A non-null `slug` passes
+the events `tag` bound (1â€“100 ASCII letters/digits/dot/underscore/hyphen, case kept)
+and can be sent unchanged to `GET /v1/events?tag=`. A candidate can still have no
+events in this service's stored catalogue.
+
+The worker refreshes a complete snapshot about hourly. The API caches its stored
+read for 30 seconds and makes **zero upstream calls per request**. `fetchedAt`
+is the walk's completion time, not the request time. No usable snapshot, an empty
+snapshot or one older than six hours returns **503**, `UPSTREAM_UNAVAILABLE` with
+`error.details.reason: categories_unavailable`, never an empty 200 or an upstream
+fallback. Exactly six hours is still usable; freshness is checked even on cache hits.
+All builder API-key scopes can read it without an end-user token; suspended
+builders are refused. Per-minute limits apply, and a trade key's request **counts
+in its hourly bucket**, like sports reads, including when that bucket is exhausted.
+
+```bash
+curl "https://api.tobuilder.app/v1/categories" \
+  -H "Authorization: Bearer $TOBUILDER_API_KEY"
+```
+
+#### List stored events
 
 `GET /v1/events` returns `{items, next, scope:"stored", syncedAt}`. Each item has `{id, slug, title, endDate, marketCount, volume24h}`. This is the **stored catalogue**, not every Polymarket event: only matching active listed members participate, and `marketCount` excludes unlisted detail-only members. Null slug/title means no matching member stores one. `syncedAt` is the latest matching member sync, null for an empty list, not an upstream freshness guarantee.
 
