@@ -321,18 +321,18 @@ curl "https://api.tobuilder.app/v1/categories" \
 
 #### List stored events
 
-`GET /v1/events` returns `{items, next, scope:"stored", syncedAt}`. Each item has `{id, slug, title, endDate, marketCount, volume24h}`. This is the **stored catalogue**, not every Polymarket event: only matching active listed members participate, and `marketCount` excludes unlisted detail-only members. Null slug/title means no matching member stores one. `syncedAt` is the latest matching member sync, null for an empty list, not an upstream freshness guarantee.
+`GET /v1/events` returns `{items, next, scope:"stored", syncedAt}`. Each item has `{id, slug, title, endDate, marketCount, volume24h, startDate, image, icon, volume}`. This is the **stored catalogue**, not every Polymarket event: only matching active listed members participate, and `marketCount` excludes unlisted detail-only members. Null slug/title means no matching member stores one. `syncedAt` is the latest matching member sync, null for an empty list, not an upstream freshness guarantee.
 
 | Query | Bound and meaning |
 | --- | --- |
 | `limit` | 1–50, default 20; events, not markets |
 | `cursor` | Opaque, at most 1,024 characters; use the returned `next` unchanged |
-| `sort` | `volume24h` (default) or `ending`; `newest` returns 400 until B3 |
+| `sort` | `volume24h` (default), `ending`, or `newest` |
 | `tag` | 1–100 ASCII letters/digits/dot/underscore/hyphen; exact case-sensitive stored `tags[].slug` containment, not a category enum |
 | `game` | `true` or `false`; matching members with or without a stored game ID |
 | `lang` | Existing language validator; summary titles remain original in this phase |
 
-`volume24h` is **always null** until B3 stores event metadata; that sort therefore ties every event by its text ID. `ending` uses Gamma's event end time from the latest synced matching member (marketId text tie-break), null last, then event ID as text. This is intentionally not detail's latest market endDate. No end time on that snapshot means null, never zero.
+`volume24h` sorts event volume descending; `newest` sorts event `startDate` descending. Both put nulls last, then event ID as text. `startDate`, `image`, `icon`, `volume` and `volume24h` come from the most recently synced stored member of the event, with marketId text breaking ties, independently of filters and detail truncation. Images pass the market image URL policy; volumes are non-negative decimal strings, never market sums. Null means absent or refused, never zero. Event detail adds those same fields and a sanitised `description` of at most 10,000 characters; list items never contain description. `ending` still uses Gamma's event end time from the latest synced matching member (marketId text tie-break), null last, then event ID as text. This is intentionally not detail's latest market endDate. No end time on that snapshot means null, never zero.
 
 First pages are cached for 30 seconds (empty lists 5 seconds). Continuations re-read a generation over the complete filtered catalogue and the requested page in **one database statement**. A changed generation, filter/order/limit, expired or evicted cursor returns **409 CONFLICT**: restart without a cursor, never append a restarted page to the previous traversal. Cursors expire five minutes after the first page and are process-local; a restart or another replica can also return 409. A successful continuation never silently skips or repeats events after a catalogue change. No upstream is called.
 
