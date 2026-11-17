@@ -25902,6 +25902,17 @@
           },
           {
             "schema": {
+              "type": "string",
+              "enum": [
+                "markets"
+              ]
+            },
+            "in": "query",
+            "name": "include",
+            "required": false
+          },
+          {
+            "schema": {
               "type": "string"
             },
             "in": "header",
@@ -25917,7 +25928,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns event summaries from matching listed eligible stored markets only, with zero upstream calls. Filter tag is exact case-sensitive stored tags[].slug containment; game tests presence of gameId. Paging unit is events after member filtering. Sort ending uses the latest synced matching member's Gamma event end time, null last, text event-id tie-break. volume24h orders event volume descending and newest orders event startDate descending, both null last then event id as text. Display metadata comes from the most recently synced stored member, text marketId tie-break, independently of list filters and detail truncation. Description is never on this list. lang is validated but summaries retain original titles and have no outcomes[].outcome labels to localize. First pages are cached 30 seconds (empty 5 seconds); continuation pages recheck a generation over the entire filtered catalogue and display snapshots in the same statement as paging and return 409 on changes rather than skip/repeat. Cursors expire five minutes after the first page and are process-local; restart on 409. Stored scope excludes unseen and retired populations; marketCount is not complete Gamma membership.",
+            "description": "Returns event summaries from matching listed eligible stored markets only, with zero upstream calls. Filter tag is exact case-sensitive stored tags[].slug containment; game tests presence of gameId. Paging unit is events after member filtering. Sort ending uses the latest synced matching member's Gamma event end time, null last, text event-id tie-break. volume24h orders event volume descending and newest orders event startDate descending, both null last then event id as text. Display metadata comes from the most recently synced stored member, text marketId tie-break, independently of list filters and detail truncation. Description is never on this list. Optional include=markets adds markets (detail item shape without rules) and marketsTruncated = marketCount > markets.length. Selection uses exactly the filtered members counted by marketCount, not detail-only members. If any member is moneyline, select only moneyline members in text marketId order; otherwise select by first-outcome stored price numerically descending, null/unparsable last, then text marketId (C collation). Both selections are capped at 3. lang localizes included markets' outcomes[].outcome labels and stored question translations exactly as detail; summary titles remain original. Without include no new keys are emitted. First pages are cached 30 seconds (empty 5 seconds), separately keyed by include; continuation pages recheck a generation over the entire filtered catalogue and display snapshots and return 409 on changes rather than skip/repeat. Included selection and its bounded batch read share a repeatable-read snapshot. Generation covers member identity, sync time, selection prices/type and summary display snapshots, but does not cover other included market display fields, stored translations or crypto context; changes to those alone between pages are not detected. Cursors bind include, expire five minutes after the first page and are process-local; restart on 409. Stored scope excludes unseen and retired populations; marketCount is not complete Gamma membership.",
             "content": {
               "application/json": {
                 "schema": {
@@ -26026,6 +26037,524 @@
                               }
                             ],
                             "description": "Gamma event volume24hr as a non-negative plain decimal, at most 64 characters; null means unknown, never zero or a sum of market volumes."
+                          },
+                          "markets": {
+                            "maxItems": 3,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "marketId": {
+                                  "type": "string"
+                                },
+                                "question": {
+                                  "type": "string"
+                                },
+                                "category": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Copied from the Gamma market field category. Gamma responses measured on 2026-09-26 did not include that field on markets or events, so this value and the category query filter cannot be relied on to classify markets; use event, tags, sportsMarketType, and gameStartTime instead. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves."
+                                },
+                                "active": {
+                                  "type": "boolean"
+                                },
+                                "endDate": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "outcomes": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "outcome": {
+                                        "type": "string"
+                                      },
+                                      "price": {
+                                        "type": "string"
+                                      },
+                                      "tokenId": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "oneHourPriceChange": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "The Gamma market field oneHourPriceChange, the price change over the last hour as Gamma computes it, passed through as a signed decimal string from -1 to 1 with no exponent; the service does not recompute it. Gamma reports one value per market, so only the first element of outcomes carries it; the second element is always null and is never derived from the first. In the samples this service has kept, the value follows the first outcome's price as a difference on the same 0 to 1 scale as price; the service has not measured Gamma's definition beyond those samples. It is the value read at syncedAt, which follows the catalog sync interval, not a live figure. Null on the first element means the change is unknown, not zero: Gamma sent none, sent a value that is not a number from -1 to 1 or whose decimal form is longer than 64 characters, or the market was last stored before this field existed or by an older version of the service. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves. Parse it as a decimal, not as a floating-point number."
+                                      }
+                                    },
+                                    "required": [
+                                      "outcome",
+                                      "price",
+                                      "tokenId",
+                                      "oneHourPriceChange"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "syncedAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                                },
+                                "event": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string"
+                                        },
+                                        "slug": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "title": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "tags": {
+                                          "anyOf": [
+                                            {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "slug": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string"
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
+                                                    ]
+                                                  },
+                                                  "label": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string"
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
+                                                    ]
+                                                  }
+                                                },
+                                                "required": [
+                                                  "slug",
+                                                  "label"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ],
+                                          "description": "The slug and label of each entry in the Gamma event field tags of this market's crypto event, as sent, hide-from-new included. This market's crypto event is a Polymarket crypto event, other than the 5- and 15-minute crypto rounds, that lists this market and that this service read within the last 15 minutes: the one event.id names when it is among them, else the one with the lowest id compared as text. Null when there is none, which is always the case on a crypto round's market and on a market whose crypto event this service does not read, and is the case on a crypto market whose last read is older than that. Null, too, whenever event is null. An empty array means that event was read with no tags. These are the event's tags; the top-level tags are the market's own, a different list."
+                                        },
+                                        "series": {
+                                          "anyOf": [
+                                            {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "id": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string"
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
+                                                    ]
+                                                  },
+                                                  "slug": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string"
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
+                                                    ]
+                                                  },
+                                                  "recurrence": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string"
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
+                                                    ],
+                                                    "description": "As Gamma sends it, such as hourly, 4h, daily, weekly, or monthly. Read it as an open string."
+                                                  }
+                                                },
+                                                "required": [
+                                                  "id",
+                                                  "slug",
+                                                  "recurrence"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ],
+                                          "description": "The id, slug, and recurrence of each entry in the Gamma event field series of this market's crypto event, as sent. This market's crypto event is a Polymarket crypto event, other than the 5- and 15-minute crypto rounds, that lists this market and that this service read within the last 15 minutes: the one event.id names when it is among them, else the one with the lowest id compared as text. Null when there is none, which is always the case on a crypto round's market and on a market whose crypto event this service does not read, and is the case on a crypto market whose last read is older than that. Null, too, whenever event is null. An empty array means that event has no series."
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "slug",
+                                        "title",
+                                        "tags",
+                                        "series"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The first entry of the Gamma market field events (id, slug, title), or null when Gamma lists no event or the market was stored before this field existed. On a crypto round's market, which only GET /v1/markets/{marketId} serves, it is the round's event. tags and series describe this market's crypto event, which can be another event than id names."
+                                },
+                                "tags": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "slug": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "label": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "slug",
+                                      "label"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "The slug and label of each entry in the Gamma market field tags, requested with include_tag. An empty array means no tag list was received: Gamma may send none for the market, and the upstream SDK reports a missing list and an empty list the same way, so an empty array does not prove the market has no tags. It is always empty on a crypto round's market, which only GET /v1/markets/{marketId} serves, because this service does not read a round's tags."
+                                },
+                                "sportsMarketType": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The Gamma market field sportsMarketType, such as moneyline; null for markets that are not game markets."
+                                },
+                                "gameStartTime": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The Gamma market field gameStartTime, the scheduled start of the game, as an ISO 8601 timestamp; null for markets without a game."
+                                },
+                                "line": {
+                                  "anyOf": [
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The Gamma market field line, the handicap or total a spread or totals market is priced against; null when Gamma sends none, as for moneyline markets. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves."
+                                },
+                                "groupItemTitle": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The Gamma market field groupItemTitle, which names this market within its event, for example a team or a draw in a three-way soccer result; null when Gamma sends none. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves."
+                                },
+                                "icon": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The Gamma market field icon, passed through as an opaque absolute https URL. Null when Gamma sends none, when the value is not an https URL on a host the catalog accepts, or when the market was last stored before this field existed. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves. Use it only as an image source, exactly as received; do not build URLs from its host, which may change."
+                                },
+                                "image": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The Gamma market field image, passed through as an opaque absolute https URL; it may be the same URL as icon. Null when Gamma sends none, when the value is not an https URL on a host the catalog accepts, or when the market was last stored before this field existed. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves. Use it only as an image source, exactly as received; do not build URLs from its host, which may change."
+                                },
+                                "volume24h": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The Gamma market field volume24hr, the market's trading volume over the last 24 hours, as a non-negative decimal string with no exponent and no sign, in the unit Gamma reports it in. It is the value read at syncedAt, not a live figure. Null means the volume is unknown, not zero: Gamma sent none, sent a value that is not a non-negative number or whose decimal form is longer than 64 characters, or the market was last stored before this field existed. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves. Parse it as a decimal, not as a floating-point number."
+                                },
+                                "eventStartTime": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The Gamma market field eventStartTime, as an ISO 8601 UTC timestamp. It is the value read at syncedAt, copied from that one field: a separate field from gameStartTime and endDate, never filled from them or from any other field. Null means the value is unknown: Gamma sent none, sent a value this service does not read as a timestamp with a time zone, or the market was last stored before this field existed. On a crypto round's market, which only GET /v1/markets/{marketId} serves, it is the start of the round's window, never null: this service keeps a round only when at least one of that field and the event's start time is present and every one present equals the start its slug names."
+                                },
+                                "oneDayPriceChange": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Market-reported change over 24 h, a signed probability difference from -1 to 1, not a percent return; the reference outcome is not stated upstream. Read from Gamma prices.oneDayPriceChange at syncedAt. Null means absent or refused, never zero; plain decimal, at most 64 characters."
+                                },
+                                "liquidity": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Gamma-reported liquidity at syncedAt, not executable depth. From metrics.liquidity only, a non-negative plain decimal of at most 64 characters. Null means absent or refused, never zero."
+                                },
+                                "cryptoFamilies": {
+                                  "anyOf": [
+                                    {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The crypto families of this market's crypto event, for drawing crypto filter chips: up_down when its tags hold up-or-down or a series slug holds up-or-down as a whole hyphen-separated part, daily when its tags hold daily or a series has recurrence daily, weekly the same way with weekly, and pre_market when its tags hold pre-market. Derived from event.tags and event.series only, never from a title; in the order up_down, daily, weekly, pre_market; empty when none applies. This market's crypto event is a Polymarket crypto event, other than the 5- and 15-minute crypto rounds, that lists this market and that this service read within the last 15 minutes: the one event.id names when it is among them, else the one with the lowest id compared as text. Null when there is none, which is always the case on a crypto round's market and on a market whose crypto event this service does not read, and is the case on a crypto market whose last read is older than that. Null, too, whenever event is null. Read the values as open strings: a value you do not know is a family your client does not draw yet."
+                                },
+                                "protocolVersion": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "v1",
+                                        "v2"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The Polymarket protocol version of this market, from the Gamma market field version: v1 or v2, exactly as Gamma sent it. It is the value read at syncedAt and reports what Gamma sent; it is never derived from tokenId or any other field. Null means the version is not known: Gamma sent none, sent a value other than v1 or v2, this service could not read it when it last stored the market, or the market was last stored before this field existed. It is always null on a crypto round's market, which only GET /v1/markets/{marketId} serves."
+                                },
+                                "gameId": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The stored sports game link (markets.game_id), unchanged: the gameId used by GET /v1/sports/games. Null when no link is stored, including non-sports and round-only markets. A stored link does not guarantee the game is listed; GET /v1/sports/games/{gameId} may still return 404 for an unlisted game."
+                                },
+                                "translation": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "lang": {
+                                          "type": "string"
+                                        },
+                                        "question": {
+                                          "type": "string"
+                                        },
+                                        "disclaimer": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "lang",
+                                        "question",
+                                        "disclaimer"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "resolution": {
+                                  "type": "string",
+                                  "enum": [
+                                    "open",
+                                    "pending",
+                                    "resolved",
+                                    "void"
+                                  ],
+                                  "description": "Required, never null. open means not known closed and still trading; pending means closed but no final UMA result is known (including proposed, disputed, unknown status or a closed market with no stored resolution row); resolved means a final single winner is known; void means final with no single winner (a non-neg-risk binary split payout; the usual 50-50 void redeems 0.50 per share). Read from stored data, not live; pending can last days. Independent of active and endDate."
+                                },
+                                "winningOutcome": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The final winning label, one of this market's outcomes[].outcome, non-null only when resolution is resolved; null on open, pending and void. The stored winner is final once set. Outcome labels follow lang in the same way as outcomes[].outcome. A void is never a fake outcome label."
+                                },
+                                "volume": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Gamma's lifetime market trading volume, not its 24-hour volume, as a non-negative decimal string. Read at syncedAt, not live. Null when Gamma omits it, supplies an invalid or over-64-character value, or no catalog value has been stored (including round-only markets). Parse as a decimal, never a floating-point number."
+                                },
+                                "marketStartDate": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "The market's own Gamma startDate, served as marketStartDate: an ISO 8601 UTC instant. Separate from eventStartTime, gameStartTime and endDate; never filled from them. Null when absent, invalid, or not stored (including round-only markets). Read at syncedAt. There is no public startDate key."
+                                }
+                              },
+                              "required": [
+                                "marketId",
+                                "question",
+                                "category",
+                                "active",
+                                "endDate",
+                                "outcomes",
+                                "syncedAt",
+                                "event",
+                                "tags",
+                                "sportsMarketType",
+                                "gameStartTime",
+                                "line",
+                                "groupItemTitle",
+                                "icon",
+                                "image",
+                                "volume24h",
+                                "eventStartTime",
+                                "oneDayPriceChange",
+                                "liquidity",
+                                "cryptoFamilies",
+                                "protocolVersion",
+                                "gameId",
+                                "resolution",
+                                "winningOutcome",
+                                "volume",
+                                "marketStartDate"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "marketsTruncated": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -26081,13 +26610,13 @@
                     "syncedAt"
                   ],
                   "additionalProperties": false,
-                  "description": "Returns event summaries from matching listed eligible stored markets only, with zero upstream calls. Filter tag is exact case-sensitive stored tags[].slug containment; game tests presence of gameId. Paging unit is events after member filtering. Sort ending uses the latest synced matching member's Gamma event end time, null last, text event-id tie-break. volume24h orders event volume descending and newest orders event startDate descending, both null last then event id as text. Display metadata comes from the most recently synced stored member, text marketId tie-break, independently of list filters and detail truncation. Description is never on this list. lang is validated but summaries retain original titles and have no outcomes[].outcome labels to localize. First pages are cached 30 seconds (empty 5 seconds); continuation pages recheck a generation over the entire filtered catalogue and display snapshots in the same statement as paging and return 409 on changes rather than skip/repeat. Cursors expire five minutes after the first page and are process-local; restart on 409. Stored scope excludes unseen and retired populations; marketCount is not complete Gamma membership."
+                  "description": "Returns event summaries from matching listed eligible stored markets only, with zero upstream calls. Filter tag is exact case-sensitive stored tags[].slug containment; game tests presence of gameId. Paging unit is events after member filtering. Sort ending uses the latest synced matching member's Gamma event end time, null last, text event-id tie-break. volume24h orders event volume descending and newest orders event startDate descending, both null last then event id as text. Display metadata comes from the most recently synced stored member, text marketId tie-break, independently of list filters and detail truncation. Description is never on this list. Optional include=markets adds markets (detail item shape without rules) and marketsTruncated = marketCount > markets.length. Selection uses exactly the filtered members counted by marketCount, not detail-only members. If any member is moneyline, select only moneyline members in text marketId order; otherwise select by first-outcome stored price numerically descending, null/unparsable last, then text marketId (C collation). Both selections are capped at 3. lang localizes included markets' outcomes[].outcome labels and stored question translations exactly as detail; summary titles remain original. Without include no new keys are emitted. First pages are cached 30 seconds (empty 5 seconds), separately keyed by include; continuation pages recheck a generation over the entire filtered catalogue and display snapshots and return 409 on changes rather than skip/repeat. Included selection and its bounded batch read share a repeatable-read snapshot. Generation covers member identity, sync time, selection prices/type and summary display snapshots, but does not cover other included market display fields, stored translations or crypto context; changes to those alone between pages are not detected. Cursors bind include, expire five minutes after the first page and are process-local; restart on 409. Stored scope excludes unseen and retired populations; marketCount is not complete Gamma membership."
                 }
               }
             }
           },
           "400": {
-            "description": "error.code is VALIDATION_FAILED: invalid, repeated or unknown query keys; limit must be 1–50, sort volume24h, ending or newest, tag 1–100 ASCII letters/digits/dot/underscore/hyphen, game true or false, cursor at most 1024 characters, or invalid lang or slug (1–200 ASCII letters/digits/hyphen/underscore).",
+            "description": "error.code is VALIDATION_FAILED: invalid, repeated or unknown query keys; include must be markets (not empty or repeated), limit must be 1–50, sort volume24h, ending or newest, tag 1–100 ASCII letters/digits/dot/underscore/hyphen, game true or false, cursor at most 1024 characters, or invalid lang or slug (1–200 ASCII letters/digits/hyphen/underscore).",
             "content": {
               "application/json": {
                 "schema": {
@@ -26135,7 +26664,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "error.code is VALIDATION_FAILED: invalid, repeated or unknown query keys; limit must be 1–50, sort volume24h, ending or newest, tag 1–100 ASCII letters/digits/dot/underscore/hyphen, game true or false, cursor at most 1024 characters, or invalid lang or slug (1–200 ASCII letters/digits/hyphen/underscore)."
+                  "description": "error.code is VALIDATION_FAILED: invalid, repeated or unknown query keys; include must be markets (not empty or repeated), limit must be 1–50, sort volume24h, ending or newest, tag 1–100 ASCII letters/digits/dot/underscore/hyphen, game true or false, cursor at most 1024 characters, or invalid lang or slug (1–200 ASCII letters/digits/hyphen/underscore)."
                 }
               }
             }
@@ -27290,7 +27819,7 @@
             }
           },
           "400": {
-            "description": "error.code is VALIDATION_FAILED: invalid, repeated or unknown query keys; limit must be 1–50, sort volume24h, ending or newest, tag 1–100 ASCII letters/digits/dot/underscore/hyphen, game true or false, cursor at most 1024 characters, or invalid lang or slug (1–200 ASCII letters/digits/hyphen/underscore).",
+            "description": "error.code is VALIDATION_FAILED: invalid, repeated or unknown query keys; include must be markets (not empty or repeated), limit must be 1–50, sort volume24h, ending or newest, tag 1–100 ASCII letters/digits/dot/underscore/hyphen, game true or false, cursor at most 1024 characters, or invalid lang or slug (1–200 ASCII letters/digits/hyphen/underscore).",
             "content": {
               "application/json": {
                 "schema": {
@@ -27338,7 +27867,7 @@
                     "error"
                   ],
                   "additionalProperties": false,
-                  "description": "error.code is VALIDATION_FAILED: invalid, repeated or unknown query keys; limit must be 1–50, sort volume24h, ending or newest, tag 1–100 ASCII letters/digits/dot/underscore/hyphen, game true or false, cursor at most 1024 characters, or invalid lang or slug (1–200 ASCII letters/digits/hyphen/underscore)."
+                  "description": "error.code is VALIDATION_FAILED: invalid, repeated or unknown query keys; include must be markets (not empty or repeated), limit must be 1–50, sort volume24h, ending or newest, tag 1–100 ASCII letters/digits/dot/underscore/hyphen, game true or false, cursor at most 1024 characters, or invalid lang or slug (1–200 ASCII letters/digits/hyphen/underscore)."
                 }
               }
             }
