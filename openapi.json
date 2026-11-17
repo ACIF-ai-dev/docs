@@ -25962,6 +25962,26 @@
                               }
                             ]
                           },
+                          "translation": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "title": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "title"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The machine-translated event title in lang. Null when no language was requested, no translation is stored, or its source title no longer matches event.title. The original title is unchanged."
+                          },
                           "endDate": {
                             "anyOf": [
                               {
@@ -26561,6 +26581,7 @@
                           "id",
                           "slug",
                           "title",
+                          "translation",
                           "endDate",
                           "marketCount",
                           "startDate",
