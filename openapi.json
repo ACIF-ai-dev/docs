@@ -8120,14 +8120,19 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "Derived at read time: ended takes precedence, then Gamma live, then postponed reads scheduled, then inferred live when the known kickoff is between now minus 3 hours and now (both edges inclusive); otherwise scheduled. Stored live and ended evidence is unchanged."
+                            "description": "Derived at read time: ended takes precedence, then Polymarket live evidence (observed within the last 15 minutes, inclusive, with no known future kickoff), then postponed reads scheduled, then inferred live when the known kickoff is between now minus 3 hours and now (both edges inclusive); otherwise scheduled. Delisted game details never read live. Stored live and ended evidence is unchanged."
+                          },
+                          "polymarketLive": {
+                            "type": "boolean",
+                            "description": "True only for a listed, not-ended game whose stored Polymarket live flag is true, observed within the last 15 minutes (inclusive), with no known future kickoff. This is not an inference: a started game Polymarket has not moved to live is false."
                           }
                         },
                         "required": [
                           "gameId",
                           "title",
                           "startTime",
-                          "status"
+                          "status",
+                          "polymarketLive"
                         ],
                         "additionalProperties": false
                       }
@@ -32892,6 +32897,15 @@
           },
           {
             "schema": {
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "polymarketLive",
+            "required": false,
+            "description": "Filter by the polymarketLive field; combines with other filters by AND. Omit to leave it unfiltered."
+          },
+          {
+            "schema": {
               "type": "string"
             },
             "in": "query",
@@ -33211,7 +33225,11 @@
                               "live",
                               "ended"
                             ],
-                            "description": "Derived at read time: ended takes precedence, then Gamma live, then postponed reads scheduled, then inferred live when the known kickoff is between now minus 3 hours and now (both edges inclusive); otherwise scheduled. Stored live and ended evidence is unchanged."
+                            "description": "Derived at read time: ended takes precedence, then Polymarket live evidence (observed within the last 15 minutes, inclusive, with no known future kickoff), then postponed reads scheduled, then inferred live when the known kickoff is between now minus 3 hours and now (both edges inclusive); otherwise scheduled. Delisted game details never read live. Stored live and ended evidence is unchanged."
+                          },
+                          "polymarketLive": {
+                            "type": "boolean",
+                            "description": "True only for a listed, not-ended game whose stored Polymarket live flag is true, observed within the last 15 minutes (inclusive), with no known future kickoff. This is not an inference: a started game Polymarket has not moved to live is false."
                           },
                           "postponed": {
                             "type": "boolean",
@@ -33563,7 +33581,7 @@
                             "type": "string",
                             "format": "date-time",
                             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                            "description": "When Gamma score and status were last observed."
+                            "description": "When score and status were last observed (a Gamma read or the Polymarket sports socket)."
                           }
                         },
                         "required": [
@@ -33583,6 +33601,7 @@
                           "title",
                           "startTime",
                           "status",
+                          "polymarketLive",
                           "postponed",
                           "score",
                           "period",
@@ -34161,7 +34180,11 @@
                         "live",
                         "ended"
                       ],
-                      "description": "Derived at read time: ended takes precedence, then Gamma live, then postponed reads scheduled, then inferred live when the known kickoff is between now minus 3 hours and now (both edges inclusive); otherwise scheduled. Stored live and ended evidence is unchanged."
+                      "description": "Derived at read time: ended takes precedence, then Polymarket live evidence (observed within the last 15 minutes, inclusive, with no known future kickoff), then postponed reads scheduled, then inferred live when the known kickoff is between now minus 3 hours and now (both edges inclusive); otherwise scheduled. Delisted game details never read live. Stored live and ended evidence is unchanged."
+                    },
+                    "polymarketLive": {
+                      "type": "boolean",
+                      "description": "True only for a listed, not-ended game whose stored Polymarket live flag is true, observed within the last 15 minutes (inclusive), with no known future kickoff. This is not an inference: a started game Polymarket has not moved to live is false."
                     },
                     "postponed": {
                       "type": "boolean",
@@ -34513,7 +34536,7 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                      "description": "When Gamma score and status were last observed."
+                      "description": "When score and status were last observed (a Gamma read or the Polymarket sports socket)."
                     },
                     "lineMarkets": {
                       "type": "array",
@@ -35059,6 +35082,7 @@
                     "title",
                     "startTime",
                     "status",
+                    "polymarketLive",
                     "postponed",
                     "score",
                     "period",
