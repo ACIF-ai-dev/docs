@@ -25900,6 +25900,20 @@
           {
             "schema": {
               "type": "string",
+              "enum": [
+                "open",
+                "closed",
+                "all"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Defaults to open. For closed, sort is ignored; for all, sort applies only to open events."
+          },
+          {
+            "schema": {
+              "type": "string",
               "minLength": 1,
               "maxLength": 100,
               "pattern": "^[A-Za-z0-9._-]+$"
@@ -25918,7 +25932,7 @@
             "in": "query",
             "name": "excludeTag",
             "required": false,
-            "description": "Exclude listed members carrying this exact case-sensitive stored tags[].slug before grouping events."
+            "description": "Exclude members carrying this exact case-sensitive stored tags[].slug before grouping events."
           },
           {
             "schema": {
@@ -25969,7 +25983,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns event summaries from matching listed eligible stored markets only, with zero upstream calls. Filter tag is exact case-sensitive stored tags[].slug containment; game tests presence of gameId. Paging unit is events after member filtering. Sort ending uses the latest synced matching member's Gamma event end time, null last, text event-id tie-break. volume24h orders event volume descending and newest orders event startDate descending, both null last then event id as text. Display metadata comes from the most recently synced stored member, text marketId tie-break, independently of list filters and detail truncation. Description is never on this list. Optional include=markets adds markets (detail item shape without rules) and marketsTruncated = marketCount > markets.length. Selection uses exactly the filtered members counted by marketCount, not detail-only members. If any member is moneyline, select only moneyline members in text marketId order; otherwise select by first-outcome stored price numerically descending, null/unparsable last, then text marketId (C collation). Both selections are capped at 3. lang localizes included markets' outcomes[].outcome labels and stored question translations exactly as detail; summary titles remain original. Without include no new keys are emitted. First pages are cached 30 seconds (empty 5 seconds), separately keyed by include; continuation pages recheck a generation over the entire filtered catalogue and display snapshots and return 409 on changes rather than skip/repeat. Included selection and its bounded batch read share a repeatable-read snapshot. Generation covers member identity, sync time, selection prices/type and summary display snapshots, but does not cover other included market display fields, stored translations or crypto context; changes to those alone between pages are not detected. Cursors bind include, expire five minutes after the first page and are process-local; restart on 409. Stored scope excludes unseen and retired populations; marketCount is not complete Gamma membership.",
+            "description": "Returns stored event summaries with zero upstream calls. status=open (default) lists events with matching listed members. status=closed lists events with matching retained members and no openable member, even outside the requested filters. Retention covers only members this service served and then saw close, for 14 days from the first confirmed closure; it does not cover every closed Polymarket event. status=all uses the live catalogue and returns open events in the requested sort, followed by closed events. Closed events are ordered by the latest matching closure descending, then text event ID ascending; sort is ignored for status=closed. For open events, sort ending uses the latest synced matching member's Gamma event end time, volume24h orders by event volume descending, and newest orders by event startDate descending; all place null last and break ties by text event ID. tag and excludeTag test exact case-sensitive stored tags[].slug containment; game tests presence of gameId. Filters apply to members before grouping. Display metadata comes from the most recently synced stored member, text marketId tie-break, independently of list filters and detail truncation. Closed title, slug and endDate use the same retained detail members as GET /v1/events/{eventId}. Description is never on this list. Optional include=markets adds markets (detail item shape without rules) and marketsTruncated = marketCount > markets.length. Selection uses exactly the filtered members counted by marketCount. If any matching member is moneyline, select only moneyline members in text marketId order; otherwise select by first-outcome stored price numerically descending, null/unparsable last, then text marketId (C collation). Both selections are capped at 3. lang localizes included markets' outcomes[].outcome labels and stored question translations exactly as detail; summary titles remain original and may carry a stored translation. First pages are cached 30 seconds (empty 5 seconds). Cursors bind status, filters, order, limit, lang and include, expire five minutes after the first page and are process-local. Continuation pages check the ordered event IDs of the entire filtered set; restart without a cursor on 409. Included selection and its bounded batch read share a repeatable-read snapshot.",
             "content": {
               "application/json": {
                 "schema": {
@@ -26034,13 +26048,13 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "Gamma event end time from the latest synced matching listed member (text marketId tie-break). Null when that snapshot has no end time; not the detail's latest market endDate."
+                            "description": "For open events, Gamma event end time from the latest synced matching listed member (text marketId tie-break). For closed events, the latest market endDate among members returned by event detail. Null when the respective source has no end time."
                           },
                           "marketCount": {
                             "type": "integer",
                             "minimum": 1,
                             "maximum": 9007199254740991,
-                            "description": "Matching listed eligible stored members, not complete Gamma membership. Unlisted detail-only members are excluded."
+                            "description": "Matching listed members for open events or matching unexpired retained members for closed events, not complete Gamma membership."
                           },
                           "startDate": {
                             "anyOf": [
@@ -26694,7 +26708,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "Opaque process-local cursor, bound to filters/order/limit and catalogue generation, expires in five minutes. A stale cursor (including restart/another replica) returns 409; restart without cursor."
+                      "description": "Opaque process-local cursor, bound to status, filters/order/limit and catalogue generation, expires in five minutes. A stale cursor (including restart/another replica) returns 409; restart without cursor."
                     },
                     "scope": {
                       "type": "string",
@@ -26719,7 +26733,7 @@
                       "type": "integer",
                       "minimum": 0,
                       "maximum": 9007199254740991,
-                      "description": "Number of events matching the tag, game and excludeTag filters on the same stored set that served the page (snapshot or live), independent of sort, cursor and limit."
+                      "description": "Number of events matching status and the tag, game and excludeTag filters on the same stored set that served the page (snapshot or live), independent of sort, cursor and limit."
                     }
                   },
                   "required": [
@@ -26730,7 +26744,7 @@
                     "total"
                   ],
                   "additionalProperties": false,
-                  "description": "Returns event summaries from matching listed eligible stored markets only, with zero upstream calls. Filter tag is exact case-sensitive stored tags[].slug containment; game tests presence of gameId. Paging unit is events after member filtering. Sort ending uses the latest synced matching member's Gamma event end time, null last, text event-id tie-break. volume24h orders event volume descending and newest orders event startDate descending, both null last then event id as text. Display metadata comes from the most recently synced stored member, text marketId tie-break, independently of list filters and detail truncation. Description is never on this list. Optional include=markets adds markets (detail item shape without rules) and marketsTruncated = marketCount > markets.length. Selection uses exactly the filtered members counted by marketCount, not detail-only members. If any member is moneyline, select only moneyline members in text marketId order; otherwise select by first-outcome stored price numerically descending, null/unparsable last, then text marketId (C collation). Both selections are capped at 3. lang localizes included markets' outcomes[].outcome labels and stored question translations exactly as detail; summary titles remain original. Without include no new keys are emitted. First pages are cached 30 seconds (empty 5 seconds), separately keyed by include; continuation pages recheck a generation over the entire filtered catalogue and display snapshots and return 409 on changes rather than skip/repeat. Included selection and its bounded batch read share a repeatable-read snapshot. Generation covers member identity, sync time, selection prices/type and summary display snapshots, but does not cover other included market display fields, stored translations or crypto context; changes to those alone between pages are not detected. Cursors bind include, expire five minutes after the first page and are process-local; restart on 409. Stored scope excludes unseen and retired populations; marketCount is not complete Gamma membership."
+                  "description": "Returns stored event summaries with zero upstream calls. status=open (default) lists events with matching listed members. status=closed lists events with matching retained members and no openable member, even outside the requested filters. Retention covers only members this service served and then saw close, for 14 days from the first confirmed closure; it does not cover every closed Polymarket event. status=all uses the live catalogue and returns open events in the requested sort, followed by closed events. Closed events are ordered by the latest matching closure descending, then text event ID ascending; sort is ignored for status=closed. For open events, sort ending uses the latest synced matching member's Gamma event end time, volume24h orders by event volume descending, and newest orders by event startDate descending; all place null last and break ties by text event ID. tag and excludeTag test exact case-sensitive stored tags[].slug containment; game tests presence of gameId. Filters apply to members before grouping. Display metadata comes from the most recently synced stored member, text marketId tie-break, independently of list filters and detail truncation. Closed title, slug and endDate use the same retained detail members as GET /v1/events/{eventId}. Description is never on this list. Optional include=markets adds markets (detail item shape without rules) and marketsTruncated = marketCount > markets.length. Selection uses exactly the filtered members counted by marketCount. If any matching member is moneyline, select only moneyline members in text marketId order; otherwise select by first-outcome stored price numerically descending, null/unparsable last, then text marketId (C collation). Both selections are capped at 3. lang localizes included markets' outcomes[].outcome labels and stored question translations exactly as detail; summary titles remain original and may carry a stored translation. First pages are cached 30 seconds (empty 5 seconds). Cursors bind status, filters, order, limit, lang and include, expire five minutes after the first page and are process-local. Continuation pages check the ordered event IDs of the entire filtered set; restart without a cursor on 409. Included selection and its bounded batch read share a repeatable-read snapshot."
                 }
               }
             }
