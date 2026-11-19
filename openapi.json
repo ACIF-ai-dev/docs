@@ -32643,11 +32643,25 @@
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991,
                             "description": "Number of listed games in this sport rail item."
+                          },
+                          "liveCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991,
+                            "description": "Listed games in this item with live status, using the same rule as GET /v1/sports/games?status=live. The sport null item counts unclassified games; sum liveCount across all items for the catalog-wide live total."
+                          },
+                          "scheduledCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991,
+                            "description": "Listed games in this item with scheduled status, using the same rule as GET /v1/sports/games?status=scheduled. Ended games count toward gameCount but neither status count."
                           }
                         },
                         "required": [
                           "sport",
-                          "gameCount"
+                          "gameCount",
+                          "liveCount",
+                          "scheduledCount"
                         ],
                         "additionalProperties": false
                       },
