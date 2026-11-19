@@ -35662,7 +35662,7 @@
                                     "type": "null"
                                   }
                                 ],
-                                "description": "Logo for light backgrounds. A path on this API's origin, not under /v1, such as /public/perps/instruments/12/logo/light?v=1e95a1e68295fecb: append it to the origin and use it as an image source. It needs no API key. The image is SVG. The v value changes when the logo changes and has no other meaning. null when the instrument has no logo for this theme, or when the logo could not be verified as safe to serve; show your own placeholder. A non-null path can still answer 404 with perps_logo_not_found, because a logo is verified the first time it is requested."
+                                "description": "Logo for light backgrounds. A path on this API's origin, not under /v1, such as /public/perps/instruments/12/logo/light?v=1e95a1e68295fecb: append it to the origin and use it as an image source. It needs no API key. The image is SVG. A changed logo gets a new path with a new v; v has no other meaning. A logo is checked in the background after the instrument data refreshes, or when first requested, whichever comes first. null when the instrument has no logo for this theme, or while the process holds a refusal for the logo; show your own placeholder. A non-null path can still answer 404 with perps_logo_not_found if the logo has not been checked yet."
                               },
                               "dark": {
                                 "anyOf": [
@@ -35673,7 +35673,7 @@
                                     "type": "null"
                                   }
                                 ],
-                                "description": "Logo for dark backgrounds. A path on this API's origin, not under /v1, such as /public/perps/instruments/12/logo/light?v=1e95a1e68295fecb: append it to the origin and use it as an image source. It needs no API key. The image is SVG. The v value changes when the logo changes and has no other meaning. null when the instrument has no logo for this theme, or when the logo could not be verified as safe to serve; show your own placeholder. A non-null path can still answer 404 with perps_logo_not_found, because a logo is verified the first time it is requested."
+                                "description": "Logo for dark backgrounds. A path on this API's origin, not under /v1, such as /public/perps/instruments/12/logo/light?v=1e95a1e68295fecb: append it to the origin and use it as an image source. It needs no API key. The image is SVG. A changed logo gets a new path with a new v; v has no other meaning. A logo is checked in the background after the instrument data refreshes, or when first requested, whichever comes first. null when the instrument has no logo for this theme, or while the process holds a refusal for the logo; show your own placeholder. A non-null path can still answer 404 with perps_logo_not_found if the logo has not been checked yet."
                               }
                             },
                             "required": [
@@ -36276,7 +36276,7 @@
                               "type": "null"
                             }
                           ],
-                          "description": "Logo for light backgrounds. A path on this API's origin, not under /v1, such as /public/perps/instruments/12/logo/light?v=1e95a1e68295fecb: append it to the origin and use it as an image source. It needs no API key. The image is SVG. The v value changes when the logo changes and has no other meaning. null when the instrument has no logo for this theme, or when the logo could not be verified as safe to serve; show your own placeholder. A non-null path can still answer 404 with perps_logo_not_found, because a logo is verified the first time it is requested."
+                          "description": "Logo for light backgrounds. A path on this API's origin, not under /v1, such as /public/perps/instruments/12/logo/light?v=1e95a1e68295fecb: append it to the origin and use it as an image source. It needs no API key. The image is SVG. A changed logo gets a new path with a new v; v has no other meaning. A logo is checked in the background after the instrument data refreshes, or when first requested, whichever comes first. null when the instrument has no logo for this theme, or while the process holds a refusal for the logo; show your own placeholder. A non-null path can still answer 404 with perps_logo_not_found if the logo has not been checked yet."
                         },
                         "dark": {
                           "anyOf": [
@@ -36287,7 +36287,7 @@
                               "type": "null"
                             }
                           ],
-                          "description": "Logo for dark backgrounds. A path on this API's origin, not under /v1, such as /public/perps/instruments/12/logo/light?v=1e95a1e68295fecb: append it to the origin and use it as an image source. It needs no API key. The image is SVG. The v value changes when the logo changes and has no other meaning. null when the instrument has no logo for this theme, or when the logo could not be verified as safe to serve; show your own placeholder. A non-null path can still answer 404 with perps_logo_not_found, because a logo is verified the first time it is requested."
+                          "description": "Logo for dark backgrounds. A path on this API's origin, not under /v1, such as /public/perps/instruments/12/logo/light?v=1e95a1e68295fecb: append it to the origin and use it as an image source. It needs no API key. The image is SVG. A changed logo gets a new path with a new v; v has no other meaning. A logo is checked in the background after the instrument data refreshes, or when first requested, whichever comes first. null when the instrument has no logo for this theme, or while the process holds a refusal for the logo; show your own placeholder. A non-null path can still answer 404 with perps_logo_not_found if the logo has not been checked yet."
                         }
                       },
                       "required": [
