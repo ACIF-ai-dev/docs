@@ -33746,6 +33746,769 @@
                             "format": "date-time",
                             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
                             "description": "When score and status were last observed (a Gamma read or the Polymarket sports socket)."
+                          },
+                          "mainLines": {
+                            "type": "object",
+                            "properties": {
+                              "spread": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "translation": {
+                                        "description": "Absent without lang. With lang, a stored question translation or null when missing or source-mismatched. question itself stays original.",
+                                        "anyOf": [
+                                          {
+                                            "type": "object",
+                                            "properties": {
+                                              "lang": {
+                                                "type": "string"
+                                              },
+                                              "question": {
+                                                "type": "string"
+                                              },
+                                              "disclaimer": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "required": [
+                                              "lang",
+                                              "question",
+                                              "disclaimer"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "marketId": {
+                                        "type": "string",
+                                        "description": "Same Gamma market field id as GET /v1/markets marketId."
+                                      },
+                                      "question": {
+                                        "type": "string",
+                                        "description": "Same Gamma market field question as GET /v1/markets."
+                                      },
+                                      "sportsMarketType": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Same Gamma market field sportsMarketType as GET /v1/markets."
+                                      },
+                                      "line": {
+                                        "anyOf": [
+                                          {
+                                            "type": "number"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Same Gamma market field line as GET /v1/markets."
+                                      },
+                                      "groupItemTitle": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Same Gamma market field groupItemTitle as GET /v1/markets."
+                                      },
+                                      "active": {
+                                        "type": "boolean",
+                                        "description": "Same Gamma market field active as GET /v1/markets."
+                                      },
+                                      "outcomes": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "outcome": {
+                                              "type": "string",
+                                              "description": "Same Gamma market outcome name as GET /v1/markets; with lang uses the same exact per-language dictionary. Unknown labels/languages stay original; tokenId and price remain on the same element."
+                                            },
+                                            "price": {
+                                              "type": "string",
+                                              "description": "Same catalog-synchronized Gamma market outcome price as GET /v1/markets."
+                                            },
+                                            "tokenId": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ],
+                                              "description": "Same Gamma market outcome tokenId as GET /v1/markets; pass it unchanged to POST /v1/orders."
+                                            },
+                                            "bestAsk": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ],
+                                              "description": "The lowest ask to buy this outcome, a decimal string above 0 and below 1, from the same evidence that produced this item's price and never mixed across sources: the market's stored book evidence, or, on GET /v1/sports/games/{gameId} only, the live CLOB display overlay's own book evidence for that market when the overlay replaced its prices. In a two-outcome market the first outcome carries the market-level best ask and the second carries 1 minus the market-level best bid. Null means no buyable ask is known, not zero: the market does not have exactly two outcomes, that side of the book is empty (an ask of 1 or a bid of 0) or unknown, the market's active is false, or, under the overlay, its evidence has no book for the first outcome's token. A snapshot, not a freshness guarantee; an order's fillable price is decided by POST /v1/orders. Parse it as a decimal, not as a floating-point number."
+                                            }
+                                          },
+                                          "required": [
+                                            "outcome",
+                                            "price",
+                                            "tokenId",
+                                            "bestAsk"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        "description": "Same Gamma market field outcomes as GET /v1/markets."
+                                      },
+                                      "syncedAt": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                        "description": "Same catalog synchronization timestamp as GET /v1/markets syncedAt."
+                                      },
+                                      "protocolVersion": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "v1",
+                                              "v2"
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Same Gamma market field version as GET /v1/markets protocolVersion: v1, v2, or null when the version is not known."
+                                      },
+                                      "volume": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gamma lifetime (not 24-hour) trading volume for this market in USD, as stored at syncedAt. A non-negative decimal string; parse as a decimal, never a floating-point number. Null means no volume is stored for this market, not zero."
+                                      },
+                                      "hasQuote": {
+                                        "type": "boolean",
+                                        "description": "Whether the stored book evidence currently offers a usable two-sided quote. False means price is not a price anyone offers; the client should not present it as odds."
+                                      },
+                                      "icon": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gamma market source icon URL, unchanged or null."
+                                      },
+                                      "image": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gamma market source image URL, unchanged or null."
+                                      },
+                                      "normalization": {
+                                        "type": "object",
+                                        "properties": {
+                                          "rawCode": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string"
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "lineKind": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "moneyline",
+                                                  "spread",
+                                                  "total",
+                                                  "winner",
+                                                  "prop"
+                                                ]
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "period": {
+                                            "type": "object",
+                                            "properties": {
+                                              "kind": {
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "full",
+                                                      "half",
+                                                      "quarter",
+                                                      "set",
+                                                      "map",
+                                                      "game",
+                                                      "round",
+                                                      "inning",
+                                                      "first_five_innings"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "null"
+                                                  }
+                                                ]
+                                              },
+                                              "number": {
+                                                "anyOf": [
+                                                  {
+                                                    "type": "integer",
+                                                    "exclusiveMinimum": 0,
+                                                    "maximum": 9007199254740991
+                                                  },
+                                                  {
+                                                    "type": "null"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            "required": [
+                                              "kind",
+                                              "number"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "unit": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string"
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "statistic": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string"
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "subject": {
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "team",
+                                                      "player"
+                                                    ]
+                                                  },
+                                                  "label": {
+                                                    "type": "string"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "kind",
+                                                  "label"
+                                                ],
+                                                "additionalProperties": false
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "threshold": {
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "operator": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "over_under",
+                                                      "at_least",
+                                                      "before"
+                                                    ]
+                                                  },
+                                                  "value": {
+                                                    "type": "string"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "operator",
+                                                  "value"
+                                                ],
+                                                "additionalProperties": false
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "status": {
+                                            "type": "string",
+                                            "enum": [
+                                              "classified",
+                                              "unclassified"
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "rawCode",
+                                          "lineKind",
+                                          "period",
+                                          "unit",
+                                          "statistic",
+                                          "subject",
+                                          "threshold",
+                                          "status"
+                                        ],
+                                        "additionalProperties": false,
+                                        "description": "Server normalization of original English source text. Unclassified markets retain raw text and rawCode with null kind/period/unit; display under Other markets."
+                                      }
+                                    },
+                                    "required": [
+                                      "marketId",
+                                      "question",
+                                      "sportsMarketType",
+                                      "line",
+                                      "groupItemTitle",
+                                      "active",
+                                      "outcomes",
+                                      "syncedAt",
+                                      "protocolVersion",
+                                      "volume",
+                                      "hasQuote",
+                                      "icon",
+                                      "image",
+                                      "normalization"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Main spread or null when none qualifies. Allowed raw codes: spreads, map_handicap, tennis_game_handicap, table_tennis_game_handicap."
+                              },
+                              "total": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "translation": {
+                                        "description": "Absent without lang. With lang, a stored question translation or null when missing or source-mismatched. question itself stays original.",
+                                        "anyOf": [
+                                          {
+                                            "type": "object",
+                                            "properties": {
+                                              "lang": {
+                                                "type": "string"
+                                              },
+                                              "question": {
+                                                "type": "string"
+                                              },
+                                              "disclaimer": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "required": [
+                                              "lang",
+                                              "question",
+                                              "disclaimer"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "marketId": {
+                                        "type": "string",
+                                        "description": "Same Gamma market field id as GET /v1/markets marketId."
+                                      },
+                                      "question": {
+                                        "type": "string",
+                                        "description": "Same Gamma market field question as GET /v1/markets."
+                                      },
+                                      "sportsMarketType": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Same Gamma market field sportsMarketType as GET /v1/markets."
+                                      },
+                                      "line": {
+                                        "anyOf": [
+                                          {
+                                            "type": "number"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Same Gamma market field line as GET /v1/markets."
+                                      },
+                                      "groupItemTitle": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Same Gamma market field groupItemTitle as GET /v1/markets."
+                                      },
+                                      "active": {
+                                        "type": "boolean",
+                                        "description": "Same Gamma market field active as GET /v1/markets."
+                                      },
+                                      "outcomes": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "outcome": {
+                                              "type": "string",
+                                              "description": "Same Gamma market outcome name as GET /v1/markets; with lang uses the same exact per-language dictionary. Unknown labels/languages stay original; tokenId and price remain on the same element."
+                                            },
+                                            "price": {
+                                              "type": "string",
+                                              "description": "Same catalog-synchronized Gamma market outcome price as GET /v1/markets."
+                                            },
+                                            "tokenId": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ],
+                                              "description": "Same Gamma market outcome tokenId as GET /v1/markets; pass it unchanged to POST /v1/orders."
+                                            },
+                                            "bestAsk": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ],
+                                              "description": "The lowest ask to buy this outcome, a decimal string above 0 and below 1, from the same evidence that produced this item's price and never mixed across sources: the market's stored book evidence, or, on GET /v1/sports/games/{gameId} only, the live CLOB display overlay's own book evidence for that market when the overlay replaced its prices. In a two-outcome market the first outcome carries the market-level best ask and the second carries 1 minus the market-level best bid. Null means no buyable ask is known, not zero: the market does not have exactly two outcomes, that side of the book is empty (an ask of 1 or a bid of 0) or unknown, the market's active is false, or, under the overlay, its evidence has no book for the first outcome's token. A snapshot, not a freshness guarantee; an order's fillable price is decided by POST /v1/orders. Parse it as a decimal, not as a floating-point number."
+                                            }
+                                          },
+                                          "required": [
+                                            "outcome",
+                                            "price",
+                                            "tokenId",
+                                            "bestAsk"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        "description": "Same Gamma market field outcomes as GET /v1/markets."
+                                      },
+                                      "syncedAt": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                        "description": "Same catalog synchronization timestamp as GET /v1/markets syncedAt."
+                                      },
+                                      "protocolVersion": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "v1",
+                                              "v2"
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Same Gamma market field version as GET /v1/markets protocolVersion: v1, v2, or null when the version is not known."
+                                      },
+                                      "volume": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gamma lifetime (not 24-hour) trading volume for this market in USD, as stored at syncedAt. A non-negative decimal string; parse as a decimal, never a floating-point number. Null means no volume is stored for this market, not zero."
+                                      },
+                                      "hasQuote": {
+                                        "type": "boolean",
+                                        "description": "Whether the stored book evidence currently offers a usable two-sided quote. False means price is not a price anyone offers; the client should not present it as odds."
+                                      },
+                                      "icon": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gamma market source icon URL, unchanged or null."
+                                      },
+                                      "image": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Gamma market source image URL, unchanged or null."
+                                      },
+                                      "normalization": {
+                                        "type": "object",
+                                        "properties": {
+                                          "rawCode": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string"
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "lineKind": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "moneyline",
+                                                  "spread",
+                                                  "total",
+                                                  "winner",
+                                                  "prop"
+                                                ]
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "period": {
+                                            "type": "object",
+                                            "properties": {
+                                              "kind": {
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "full",
+                                                      "half",
+                                                      "quarter",
+                                                      "set",
+                                                      "map",
+                                                      "game",
+                                                      "round",
+                                                      "inning",
+                                                      "first_five_innings"
+                                                    ]
+                                                  },
+                                                  {
+                                                    "type": "null"
+                                                  }
+                                                ]
+                                              },
+                                              "number": {
+                                                "anyOf": [
+                                                  {
+                                                    "type": "integer",
+                                                    "exclusiveMinimum": 0,
+                                                    "maximum": 9007199254740991
+                                                  },
+                                                  {
+                                                    "type": "null"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            "required": [
+                                              "kind",
+                                              "number"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "unit": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string"
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "statistic": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string"
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "subject": {
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "team",
+                                                      "player"
+                                                    ]
+                                                  },
+                                                  "label": {
+                                                    "type": "string"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "kind",
+                                                  "label"
+                                                ],
+                                                "additionalProperties": false
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "threshold": {
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "operator": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "over_under",
+                                                      "at_least",
+                                                      "before"
+                                                    ]
+                                                  },
+                                                  "value": {
+                                                    "type": "string"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "operator",
+                                                  "value"
+                                                ],
+                                                "additionalProperties": false
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          "status": {
+                                            "type": "string",
+                                            "enum": [
+                                              "classified",
+                                              "unclassified"
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "rawCode",
+                                          "lineKind",
+                                          "period",
+                                          "unit",
+                                          "statistic",
+                                          "subject",
+                                          "threshold",
+                                          "status"
+                                        ],
+                                        "additionalProperties": false,
+                                        "description": "Server normalization of original English source text. Unclassified markets retain raw text and rawCode with null kind/period/unit; display under Other markets."
+                                      }
+                                    },
+                                    "required": [
+                                      "marketId",
+                                      "question",
+                                      "sportsMarketType",
+                                      "line",
+                                      "groupItemTitle",
+                                      "active",
+                                      "outcomes",
+                                      "syncedAt",
+                                      "protocolVersion",
+                                      "volume",
+                                      "hasQuote",
+                                      "icon",
+                                      "image",
+                                      "normalization"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Main total or null when none qualifies. Allowed raw codes: totals, tennis_match_totals, table_tennis_match_totals."
+                              }
+                            },
+                            "required": [
+                              "spread",
+                              "total"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Each non-null entry is the same item as in the game's detail lineMarkets for the same lang and stored snapshot, without the live CLOB overlay. Only visible, classified full-period lines of the corresponding kind and allowed raw code qualify, with no subject or statistic, hasQuote true, and a parseable stored first-outcome price. Picks the price nearest 0.5 by exact decimal comparison; ties prefer larger lifetime volume (null last), then lower line value, then market id in ascending text order. lang localizes these entries just as on detail; other summary fields keep their existing language behavior."
                           }
                         },
                         "required": [
@@ -33780,7 +34543,8 @@
                           "marketCount",
                           "volume",
                           "filledAt",
-                          "statusObservedAt"
+                          "statusObservedAt",
+                          "mainLines"
                         ],
                         "additionalProperties": false
                       },

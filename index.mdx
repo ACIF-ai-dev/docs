@@ -252,6 +252,8 @@ Each market, in the list and from `GET /v1/markets/{marketId}`, carries `eventSt
 
 Each market of `GET /v1/markets`, `GET /v1/markets/{marketId}`, and `GET /v1/events/{eventId}`, and each entry of `markets` and `lineMarkets` in `GET /v1/sports/games/{gameId}`, carries `protocolVersion`: the Polymarket protocol version Gamma reports for the market in its `version` field, `"v1"`, `"v2"`, or `null`.
 
+`GET /v1/sports/games` also carries `protocolVersion` inside each non-null `mainLines.spread` and `mainLines.total` entry.
+
 - **It reports what Gamma sent.** The value is `"v1"` or `"v2"` only when Gamma sent exactly that text. It is never derived from `tokenId` or from any other field, and it does not replace `tokenId`: pass `tokenId` unchanged to `POST /v1/orders`. It does not say whether an order on the market is accepted; the order endpoints decide that, and name `order_market_protocol_unsupported` when they refuse a market for its protocol version.
 - **`null` means unknown.** Gamma sent no version, sent a value other than `v1` or `v2`, this service could not read it when it last stored the market, or the market was last stored before this field existed. It is always `null` on a crypto round's market, which only `GET /v1/markets/{marketId}` serves. Handle `null` as an ordinary case and do not read it as `v1`.
 - **It is as fresh as the catalog sync.** The value is read when the sync stores the market, not when you call; the market's own `syncedAt` is the time of that reading.
