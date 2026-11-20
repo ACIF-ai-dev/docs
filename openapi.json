@@ -34847,6 +34847,17 @@
                             ],
                             "description": "Same Gamma market field version as GET /v1/markets protocolVersion: v1, v2, or null when the version is not known."
                           },
+                          "volume": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Gamma lifetime (not 24-hour) trading volume for this market in USD, as stored at syncedAt. A non-negative decimal string; parse as a decimal, never a floating-point number. Null means no volume is stored for this market, not zero."
+                          },
                           "hasQuote": {
                             "type": "boolean",
                             "description": "Whether the stored book evidence currently offers a usable two-sided quote. False means price is not a price anyone offers; the client should not present it as odds."
@@ -35053,6 +35064,7 @@
                           "outcomes",
                           "syncedAt",
                           "protocolVersion",
+                          "volume",
                           "hasQuote",
                           "icon",
                           "image",
@@ -35210,6 +35222,17 @@
                               }
                             ],
                             "description": "Same Gamma market field version as GET /v1/markets protocolVersion: v1, v2, or null when the version is not known."
+                          },
+                          "volume": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Gamma lifetime (not 24-hour) trading volume for this market in USD, as stored at syncedAt. A non-negative decimal string; parse as a decimal, never a floating-point number. Null means no volume is stored for this market, not zero."
                           }
                         },
                         "required": [
@@ -35222,7 +35245,8 @@
                           "active",
                           "outcomes",
                           "syncedAt",
-                          "protocolVersion"
+                          "protocolVersion",
+                          "volume"
                         ],
                         "additionalProperties": false
                       },
