@@ -25968,6 +25968,17 @@
           },
           {
             "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Trimmed, 1–100 characters. Matches a case-insensitive literal substring of the original event title or, when lang is supplied, its stored translation for that language if its source title still equals the original. % and _ are literal. Combines with all other filters for every status; total counts matches and the cursor is bound to q. Sort order is unchanged."
+          },
+          {
+            "schema": {
               "type": "string"
             },
             "in": "header",
@@ -26733,7 +26744,7 @@
                       "type": "integer",
                       "minimum": 0,
                       "maximum": 9007199254740991,
-                      "description": "Number of events matching status and the tag, game and excludeTag filters on the same stored set that served the page (snapshot or live), independent of sort, cursor and limit."
+                      "description": "Number of events matching status and the tag, game, excludeTag and q filters on the same stored set that served the page (snapshot or live), independent of sort, cursor and limit."
                     }
                   },
                   "required": [
