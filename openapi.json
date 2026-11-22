@@ -36606,6 +36606,34 @@
                               }
                             ],
                             "description": "Advisory upstream ui_live_time (Unix milliseconds), converted to an ISO-8601 UTC string with milliseconds. Instruments with a null or future value are not served today."
+                          },
+                          "fundingRate7dAvg": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Arithmetic mean of funding rates in the last 7 days (exclusive start, inclusive end), as a decimal string rounded half-even to 10 decimal places. Null with fewer than 168 samples or when history is unavailable."
+                          },
+                          "fundingRate7dAnnualized": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Unrounded mean funding rate over the last 7 days × 8,760, as a decimal string rounded half-even to 8 decimal places. Null with fewer than 168 samples, when history is unavailable, or when the funding interval is not 1 hour."
+                          },
+                          "fundingRate7dSamples": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991,
+                            "description": "Number of distinct funding samples in the last 7 days (exclusive start, inclusive end). Zero when none or when history is unavailable. At least 168 samples are required for the mean and for 1-hour-only annualization."
                           }
                         },
                         "required": [
@@ -36624,7 +36652,10 @@
                           "fundingIntervalSeconds",
                           "logo",
                           "ticker",
-                          "uiLiveTime"
+                          "uiLiveTime",
+                          "fundingRate7dAvg",
+                          "fundingRate7dAnnualized",
+                          "fundingRate7dSamples"
                         ],
                         "additionalProperties": false
                       }
@@ -37244,6 +37275,34 @@
                         "additionalProperties": false
                       },
                       "description": "Leverage tiers by position size, as upstream gives them. Only this route returns them."
+                    },
+                    "fundingRate7dAvg": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Arithmetic mean of funding rates in the last 7 days (exclusive start, inclusive end), as a decimal string rounded half-even to 10 decimal places. Null with fewer than 168 samples or when history is unavailable."
+                    },
+                    "fundingRate7dAnnualized": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Unrounded mean funding rate over the last 7 days × 8,760, as a decimal string rounded half-even to 8 decimal places. Null with fewer than 168 samples, when history is unavailable, or when the funding interval is not 1 hour."
+                    },
+                    "fundingRate7dSamples": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Number of distinct funding samples in the last 7 days (exclusive start, inclusive end). Zero when none or when history is unavailable. At least 168 samples are required for the mean and for 1-hour-only annualization."
                     }
                   },
                   "required": [
@@ -37264,7 +37323,10 @@
                     "logo",
                     "ticker",
                     "uiLiveTime",
-                    "riskTiers"
+                    "riskTiers",
+                    "fundingRate7dAvg",
+                    "fundingRate7dAnnualized",
+                    "fundingRate7dSamples"
                   ],
                   "additionalProperties": false,
                   "description": "Returns one instrument with the same fields and the same snapshot as the list, plus riskTiers. fetchedAt says when the prices were read upstream, and ticker.ts is the time of the price itself."
