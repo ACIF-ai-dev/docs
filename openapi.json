@@ -30472,7 +30472,13 @@
                 "hockey",
                 "tennis",
                 "esports",
-                "mma"
+                "mma",
+                "table-tennis",
+                "pickleball",
+                "darts",
+                "handball",
+                "volleyball",
+                "golf"
               ]
             },
             "in": "path",
@@ -32333,7 +32339,13 @@
                             "hockey",
                             "tennis",
                             "esports",
-                            "mma"
+                            "mma",
+                            "table-tennis",
+                            "pickleball",
+                            "darts",
+                            "handball",
+                            "volleyball",
+                            "golf"
                           ]
                         },
                         {
@@ -32790,7 +32802,13 @@
                                   "hockey",
                                   "tennis",
                                   "esports",
-                                  "mma"
+                                  "mma",
+                                  "table-tennis",
+                                  "pickleball",
+                                  "darts",
+                                  "handball",
+                                  "volleyball",
+                                  "golf"
                                 ]
                               },
                               {
@@ -33050,7 +33068,7 @@
             "in": "query",
             "name": "sport",
             "required": false,
-            "description": "One of soccer, baseball, basketball, football, hockey, tennis, esports, mma; the same values as GET /v1/sports sport."
+            "description": "One of soccer, baseball, basketball, football, hockey, tennis, esports, mma, table-tennis, pickleball, darts, handball, volleyball, golf; the same values as GET /v1/sports sport."
           },
           {
             "schema": {
@@ -33316,7 +33334,13 @@
                                   "hockey",
                                   "tennis",
                                   "esports",
-                                  "mma"
+                                  "mma",
+                                  "table-tennis",
+                                  "pickleball",
+                                  "darts",
+                                  "handball",
+                                  "volleyball",
+                                  "golf"
                                 ]
                               },
                               {
@@ -35035,7 +35059,13 @@
                             "hockey",
                             "tennis",
                             "esports",
-                            "mma"
+                            "mma",
+                            "table-tennis",
+                            "pickleball",
+                            "darts",
+                            "handball",
+                            "volleyball",
+                            "golf"
                           ]
                         },
                         {
