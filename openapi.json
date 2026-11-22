@@ -8084,7 +8084,8 @@
                         "type": "object",
                         "properties": {
                           "gameId": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "The Gamma gameId, or ev-<eventId> for a game Polymarket lists live without one."
                           },
                           "title": {
                             "anyOf": [
@@ -8120,11 +8121,11 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "Derived at read time: ended takes precedence, then Polymarket live evidence (observed within the last 15 minutes, inclusive, with no known future kickoff), then postponed reads scheduled, then inferred live when the known kickoff is between now minus 3 hours and now (both edges inclusive); otherwise scheduled. Delisted game details never read live. Stored live and ended evidence is unchanged."
+                            "description": "Derived at read time: ended takes precedence. A period of exactly SUS or a set finishedAt reads scheduled, never live. Otherwise, Polymarket live evidence (observed within the last 15 minutes, inclusive, with no known future kickoff) takes precedence, then postponed reads scheduled, then inferred live when the known kickoff is between now minus 3 hours and now (both edges inclusive); otherwise scheduled. Delisted game details never read live. Stored evidence is unchanged."
                           },
                           "polymarketLive": {
                             "type": "boolean",
-                            "description": "True only for a listed, not-ended game whose stored Polymarket live flag is true, observed within the last 15 minutes (inclusive), with no known future kickoff. This is not an inference: a started game Polymarket has not moved to live is false."
+                            "description": "True only for a listed, not-ended game whose stored Polymarket live flag is true, observed within the last 15 minutes (inclusive), with no known future kickoff. Always false if period is exactly SUS or finishedAt is set. This is not an inference: a started game Polymarket has not moved to live is false."
                           }
                         },
                         "required": [
@@ -8449,7 +8450,7 @@
             "in": "path",
             "name": "id",
             "required": true,
-            "description": "League slug (lowercase alphanumeric hyphen-separated segments), or numeric Gamma teamId/gameId. At most 64 characters."
+            "description": "League slug (lowercase alphanumeric hyphen-separated segments), numeric Gamma teamId, or a game ID. The Gamma gameId, or ev-<eventId> for a game Polymarket lists live without one. Game IDs match ^(?:[0-9]+|ev-[0-9]+)$. At most 64 characters."
           },
           {
             "schema": {
@@ -8877,7 +8878,7 @@
             "in": "path",
             "name": "id",
             "required": true,
-            "description": "League slug (lowercase alphanumeric hyphen-separated segments), or numeric Gamma teamId/gameId. At most 64 characters."
+            "description": "League slug (lowercase alphanumeric hyphen-separated segments), numeric Gamma teamId, or a game ID. The Gamma gameId, or ev-<eventId> for a game Polymarket lists live without one. Game IDs match ^(?:[0-9]+|ev-[0-9]+)$. At most 64 characters."
           },
           {
             "schema": {
@@ -34400,7 +34401,7 @@
                           },
                           "gameId": {
                             "type": "string",
-                            "description": "The games[].gameId value from GET /v1/sports/games (the Gamma gameId)."
+                            "description": "The Gamma gameId, or ev-<eventId> for a game Polymarket lists live without one."
                           },
                           "sport": {
                             "anyOf": [
@@ -34504,11 +34505,11 @@
                               "live",
                               "ended"
                             ],
-                            "description": "Derived at read time: ended takes precedence, then Polymarket live evidence (observed within the last 15 minutes, inclusive, with no known future kickoff), then postponed reads scheduled, then inferred live when the known kickoff is between now minus 3 hours and now (both edges inclusive); otherwise scheduled. Delisted game details never read live. Stored live and ended evidence is unchanged."
+                            "description": "Derived at read time: ended takes precedence. A period of exactly SUS or a set finishedAt reads scheduled, never live. Otherwise, Polymarket live evidence (observed within the last 15 minutes, inclusive, with no known future kickoff) takes precedence, then postponed reads scheduled, then inferred live when the known kickoff is between now minus 3 hours and now (both edges inclusive); otherwise scheduled. Delisted game details never read live. Stored evidence is unchanged."
                           },
                           "polymarketLive": {
                             "type": "boolean",
-                            "description": "True only for a listed, not-ended game whose stored Polymarket live flag is true, observed within the last 15 minutes (inclusive), with no known future kickoff. This is not an inference: a started game Polymarket has not moved to live is false."
+                            "description": "True only for a listed, not-ended game whose stored Polymarket live flag is true, observed within the last 15 minutes (inclusive), with no known future kickoff. Always false if period is exactly SUS or finishedAt is set. This is not an inference: a started game Polymarket has not moved to live is false."
                           },
                           "postponed": {
                             "type": "boolean",
@@ -35923,7 +35924,7 @@
             "in": "path",
             "name": "gameId",
             "required": true,
-            "description": "The games[].gameId value from GET /v1/sports/games (the Gamma gameId)."
+            "description": "The games[].gameId value from GET /v1/sports/games. The Gamma gameId, or ev-<eventId> for a game Polymarket lists live without one."
           },
           {
             "schema": {
@@ -36125,7 +36126,7 @@
                     },
                     "gameId": {
                       "type": "string",
-                      "description": "The games[].gameId value from GET /v1/sports/games (the Gamma gameId)."
+                      "description": "The Gamma gameId, or ev-<eventId> for a game Polymarket lists live without one."
                     },
                     "sport": {
                       "anyOf": [
@@ -36229,11 +36230,11 @@
                         "live",
                         "ended"
                       ],
-                      "description": "Derived at read time: ended takes precedence, then Polymarket live evidence (observed within the last 15 minutes, inclusive, with no known future kickoff), then postponed reads scheduled, then inferred live when the known kickoff is between now minus 3 hours and now (both edges inclusive); otherwise scheduled. Delisted game details never read live. Stored live and ended evidence is unchanged."
+                      "description": "Derived at read time: ended takes precedence. A period of exactly SUS or a set finishedAt reads scheduled, never live. Otherwise, Polymarket live evidence (observed within the last 15 minutes, inclusive, with no known future kickoff) takes precedence, then postponed reads scheduled, then inferred live when the known kickoff is between now minus 3 hours and now (both edges inclusive); otherwise scheduled. Delisted game details never read live. Stored evidence is unchanged."
                     },
                     "polymarketLive": {
                       "type": "boolean",
-                      "description": "True only for a listed, not-ended game whose stored Polymarket live flag is true, observed within the last 15 minutes (inclusive), with no known future kickoff. This is not an inference: a started game Polymarket has not moved to live is false."
+                      "description": "True only for a listed, not-ended game whose stored Polymarket live flag is true, observed within the last 15 minutes (inclusive), with no known future kickoff. Always false if period is exactly SUS or finishedAt is set. This is not an inference: a started game Polymarket has not moved to live is false."
                     },
                     "postponed": {
                       "type": "boolean",
