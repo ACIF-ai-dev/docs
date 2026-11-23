@@ -602,7 +602,7 @@ curl "https://api.tobuilder.app/v1/events/123456/underlying/price-history?range=
 
 ## Browse sports games
 
-`GET /v1/sports` groups listed games by stored `sport`: `soccer`, `baseball`, `basketball`, `football`, `hockey`, `tennis`, `esports`, `mma`, `table-tennis`, `pickleball`, `darts`, `handball`, `volleyball`, or `golf`. Only sports with listed games appear. The rail sorts by descending game count, with unclassified games grouped under `null` at the end. Use the same non-null values to filter `GET /v1/sports/games` by `sport`.
+`GET /v1/sports` groups listed games by stored `sport`: `soccer`, `baseball`, `basketball`, `football`, `hockey`, `tennis`, `esports`, `mma`, `table-tennis`, `pickleball`, `darts`, `handball`, `volleyball`, `golf`, `cricket`, `rugby`, `boxing`, or `motorsports`. Only sports with listed games appear. The rail sorts by descending game count, with unclassified games grouped under `null` at the end. Use the same non-null values to filter `GET /v1/sports/games` by `sport`.
 
 Filter `GET /v1/sports/games` with optional `teamIds`: a comma-separated list of 1–20 non-empty Gamma team ids, each at most 64 characters, taken from `games[].teams[].teamId`. A game matches any id in the set; the filter combines with `status`, `sport`, `league` and start-time filters by AND. Duplicate ids collapse and their order does not matter. Empty items, more than 20 items (before deduplication) or an over-long id return 400 `VALIDATION_FAILED`. Games with null teams or no matching team are excluded. `total` counts the filtered games before pagination; ordering and response fields are unchanged. For the next scheduled game of a team, use `GET /v1/sports/games?teamIds=<id>&status=scheduled&limit=1`.
 

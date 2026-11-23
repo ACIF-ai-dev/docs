@@ -31559,7 +31559,11 @@
                 "darts",
                 "handball",
                 "volleyball",
-                "golf"
+                "golf",
+                "cricket",
+                "rugby",
+                "boxing",
+                "motorsports"
               ]
             },
             "in": "path",
@@ -33426,7 +33430,11 @@
                             "darts",
                             "handball",
                             "volleyball",
-                            "golf"
+                            "golf",
+                            "cricket",
+                            "rugby",
+                            "boxing",
+                            "motorsports"
                           ]
                         },
                         {
@@ -33889,7 +33897,11 @@
                                   "darts",
                                   "handball",
                                   "volleyball",
-                                  "golf"
+                                  "golf",
+                                  "cricket",
+                                  "rugby",
+                                  "boxing",
+                                  "motorsports"
                                 ]
                               },
                               {
@@ -34149,7 +34161,7 @@
             "in": "query",
             "name": "sport",
             "required": false,
-            "description": "One of soccer, baseball, basketball, football, hockey, tennis, esports, mma, table-tennis, pickleball, darts, handball, volleyball, golf; the same values as GET /v1/sports sport."
+            "description": "One of soccer, baseball, basketball, football, hockey, tennis, esports, mma, table-tennis, pickleball, darts, handball, volleyball, golf, cricket, rugby, boxing, motorsports; the same values as GET /v1/sports sport."
           },
           {
             "schema": {
@@ -34421,7 +34433,11 @@
                                   "darts",
                                   "handball",
                                   "volleyball",
-                                  "golf"
+                                  "golf",
+                                  "cricket",
+                                  "rugby",
+                                  "boxing",
+                                  "motorsports"
                                 ]
                               },
                               {
@@ -36146,7 +36162,11 @@
                             "darts",
                             "handball",
                             "volleyball",
-                            "golf"
+                            "golf",
+                            "cricket",
+                            "rugby",
+                            "boxing",
+                            "motorsports"
                           ]
                         },
                         {
