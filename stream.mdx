@@ -156,7 +156,7 @@ Server frames use `type` as their discriminator:
 ```
 
 ```json
-{"type":"subscribed","tokenIds":["token-id"],"snapshot":[{"tokenId":"token-id","bestBid":"0.105","bestAsk":null,"ts":1727430000123}]}
+{"type":"subscribed","tokenIds":["token-id"],"snapshot":[{"tokenId":"token-id","bestBid":"0.105","bestAsk":"0.110","price":"0.1075","ts":1727430000123}]}
 ```
 
 ```json
@@ -168,7 +168,7 @@ Server frames use `type` as their discriminator:
 ```
 
 ```json
-{"type":"price","tokenId":"token-id","bestBid":"0.105","bestAsk":null,"ts":1727430000123}
+{"type":"price","tokenId":"token-id","bestBid":"0.105","bestAsk":"0.110","price":"0.1075","ts":1727430000123}
 ```
 
 ```json
@@ -189,9 +189,9 @@ Server frames use `type` as their discriminator:
 
 A `price` frame is paired with the subscribed `tokenId`. A `best_bid_ask` event with a single `tokenId` is routed through that token. The service sends at most one `price` frame per token every **250 ms**; it keeps the newest price in that window. `resolved` frames are immediate and are not coalesced.
 
-`bestBid` and `bestAsk` are decimal **strings**, or `null` when unavailable. Do not parse them as numbers for calculation. One exception is display only: to continue a price history chart (see **Read price history** on the API reference home page), you can convert both to numbers to place their midpoint on the chart, and a frame where either is `null` adds no point. `ts` is epoch milliseconds: the upstream timestamp when present, otherwise the service receive time. After a snapshot, the service does not send a price with an older timestamp when both the snapshot and new price carry upstream timestamps. A price with the same value as a snapshot can follow it when that price was waiting in a coalescing window.
+`bestBid` and `bestAsk` are decimal **strings**, or `null` when unavailable. Do not parse them as numbers for calculation. The unrounded decimal string `price` in frames and snapshots is the midpoint when both sides are present and the spread is at most `0.10`; otherwise it is the last trade seen since the service subscribed to the token (strictly between `0` and `1`, with a non-empty side), or `null`. It represents the same display value as the market's REST `price`, computed live rather than at sync time. Our `null` means no live display price: keep the last REST value. One exception is display only: to continue a price history chart (see **Read price history** on the API reference home page), you can convert both quotes to numbers to place their midpoint on the chart, and a frame where either is `null` adds no point. This chart point is not the served `price`. `ts` is epoch milliseconds: the upstream quote or book timestamp when present, otherwise the service receive time. A trade can update `price` without changing the quotes or `ts`, whether or not you ask for `trade` frames. After a snapshot, the service does not send a price with an older timestamp when both the snapshot and new price carry upstream timestamps. A price with the same value as a snapshot can follow it when that price was waiting in a coalescing window.
 
-The `subscribed` frame includes a snapshot for each newly subscribed token with a cached price. A token without a cache entry is omitted. If the upstream sends an order book for a token that has no cached price, the service uses that book's highest bid and lowest ask as the token's first `price` frame. A token that already has a cached price ignores order books; its later prices come from best bid and ask updates. The upstream is not guaranteed to send an order book, and without one the token's first `price` frame follows the next quote change. Read an initial value from REST when a snapshot is empty.
+The `subscribed` frame includes a snapshot for each newly subscribed token with a cached price. A token without a cache entry is omitted. If the upstream sends an order book for a token that has no cached price, the service uses that book's highest bid and lowest ask as the token's first `price` frame. A token that already has a cached price ignores order books; later quotes come from best bid and ask updates. The upstream is not guaranteed to send an order book, and without one the token's first `price` frame follows the next quote change. Read an initial value from REST when a snapshot is empty.
 
 `market_resolved` is forwarded as a `resolved` frame once for each of its subscribed token IDs. If you subscribe to both YES and NO tokens for one market, its resolution arrives in two `resolved` frames, one for each token. Process frames idempotently.
 
@@ -470,7 +470,7 @@ The recurring crypto Up or Down rounds of `GET /v1/markets/rounds` (see **Crypto
 The reply to `subscribeRounds` is a `roundsSubscribed` frame:
 
 ```json
-{"type":"roundsSubscribed","pairs":[{"asset":"BTC","interval":"5m"}],"snapshot":[{"asset":"BTC","interval":"5m","state":"ok","fetchedAt":"2026-10-02T10:12:03.000Z","current":{"marketId":"516710","eventId":"903193","slug":"btc-updown-5m-1790935800","eventStartTime":"2026-10-02T10:10:00.000Z","endDate":"2026-10-02T10:15:00.000Z","status":"live","targetPrice":null,"targetPriceSource":null,"outcomes":[{"outcome":"Up","tokenId":"71453-example","bestAsk":"0.52"},{"outcome":"Down","tokenId":"71454-example","bestAsk":"0.49"}],"winningOutcome":null,"volume":"1534.27"},"next":[],"past":[]}]}
+{"type":"roundsSubscribed","pairs":[{"asset":"BTC","interval":"5m"}],"snapshot":[{"asset":"BTC","interval":"5m","state":"ok","fetchedAt":"2026-10-02T10:12:03.000Z","current":{"marketId":"516710","eventId":"903193","slug":"btc-updown-5m-1790935800","eventStartTime":"2026-10-02T10:10:00.000Z","endDate":"2026-10-02T10:15:00.000Z","status":"live","targetPrice":null,"targetPriceSource":null,"outcomes":[{"outcome":"Up","tokenId":"71453-example","bestAsk":"0.52","price":"0.515"},{"outcome":"Down","tokenId":"71454-example","bestAsk":"0.49","price":"0.485"}],"winningOutcome":null,"volume":"1534.27"},"next":[],"past":[]}]}
 ```
 
 - `pairs`: the pairs this frame added. A pair the connection already holds is not listed again.
@@ -479,7 +479,7 @@ The reply to `subscribeRounds` is a `roundsSubscribed` frame:
 Later frames:
 
 ```json
-{"type":"roundUpdate","asset":"BTC","interval":"5m","round":{"marketId":"516710","eventId":"903193","slug":"btc-updown-5m-1790935800","eventStartTime":"2026-10-02T10:10:00.000Z","endDate":"2026-10-02T10:15:00.000Z","status":"ended","targetPrice":"118420.15","targetPriceSource":"polymarket","outcomes":[{"outcome":"Up","tokenId":"71453-example","bestAsk":null},{"outcome":"Down","tokenId":"71454-example","bestAsk":null}],"winningOutcome":null,"volume":"1534.27"},"ts":1790936103000}
+{"type":"roundUpdate","asset":"BTC","interval":"5m","round":{"marketId":"516710","eventId":"903193","slug":"btc-updown-5m-1790935800","eventStartTime":"2026-10-02T10:10:00.000Z","endDate":"2026-10-02T10:15:00.000Z","status":"ended","targetPrice":"118420.15","targetPriceSource":"polymarket","outcomes":[{"outcome":"Up","tokenId":"71453-example","bestAsk":null,"price":null},{"outcome":"Down","tokenId":"71454-example","bestAsk":null,"price":null}],"winningOutcome":null,"volume":"1534.27"},"ts":1790936103000}
 ```
 
 ```json
@@ -491,6 +491,8 @@ A `roundUpdate` frame carries one round of a held pair, with the same keys as a 
 `roundUpdate` is also sent when `outcomes[].bestAsk` or `volume` changes. These snapshots change only when the service re-reads the round for its target price or result, at most about once a minute per round: about once a minute while a live round lacks a target, not before an upcoming round starts or while a live round's target is known. They can be minutes old and older than `fetchedAt`; polling the list more often does not refresh them. They are not live token prices. `roundUpdate` frames follow the buffer rule of `price` frames and count toward the same close, and a skipped frame is not sent again. After a reconnect, or if you suspect you missed one, send `unsubscribeRounds` and then `subscribeRounds` for the pair to receive a fresh `snapshot`.
 
 A `roundsUnsubscribed` frame lists the pairs that `unsubscribeRounds` let go of; a carried pair the connection did not hold is left out.
+
+Each round outcome also carries `price`, the display price at the last Gamma read, not a live quote. For an open binary market the first outcome uses the same midpoint rule with Gamma's last trade as the fallback; the second outcome is its complement. Both are `null` if there is no display value, including when Gamma's only trade value is a placeholder at `0` or `1`. A change in `outcomes[].price` also triggers `roundUpdate`.
 
 These frames carry last-read `outcomes[].bestAsk` price snapshots and cumulative `volume`, but no live token prices or trades. For the underlying price see **Reference price frames**; for live token prices and trades, send `subscribe` with a round's `outcomes[].tokenId`, adding `"trades":true` for `trade` frames, and subscribe to the tokens of a `next` round before it starts so there is no gap when it becomes `current`. Read settlement from the token's `resolved` frame.
 
@@ -593,6 +595,8 @@ Spot never decides a round. A `5m` round's `targetPrice`, its `polybolt_twap` es
 The service closes with **4029** when a connection limit is exceeded or when the client exceeds the frame-rate limit. It closes with **1011** when it rejects a connection, including a duplicate connection ID. It closes with **1001** during server shutdown or after the heartbeat timeout. It closes with **4008** when a client's `bufferedAmount` exceeds **1048576** bytes for **100** consecutive delivery attempts. This indicates a slow consumer; catch up on reads or reduce subscriptions before reconnecting.
 
 ## Changes
+
+2026-11-23: `price` frames and `subscribed` snapshots gain a nullable `price` field for the live display price. REST and stream round outcomes gain a nullable `price` field for the same quantity at the last round read. No operations were added.
 
 2026-10-21: Perps order books: the `subscribePerpsBook` and `unsubscribePerpsBook` operations and the `perpsBookSubscribed`, `perpsBook`, `perpsBookFeed`, and `perpsBookUnsubscribed` frames (see **Perps order book frames**), with a per-connection limit of their own. `GET /v1/perps/instruments/{instrumentId}/book` did not change. Token, order book, Perps, round and reference operations and frames did not change: a connection that does not send the new operations receives exactly the frames it received before. During the rollout an older instance answers the new operations with `VALIDATION_FAILED`.
 

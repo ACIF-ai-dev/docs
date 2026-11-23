@@ -24967,12 +24967,24 @@
                                             }
                                           ],
                                           "description": "The lowest price at which this outcome can be bought, as a plain decimal string from 0 up to but not including 1. It changes only when the service re-reads the round for its target price or result: about once a minute while a live round lacks a target, not before an upcoming round starts or while a live round's target is known. It can be minutes old and older than fetchedAt; polling the list more often does not refresh it. Null when Polymarket sent no valid price, the market is not trading, or the side of the book it comes from is empty (Polymarket reports an empty ask side as 1 and an empty bid side as 0), and always for ended or resolved rounds (including every past round). The second outcome's ask is 1 minus the market's best bid for the first outcome. Subscribe to the outcome's tokenId on /v1/stream for live prices. Parse as a decimal, not a floating-point number."
+                                        },
+                                        "price": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ],
+                                          "description": "Polymarket's display price: midpoint when the spread is at most 0.10, else the last trade, else null (no display price)"
                                         }
                                       },
                                       "required": [
                                         "outcome",
                                         "tokenId",
-                                        "bestAsk"
+                                        "bestAsk",
+                                        "price"
                                       ],
                                       "additionalProperties": false
                                     },
@@ -25111,12 +25123,24 @@
                                           }
                                         ],
                                         "description": "The lowest price at which this outcome can be bought, as a plain decimal string from 0 up to but not including 1. It changes only when the service re-reads the round for its target price or result: about once a minute while a live round lacks a target, not before an upcoming round starts or while a live round's target is known. It can be minutes old and older than fetchedAt; polling the list more often does not refresh it. Null when Polymarket sent no valid price, the market is not trading, or the side of the book it comes from is empty (Polymarket reports an empty ask side as 1 and an empty bid side as 0), and always for ended or resolved rounds (including every past round). The second outcome's ask is 1 minus the market's best bid for the first outcome. Subscribe to the outcome's tokenId on /v1/stream for live prices. Parse as a decimal, not a floating-point number."
+                                      },
+                                      "price": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Polymarket's display price: midpoint when the spread is at most 0.10, else the last trade, else null (no display price)"
                                       }
                                     },
                                     "required": [
                                       "outcome",
                                       "tokenId",
-                                      "bestAsk"
+                                      "bestAsk",
+                                      "price"
                                     ],
                                     "additionalProperties": false
                                   },
@@ -25251,12 +25275,24 @@
                                           }
                                         ],
                                         "description": "The lowest price at which this outcome can be bought, as a plain decimal string from 0 up to but not including 1. It changes only when the service re-reads the round for its target price or result: about once a minute while a live round lacks a target, not before an upcoming round starts or while a live round's target is known. It can be minutes old and older than fetchedAt; polling the list more often does not refresh it. Null when Polymarket sent no valid price, the market is not trading, or the side of the book it comes from is empty (Polymarket reports an empty ask side as 1 and an empty bid side as 0), and always for ended or resolved rounds (including every past round). The second outcome's ask is 1 minus the market's best bid for the first outcome. Subscribe to the outcome's tokenId on /v1/stream for live prices. Parse as a decimal, not a floating-point number."
+                                      },
+                                      "price": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Polymarket's display price: midpoint when the spread is at most 0.10, else the last trade, else null (no display price)"
                                       }
                                     },
                                     "required": [
                                       "outcome",
                                       "tokenId",
-                                      "bestAsk"
+                                      "bestAsk",
+                                      "price"
                                     ],
                                     "additionalProperties": false
                                   },
