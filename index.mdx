@@ -1008,6 +1008,14 @@ Two reads give an end user's PnL — realized plus unrealized PnL on their predi
 
 When the wallet has no PnL point at or before `dayStart` — its history starts later that day, or it has none yet — the start of the day counts as **0**. When the total is unavailable but the realized part is known, the realized part is still returned next to a `null` total. A `null` amount is **not zero**: `unavailableReason` says why, and a `null` point in a series is a gap in the chart. Polymarket publishes PnL points on an hourly grid, so the newest value can be up to about an hour behind the request; `asOf` says when it was taken. `parts` lists the sources the total adds up — only `prediction` today; a `perps` part will be added later, and the total stays the sum of the listed parts.
 
+## Read popular trader combos
+
+`GET /v1/traders/popular-combos` requires a builder API key with `bot-read` (or a higher scope). It returns up to eight open combos in Polymarket Combo Today rank order, at most one per trader. There is no pagination.
+
+The response includes the stored snapshot time (`asOf`) and a `partial` flag. If the snapshot is older than 15 minutes, the response keeps its timestamp but returns no items and marks it partial. Before the first refresh, `asOf` is `null`, `partial` is `true`, and `items` is empty. On every read, the service excludes hidden traders and combos whose legs no longer pass local eligibility checks, including legs whose stored kickoff has passed. Ranks are not renumbered, and the read makes no upstream requests.
+
+`trader.displayName` is null for empty or wallet-shaped names, and `trader.avatarUrl` is null when no approved image is available. Use a neutral avatar in that case. The entry cost is what the trader paid, not current value or payout. `realizedComboPnl1m` is realized combo PnL over the one-month window bounded by `from` and `to`, or null when unavailable. Each leg's `price` is a quote for display or null. Amounts and quotes are decimal strings.
+
 ## Explore the docs
 
 Use **API reference** for operation parameters, authentication requirements, and responses. **SDK guide** covers the TypeScript client for the same operations, and **Webhooks** explains what you need in place to receive event deliveries.
