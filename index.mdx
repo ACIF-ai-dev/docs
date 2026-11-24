@@ -1013,6 +1013,7 @@ When the wallet has no PnL point at or before `dayStart` — its history starts 
 ## Read popular trader combos
 
 `GET /v1/traders/popular-combos` requires a builder API key with `bot-read` (or a higher scope). It returns up to eight open combos in Polymarket Combo Today rank order, at most one per trader. There is no pagination.
+Pass `?eventId=` with an event ID to return only combos with at least one leg on that event; no matching eligible combos returns an empty `items` array.
 
 The response includes the stored snapshot time (`asOf`) and a `partial` flag. If the snapshot is older than 15 minutes, the response keeps its timestamp but returns no items and marks it partial. Before the first refresh, `asOf` is `null`, `partial` is `true`, and `items` is empty. On every read, the service excludes hidden traders and combos whose legs no longer pass local eligibility checks, including legs whose stored kickoff has passed. Ranks are not renumbered, and the read makes no upstream requests.
 

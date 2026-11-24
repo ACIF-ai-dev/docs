@@ -4199,6 +4199,18 @@
         "parameters": [
           {
             "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "in": "query",
+            "name": "eventId",
+            "required": false,
+            "description": "Only return combos with at least one leg on this event."
+          },
+          {
+            "schema": {
               "type": "string"
             },
             "in": "header",
@@ -4385,6 +4397,60 @@
                   ],
                   "additionalProperties": false,
                   "description": "Returns the snapshot time, partial flag and eligible combos. A missing snapshot or one older than 15 minutes returns no items and partial: true."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "error.code is VALIDATION_FAILED for a malformed eventId query parameter.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "VALIDATION_FAILED",
+                            "UNAUTHORIZED",
+                            "FORBIDDEN",
+                            "NOT_FOUND",
+                            "CONFLICT",
+                            "RATE_LIMITED",
+                            "INTERNAL",
+                            "UPSTREAM_UNAVAILABLE"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "error.code is VALIDATION_FAILED for a malformed eventId query parameter."
                 }
               }
             }
