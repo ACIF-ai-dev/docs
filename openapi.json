@@ -44621,7 +44621,7 @@
                               "type": "null"
                             }
                           ],
-                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode. This is an open set: other values can be added."
+                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode, stock_split_restricted, open_interest_cap_exceeded, account_open_interest_cap_exceeded, strict_isolated_cross_exposure, strict_isolated_margin_removal, instrument_post_only, post_only_rejected, mark_price_stale, zero_quantity, order_expired, reduce_only_invalid, reduce_only_expired. This is an open set: other values can be added. mark_price_stale is temporary: the market's mark price has not updated for over 60 seconds and the order would grow the position. Retry once prices resume and the original order is confirmed rejected. Reduce-only closes are not affected by this condition."
                         },
                         "instrumentId": {
                           "type": "string"
@@ -44808,7 +44808,7 @@
                               "type": "null"
                             }
                           ],
-                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode. This is an open set: other values can be added."
+                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode, stock_split_restricted, open_interest_cap_exceeded, account_open_interest_cap_exceeded, strict_isolated_cross_exposure, strict_isolated_margin_removal, instrument_post_only, post_only_rejected, mark_price_stale, zero_quantity, order_expired, reduce_only_invalid, reduce_only_expired. This is an open set: other values can be added. mark_price_stale is temporary: the market's mark price has not updated for over 60 seconds and the order would grow the position. Retry once prices resume and the original order is confirmed rejected. Reduce-only closes are not affected by this condition."
                         },
                         "instrumentId": {
                           "type": "string"
@@ -44995,7 +44995,7 @@
                               "type": "null"
                             }
                           ],
-                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode. This is an open set: other values can be added."
+                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode, stock_split_restricted, open_interest_cap_exceeded, account_open_interest_cap_exceeded, strict_isolated_cross_exposure, strict_isolated_margin_removal, instrument_post_only, post_only_rejected, mark_price_stale, zero_quantity, order_expired, reduce_only_invalid, reduce_only_expired. This is an open set: other values can be added. mark_price_stale is temporary: the market's mark price has not updated for over 60 seconds and the order would grow the position. Retry once prices resume and the original order is confirmed rejected. Reduce-only closes are not affected by this condition."
                         },
                         "instrumentId": {
                           "type": "string"
@@ -45648,7 +45648,7 @@
                               "type": "null"
                             }
                           ],
-                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode. This is an open set: other values can be added."
+                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode, stock_split_restricted, open_interest_cap_exceeded, account_open_interest_cap_exceeded, strict_isolated_cross_exposure, strict_isolated_margin_removal, instrument_post_only, post_only_rejected, mark_price_stale, zero_quantity, order_expired, reduce_only_invalid, reduce_only_expired. This is an open set: other values can be added. mark_price_stale is temporary: the market's mark price has not updated for over 60 seconds and the order would grow the position. Retry once prices resume and the original order is confirmed rejected. Reduce-only closes are not affected by this condition."
                         },
                         "instrumentId": {
                           "type": "string"
@@ -46162,7 +46162,7 @@
                               "type": "null"
                             }
                           ],
-                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode. This is an open set: other values can be added."
+                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode, stock_split_restricted, open_interest_cap_exceeded, account_open_interest_cap_exceeded, strict_isolated_cross_exposure, strict_isolated_margin_removal, instrument_post_only, post_only_rejected, mark_price_stale, zero_quantity, order_expired, reduce_only_invalid, reduce_only_expired. This is an open set: other values can be added. mark_price_stale is temporary: the market's mark price has not updated for over 60 seconds and the order would grow the position. Retry once prices resume and the original order is confirmed rejected. Reduce-only closes are not affected by this condition."
                         },
                         "instrumentId": {
                           "type": "string"
@@ -46349,7 +46349,7 @@
                               "type": "null"
                             }
                           ],
-                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode. This is an open set: other values can be added."
+                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode, stock_split_restricted, open_interest_cap_exceeded, account_open_interest_cap_exceeded, strict_isolated_cross_exposure, strict_isolated_margin_removal, instrument_post_only, post_only_rejected, mark_price_stale, zero_quantity, order_expired, reduce_only_invalid, reduce_only_expired. This is an open set: other values can be added. mark_price_stale is temporary: the market's mark price has not updated for over 60 seconds and the order would grow the position. Retry once prices resume and the original order is confirmed rejected. Reduce-only closes are not affected by this condition."
                         },
                         "instrumentId": {
                           "type": "string"
@@ -46536,7 +46536,7 @@
                               "type": "null"
                             }
                           ],
-                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode. This is an open set: other values can be added."
+                          "description": "The exchange's word for a refusal: with status rejected, why nothing was placed; with status pending, a refusal the exchange sent that this service is still confirming (the order then reads rejected with the same word, or another status if the exchange placed it after all). Null otherwise. Words seen today: price_outside_bounds, insufficient_margin, cancel_only_mode, stock_split_restricted, open_interest_cap_exceeded, account_open_interest_cap_exceeded, strict_isolated_cross_exposure, strict_isolated_margin_removal, instrument_post_only, post_only_rejected, mark_price_stale, zero_quantity, order_expired, reduce_only_invalid, reduce_only_expired. This is an open set: other values can be added. mark_price_stale is temporary: the market's mark price has not updated for over 60 seconds and the order would grow the position. Retry once prices resume and the original order is confirmed rejected. Reduce-only closes are not affected by this condition."
                         },
                         "instrumentId": {
                           "type": "string"
