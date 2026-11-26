@@ -22,7 +22,7 @@ Both operations accept **1–200** game IDs, each a string of **1–128** charac
 ```
 
 ```json
-{"type":"gameUpdate","gameId":"game-id","status":"live","score":"1-0","period":"1H","elapsed":"23","periodScores":null,"seriesScore":null,"finishedAt":null,"statusObservedAt":"2026-11-04T12:00:00.000Z"}
+{"type":"gameUpdate","gameId":"game-id","status":"live","score":"1-0","scoreOrder":"home","scoreBySide":{"home":1,"away":0},"period":"1H","elapsed":"23","periodScores":null,"seriesScore":null,"finishedAt":null,"statusObservedAt":"2026-11-04T12:00:00.000Z"}
 ```
 
 ```json
@@ -35,11 +35,13 @@ Both operations accept **1–200** game IDs, each a string of **1–128** charac
 |---|---|
 | `gameId` | Stored public game identity; never null. |
 | `status` | `scheduled`, `live`, or `ended`; ended evidence wins, then live evidence, then kickoff infers live for the inclusive three-hour window. Never null. |
-| `score` | Original stored Gamma display score; null when unknown. |
+| `score` | Original stored Gamma display score; null when unknown. The first number belongs to the side named by `scoreOrder` when known. NBA, NHL, NFL, CBB and MLB are among the away-first leagues; most are home-first (measured 2026-11-26; evidence: `p400-score-side-2026-11-26.md`). |
+| `scoreOrder` | Side listed first in `score`: `home` or `away`, from Gamma event `sport.ordering`; null when unknown. |
+| `scoreBySide` | `{home,away}` integer counts if `scoreOrder` is known and the whole score is one hyphen-separated pair of 1–3 digits per side. Null otherwise, and always null for tennis, esports and MMA. |
 | `period` | Original stored period label; null when unknown. |
 | `elapsed` | Original stored elapsed display text, not a numeric duration; null when unknown. |
-| `periodScores` | Tennis sets in source order, `{home,away,tiebreak}`; `tiebreak` is `{home,away}` or null when absent. Whole field null for unsupported sports or unreadable/missing scores. |
-| `seriesScore` | Esports series `{home,away}` map wins; null for unsupported sports or unreadable/missing scores. |
+| `periodScores` | Tennis sets in source order, `{home,away,tiebreak}`; `tiebreak` is `{home,away}` or null when absent. The first number of each pair is away when `scoreOrder` is `away`, otherwise home. Whole field null for unsupported sports or unreadable/missing scores. |
+| `seriesScore` | Esports series `{home,away}` map wins; the first number of the series pair is away when `scoreOrder` is `away`, otherwise home. Null for unsupported sports or unreadable/missing scores. |
 | `finishedAt` | Stored finish time as ISO 8601 UTC text; null when unknown, even if status is ended. |
 | `statusObservedAt` | ISO 8601 UTC time of the worker's latest stored status observation; never null. Not the frame time and does not alone cause an update. |
 

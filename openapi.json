@@ -35495,7 +35495,50 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "The Gamma event field score, stored as its display string."
+                            "description": "The raw Gamma event score display string. The first number belongs to the side named by scoreOrder when known. Away-first leagues include nba, nhl, nfl, cbb and mlb; most leagues are home-first (measured 2026-11-26; evidence: p400-score-side-2026-11-26.md)."
+                          },
+                          "scoreOrder": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "home",
+                                  "away"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Side listed first in score, from Gamma event sport.ordering; null when unknown."
+                          },
+                          "scoreBySide": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "home": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "away": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "home",
+                                  "away"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Home and away counts when scoreOrder is known and the whole score is one <int>-<int> pair (1–3 digits each). Null otherwise, and always null for tennis, esports and mma."
                           },
                           "period": {
                             "anyOf": [
@@ -35576,7 +35619,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "Tennis sets parsed from the stored Gamma score display string, in Gamma order, with tiebreak counts or null. Null unless the whole tennis string parses; null for other sports. Home follows teams[].side home, including tiebreaks (measured 2026-10-28)."
+                            "description": "Tennis sets parsed from the stored Gamma score display string, in set order, with tiebreak counts or null. Null unless the whole tennis string parses; null for other sports. For each set and tiebreak, the first number is away when scoreOrder is away, and home when scoreOrder is home or null."
                           },
                           "seriesScore": {
                             "anyOf": [
@@ -35604,7 +35647,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "Esports maps won parsed from the second | segment of the stored Gamma score display string; the first segment is never exposed here. Null unless the whole esports string parses; null for other sports. Home follows teams[].side home (measured 2026-10-28)."
+                            "description": "Esports maps won parsed from the second | segment of the stored Gamma score display string; the first segment is never exposed here. Null unless the whole esports string parses; null for other sports. The first number of that pair is away when scoreOrder is away, and home when scoreOrder is home or null."
                           },
                           "bestOf": {
                             "anyOf": [
@@ -35617,7 +35660,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "Esports best-of count parsed from Bo<n>, the third | segment of the stored Gamma score display string. Null unless the whole esports string parses; null for other sports. The associated seriesScore home follows teams[].side home (measured 2026-10-28)."
+                            "description": "Esports best-of count parsed from Bo<n>, the third | segment of the stored Gamma score display string. Null unless the whole esports string parses; null for other sports. The count does not depend on scoreOrder; the associated seriesScore is oriented by scoreOrder."
                           },
                           "fightMethod": {
                             "anyOf": [
@@ -36618,6 +36661,8 @@
                           "polymarketLive",
                           "postponed",
                           "score",
+                          "scoreOrder",
+                          "scoreBySide",
                           "period",
                           "elapsed",
                           "periodScores",
@@ -37252,7 +37297,50 @@
                           "type": "null"
                         }
                       ],
-                      "description": "The Gamma event field score, stored as its display string."
+                      "description": "The raw Gamma event score display string. The first number belongs to the side named by scoreOrder when known. Away-first leagues include nba, nhl, nfl, cbb and mlb; most leagues are home-first (measured 2026-11-26; evidence: p400-score-side-2026-11-26.md)."
+                    },
+                    "scoreOrder": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "home",
+                            "away"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Side listed first in score, from Gamma event sport.ordering; null when unknown."
+                    },
+                    "scoreBySide": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "home": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "away": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "home",
+                            "away"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Home and away counts when scoreOrder is known and the whole score is one <int>-<int> pair (1–3 digits each). Null otherwise, and always null for tennis, esports and mma."
                     },
                     "period": {
                       "anyOf": [
@@ -37333,7 +37421,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "Tennis sets parsed from the stored Gamma score display string, in Gamma order, with tiebreak counts or null. Null unless the whole tennis string parses; null for other sports. Home follows teams[].side home, including tiebreaks (measured 2026-10-28)."
+                      "description": "Tennis sets parsed from the stored Gamma score display string, in set order, with tiebreak counts or null. Null unless the whole tennis string parses; null for other sports. For each set and tiebreak, the first number is away when scoreOrder is away, and home when scoreOrder is home or null."
                     },
                     "seriesScore": {
                       "anyOf": [
@@ -37361,7 +37449,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "Esports maps won parsed from the second | segment of the stored Gamma score display string; the first segment is never exposed here. Null unless the whole esports string parses; null for other sports. Home follows teams[].side home (measured 2026-10-28)."
+                      "description": "Esports maps won parsed from the second | segment of the stored Gamma score display string; the first segment is never exposed here. Null unless the whole esports string parses; null for other sports. The first number of that pair is away when scoreOrder is away, and home when scoreOrder is home or null."
                     },
                     "bestOf": {
                       "anyOf": [
@@ -37374,7 +37462,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "Esports best-of count parsed from Bo<n>, the third | segment of the stored Gamma score display string. Null unless the whole esports string parses; null for other sports. The associated seriesScore home follows teams[].side home (measured 2026-10-28)."
+                      "description": "Esports best-of count parsed from Bo<n>, the third | segment of the stored Gamma score display string. Null unless the whole esports string parses; null for other sports. The count does not depend on scoreOrder; the associated seriesScore is oriented by scoreOrder."
                     },
                     "fightMethod": {
                       "anyOf": [
@@ -38162,6 +38250,8 @@
                     "polymarketLive",
                     "postponed",
                     "score",
+                    "scoreOrder",
+                    "scoreBySide",
                     "period",
                     "elapsed",
                     "periodScores",
