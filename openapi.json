@@ -25077,6 +25077,46 @@
                                       }
                                     ],
                                     "description": "The round market's cumulative traded volume in USDC, as a non-negative plain decimal string from this service's last read of the round. Null when Polymarket sent none or an invalid non-negative decimal. It may have more decimal places than a currency and remains set after the round ends."
+                                  },
+                                  "liveVolume": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "usd": {
+                                            "type": "string",
+                                            "description": "Observed USD notional as a plain decimal string."
+                                          },
+                                          "trades": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991,
+                                            "description": "Number of observed trade frames counted."
+                                          },
+                                          "since": {
+                                            "type": "string",
+                                            "format": "date-time",
+                                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                            "description": "When the watch began, as an ISO 8601 UTC timestamp."
+                                          },
+                                          "watchedFromStart": {
+                                            "type": "boolean",
+                                            "description": "True if the watch began at or before eventStartTime and no upstream gap, refused or malformed trade, or late subscription was observed. It does not guarantee that every trade was received; the upstream client can reconnect or drop frames without notifying this service."
+                                          }
+                                        },
+                                        "required": [
+                                          "usd",
+                                          "trades",
+                                          "since",
+                                          "watchedFromStart"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Our stream's observed USD notional (price × size of each received in-window trade frame across both outcomes), which can differ from Polymarket's final volume. A watched round starts at usd \"0\" and trades 0; the sum freezes 60 seconds after endDate. Null when no stored observation is available, including rounds not watched or storage unavailable. While running, show liveVolume.usd; once ended, prefer upstream volume when non-null, otherwise use liveVolume.usd when available. The upstream volume field is unchanged."
                                   }
                                 },
                                 "required": [
@@ -25090,7 +25130,8 @@
                                   "targetPriceSource",
                                   "outcomes",
                                   "winningOutcome",
-                                  "volume"
+                                  "volume",
+                                  "liveVolume"
                                 ],
                                 "additionalProperties": false
                               },
@@ -25233,6 +25274,46 @@
                                     }
                                   ],
                                   "description": "The round market's cumulative traded volume in USDC, as a non-negative plain decimal string from this service's last read of the round. Null when Polymarket sent none or an invalid non-negative decimal. It may have more decimal places than a currency and remains set after the round ends."
+                                },
+                                "liveVolume": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "usd": {
+                                          "type": "string",
+                                          "description": "Observed USD notional as a plain decimal string."
+                                        },
+                                        "trades": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991,
+                                          "description": "Number of observed trade frames counted."
+                                        },
+                                        "since": {
+                                          "type": "string",
+                                          "format": "date-time",
+                                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                          "description": "When the watch began, as an ISO 8601 UTC timestamp."
+                                        },
+                                        "watchedFromStart": {
+                                          "type": "boolean",
+                                          "description": "True if the watch began at or before eventStartTime and no upstream gap, refused or malformed trade, or late subscription was observed. It does not guarantee that every trade was received; the upstream client can reconnect or drop frames without notifying this service."
+                                        }
+                                      },
+                                      "required": [
+                                        "usd",
+                                        "trades",
+                                        "since",
+                                        "watchedFromStart"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Our stream's observed USD notional (price × size of each received in-window trade frame across both outcomes), which can differ from Polymarket's final volume. A watched round starts at usd \"0\" and trades 0; the sum freezes 60 seconds after endDate. Null when no stored observation is available, including rounds not watched or storage unavailable. While running, show liveVolume.usd; once ended, prefer upstream volume when non-null, otherwise use liveVolume.usd when available. The upstream volume field is unchanged."
                                 }
                               },
                               "required": [
@@ -25246,7 +25327,8 @@
                                 "targetPriceSource",
                                 "outcomes",
                                 "winningOutcome",
-                                "volume"
+                                "volume",
+                                "liveVolume"
                               ],
                               "additionalProperties": false
                             },
@@ -25386,6 +25468,46 @@
                                   ],
                                   "description": "The round market's cumulative traded volume in USDC, as a non-negative plain decimal string from this service's last read of the round. Null when Polymarket sent none or an invalid non-negative decimal. It may have more decimal places than a currency and remains set after the round ends."
                                 },
+                                "liveVolume": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "usd": {
+                                          "type": "string",
+                                          "description": "Observed USD notional as a plain decimal string."
+                                        },
+                                        "trades": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991,
+                                          "description": "Number of observed trade frames counted."
+                                        },
+                                        "since": {
+                                          "type": "string",
+                                          "format": "date-time",
+                                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                                          "description": "When the watch began, as an ISO 8601 UTC timestamp."
+                                        },
+                                        "watchedFromStart": {
+                                          "type": "boolean",
+                                          "description": "True if the watch began at or before eventStartTime and no upstream gap, refused or malformed trade, or late subscription was observed. It does not guarantee that every trade was received; the upstream client can reconnect or drop frames without notifying this service."
+                                        }
+                                      },
+                                      "required": [
+                                        "usd",
+                                        "trades",
+                                        "since",
+                                        "watchedFromStart"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Our stream's observed USD notional (price × size of each received in-window trade frame across both outcomes), which can differ from Polymarket's final volume. A watched round starts at usd \"0\" and trades 0; the sum freezes 60 seconds after endDate. Null when no stored observation is available, including rounds not watched or storage unavailable. While running, show liveVolume.usd; once ended, prefer upstream volume when non-null, otherwise use liveVolume.usd when available. The upstream volume field is unchanged."
+                                },
                                 "mine": {
                                   "description": "Present on every past round only with mine=true: the caller's settled result from stored orders, fills and resolution; never present otherwise.",
                                   "type": "object",
@@ -25460,7 +25582,8 @@
                                 "targetPriceSource",
                                 "outcomes",
                                 "winningOutcome",
-                                "volume"
+                                "volume",
+                                "liveVolume"
                               ],
                               "additionalProperties": false
                             },
