@@ -4289,11 +4289,16 @@
                                   }
                                 ],
                                 "description": "Approved avatar URL; null means show a neutral substitute."
+                              },
+                              "wallet": {
+                                "type": "string",
+                                "description": "Public leaderboard wallet address, in the case stored in the snapshot."
                               }
                             },
                             "required": [
                               "displayName",
-                              "avatarUrl"
+                              "avatarUrl",
+                              "wallet"
                             ],
                             "additionalProperties": false
                           },
@@ -4365,6 +4370,50 @@
                                     }
                                   ],
                                   "description": "Leg quote for display as a decimal string; null when unavailable."
+                                },
+                                "tokenId": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Stored market outcome token ID for a single exact outcome label match; null if unmatched, the market is not stored, or the snapshot predates this field."
+                                },
+                                "sportsMarketType": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Sports market type from the stored market or Gamma by-id market evidence; null if absent or the snapshot predates this field."
+                                },
+                                "line": {
+                                  "anyOf": [
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Sports line from the stored market or Gamma by-id market evidence; null if absent or the snapshot predates this field."
+                                },
+                                "gameId": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "ID of a stored game with a listed moneyline for the leg event at refresh time; null if no such game exists or the snapshot predates this field."
                                 }
                               },
                               "required": [
@@ -4372,7 +4421,11 @@
                                 "eventId",
                                 "question",
                                 "outcome",
-                                "price"
+                                "price",
+                                "tokenId",
+                                "sportsMarketType",
+                                "line",
+                                "gameId"
                               ],
                               "additionalProperties": false
                             }
